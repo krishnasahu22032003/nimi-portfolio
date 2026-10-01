@@ -1,8 +1,12 @@
+import Header from "@/components/Header";
 
 export default function Home() {
   return (
-  <div>
-    Nimi portfolio 
-  </div>
+<>
+<Header/>
+<main>
+</main>
+
+</>
   );
 }
