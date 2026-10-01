@@ -2,5 +2,16 @@
 
 html,
 body {
+  margin: 0;
+  padding: 0;
   font-family: var(--font-familjen), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #ffffff;
+  color: #555252;
 }
