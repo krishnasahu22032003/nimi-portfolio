@@ -37,17 +37,15 @@ const DOT_CENTERS: [number, number][] = [
   [1137, 458],
 ];
 
-const DOT_RADIUS = 32.5; // perfectly round, a hair larger than the cut-out
+const DOT_RADIUS = 22; // dot size – was 32.5; lower = smaller dots
 
-/* per-dot radius – only the bottom dot (index 2) is slightly larger so it fully
- * covers the rough ring that sits in lines-front.png */
-const DOT_RADII = [32.5, 32.5, 35, 32.5, 32.5, 32.5];
+/* per-dot radius – all dots share the same size (the rough ring around the
+ * bottom dot is removed by FRONT_CLEAN_HOLES below, not by a bigger dot) */
+const DOT_RADII = DOT_CENTERS.map(() => DOT_RADIUS);
 
-/* circles erased from the FRONT line layer only, so no ring/stubs poke out
- * around the bottom dot (same clean look as the top-left dot) */
-const FRONT_CLEAN_HOLES: { cx: number; cy: number; r: number }[] = [
-  { cx: 496, cy: 1101, r: 35 },
-];
+/* circles erased from the FRONT line layer – not needed any more: the cleaned
+ * lines-back.png / lines-front.png already run straight into the dots */
+const FRONT_CLEAN_HOLES: { cx: number; cy: number; r: number }[] = [];
 
 /* time (draw clock) → fraction of path length. Invisible bridges behind the
  * arms are sped through so the line never appears to stall mid-stroke. */
@@ -227,10 +225,17 @@ export default function HeroSection() {
       }
     };
 
-    /* Can this direction move a line right now? (page must be at the top) */
+    /* The hero is "finished" only when every line is drawn AND has come to
+     * rest on the last dot. Until then the page must not scroll away. */
+    const isFinished = () =>
+      desired.current === STEP_COUNT &&
+      pos.current === STEP_COUNT &&
+      hold.current === 0 &&
+      performance.now() >= lockUntil.current;
+
+    /* Does the hero keep hold of the page for this direction? */
     const canStep = (dir: 1 | -1) =>
-      atTop() &&
-      (dir > 0 ? desired.current < STEP_COUNT : desired.current > 0);
+      atTop() && (dir > 0 ? !isFinished() : desired.current > 0);
 
     /* Send the line one dot forward / back. Returns true if the gesture was
      * used up by the hero (so the page must NOT scroll). */
@@ -238,8 +243,9 @@ export default function HeroSection() {
       if (!canStep(dir)) return false;
 
       const now = performance.now();
+      const room = dir > 0 ? desired.current < STEP_COUNT : desired.current > 0;
 
-      if (now >= lockUntil.current) {
+      if (now >= lockUntil.current && room) {
         const segment = dir > 0 ? desired.current : desired.current - 1;
         desired.current += dir;
         lockUntil.current =
@@ -247,13 +253,35 @@ export default function HeroSection() {
         wake();
       }
 
+      /* consumed even while a line is still travelling / resting, so a fast
+       * scroll can never carry the page past the last dot */
       return true;
     };
 
     /* mouse wheel / trackpad */
+    let lastWheel = 0;
+
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey || Math.abs(e.deltaY) < 1) return;
-      if (step(e.deltaY > 0 ? 1 : -1)) e.preventDefault();
+
+      const now = performance.now();
+      const continuing = now - lastWheel < 140; // same flick / inertia tail
+      lastWheel = now;
+
+      const dir: 1 | -1 = e.deltaY > 0 ? 1 : -1;
+
+      /* the tail of the flick that finished the hero must not scroll the page:
+       * the page only moves on a fresh scroll after the last dot is connected */
+      if (
+        continuing &&
+        atTop() &&
+        (dir > 0 ? desired.current === STEP_COUNT : desired.current > 0)
+      ) {
+        e.preventDefault();
+        return;
+      }
+
+      if (step(dir)) e.preventDefault();
     };
 
     /* touch swipe */
