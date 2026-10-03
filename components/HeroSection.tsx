@@ -60,23 +60,6 @@ const DOT_CLOCK = [0.0896, 0.2511, 0.548, 0.7568, 0.8649, 0.9791];
 const STEP_BOUNDS = [0, ...DOT_CLOCK.slice(0, 5), 1];
 
 /* -------------------------------------------------------------------------
- * TIMING (scroll progress 0 → 1)
- * ---------------------------------------------------------------------- */
-
-const SECTION_HEIGHT_SVH = 900; // total scroll length of the hero
-
-const DOT_FADED_OPACITY = 0.22; // the "faded colour" the dots start in
-const DOT_START = 0.0;
-const DOT_STAGGER = 0.018; // gap between each dot starting to emerge
-const DOT_DURATION = 0.1; // slow fade to full colour (2× the old speed)
-
-const LINES_START = 0.22; // lines only begin once the dots are established
-const LINES_END = 0.97;
-const DRAW_SHARE = 0.66; // part of each slot spent drawing; rest = pause on the dot
-
-const SMOOTHING = 7; // higher = snappier follow of the scroll
-
-/* -------------------------------------------------------------------------
  * HELPERS
  * ---------------------------------------------------------------------- */
 
@@ -87,47 +70,42 @@ const easeInOutCubic = (t: number) =>
 
 const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 
-/* Step slots: longer strokes get a little more scroll, not proportionally more */
-const STEP_WEIGHTS = STEP_BOUNDS.slice(0, -1).map((b, i) =>
-  Math.sqrt(STEP_BOUNDS[i + 1] - b)
+/* -------------------------------------------------------------------------
+ * TIMING
+ * ---------------------------------------------------------------------- */
+
+/* DOTS – fade from light to dark BY THEMSELVES when the page opens.
+ * No scroll involved. Total ≈ DELAY + 5 × STAGGER + DURATION ≈ 4.5 s */
+const DOT_FADED_OPACITY = 0.22; // the light colour they start in
+const DOT_FADE_DELAY = 0.3; // seconds before the first dot starts
+const DOT_STAGGER = 0.2; // seconds between each dot starting
+const DOT_FADE_DURATION = 3.2; // seconds each dot takes to go dark
+const DOT_TOTAL_TIME =
+  DOT_FADE_DELAY + DOT_STAGGER * (DOT_CENTERS.length - 1) + DOT_FADE_DURATION;
+
+/* LINES – ONE scroll gesture = ONE line.
+ * A wheel flick / swipe / arrow key draws exactly one line to the next dot.
+ * It travels there on its own, touches the dot, rests, and only the next
+ * gesture sends it on to the following dot. */
+const STEP_COUNT = STEP_BOUNDS.length - 1; // 6 lines
+const STEP_PAUSE = 0.55; // seconds the line rests if it has to pass a dot
+const GESTURE_REST = 0.5; // seconds the line rests on a dot before the next scroll counts
+/* seconds a line takes to reach its dot (longer strokes get a bit longer) */
+const STEP_DURATIONS = STEP_BOUNDS.slice(0, -1).map((b, i) =>
+  clamp(Math.sqrt(STEP_BOUNDS[i + 1] - b) * 3, 0.8, 1.3)
 );
-const WEIGHT_SUM = STEP_WEIGHTS.reduce((a, b) => a + b, 0);
 
-const STEP_SLOTS = (() => {
-  let cursor = LINES_START;
-  return STEP_WEIGHTS.map((w) => {
-    const slot = ((LINES_END - LINES_START) * w) / WEIGHT_SUM;
-    const start = cursor;
-    cursor += slot;
-    return { start, drawEnd: start + slot * DRAW_SHARE };
-  });
-})();
+/* HEADING – nudge to the right (fraction of the artwork width, ≈ 2 spaces) */
+const HEADING_SHIFT = 0.026;
 
-/* progress → draw clock (0–1). Holds at each dot between steps. */
-function drawClock(progress: number) {
-  if (progress <= LINES_START) return 0;
+/* steps position (0–6, fractional while a line is travelling) → draw clock */
+function clockAtPos(pos: number) {
+  const i = Math.min(Math.floor(pos + 1e-9), STEP_COUNT - 1);
+  const frac = clamp(pos - i);
+  const from = STEP_BOUNDS[i];
+  const to = STEP_BOUNDS[i + 1];
 
-  let clock = 0;
-
-  for (let i = 0; i < STEP_SLOTS.length; i++) {
-    const { start, drawEnd } = STEP_SLOTS[i];
-    const from = STEP_BOUNDS[i];
-    const to = STEP_BOUNDS[i + 1];
-
-    if (progress >= drawEnd) {
-      clock = to;
-      continue;
-    }
-
-    if (progress > start) {
-      const local = (progress - start) / (drawEnd - start);
-      clock = from + (to - from) * easeInOutSine(clamp(local));
-    }
-
-    break;
-  }
-
-  return clock;
+  return from + (to - from) * easeInOutSine(frac);
 }
 
 function clockToLength(clock: number) {
@@ -152,9 +130,10 @@ function clockToLength(clock: number) {
   return l0 + (l1 - l0) * k;
 }
 
-function dotOpacity(progress: number, index: number) {
-  const start = DOT_START + index * DOT_STAGGER;
-  const k = easeInOutCubic(clamp((progress - start) / DOT_DURATION));
+/* seconds since page load → opacity of dot `index` (light → dark) */
+function dotOpacity(seconds: number, index: number) {
+  const start = DOT_FADE_DELAY + index * DOT_STAGGER;
+  const k = easeInOutCubic(clamp((seconds - start) / DOT_FADE_DURATION));
 
   return DOT_FADED_OPACITY + (1 - DOT_FADED_OPACITY) * k;
 }
@@ -170,26 +149,26 @@ export default function HeroSection() {
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
   const dotRefs = useRef<(SVGGElement | null)[]>([]);
 
-  const target = useRef(0);
-  const current = useRef(0);
+  const desired = useRef(0); // lines that should be connected (0–6)
+  const pos = useRef(0); // lines actually drawn (fractional while travelling)
+  const hold = useRef(0); // seconds left of a pause on a dot
+  const elapsed = useRef(0); // seconds since load – drives the dot fade
+  const lockUntil = useRef(0); // ms timestamp: ignore new gestures until then
 
-  /* write the current progress straight to the DOM (no React re-render per frame) */
-  const paint = useRef((p: number) => {
-    const offset = String(1 - clockToLength(drawClock(p)));
+  /* write straight to the DOM (no React re-render per frame) */
+  const paint = useRef(() => {
+    const offset = String(1 - clockToLength(clockAtPos(pos.current)));
 
     pathRefs.current.forEach((path) => {
       if (path) path.style.strokeDashoffset = offset;
     });
 
     dotRefs.current.forEach((el, i) => {
-      if (el) el.style.opacity = String(dotOpacity(p, i));
+      if (el) el.style.opacity = String(dotOpacity(elapsed.current, i));
     });
   });
 
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
@@ -197,52 +176,151 @@ export default function HeroSection() {
     let raf = 0;
     let last = 0;
 
-    const readScroll = () => {
-      const rect = section.getBoundingClientRect();
-      const header = window.innerWidth >= 640 ? 84 : 72;
-      const distance = section.offsetHeight - (window.innerHeight - header);
-
-      target.current = distance > 0 ? clamp(-rect.top / distance) : 0;
-    };
+    const atTop = () => window.scrollY < 4;
 
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000 || 0.016, 0.05);
       last = now;
 
-      const diff = target.current - current.current;
+      /* dots: light → dark on their own */
+      elapsed.current += dt;
 
-      if (reduceMotion || Math.abs(diff) < 0.00008) {
-        current.current = target.current;
-        paint.current(current.current);
-        raf = 0;
-        return;
+      /* lines: travel to the wanted dot, resting on every dot on the way */
+      if (reduceMotion) {
+        pos.current = desired.current;
+        elapsed.current = DOT_TOTAL_TIME;
+      } else if (hold.current > 0) {
+        hold.current = Math.max(0, hold.current - dt);
+      } else if (pos.current !== desired.current) {
+        const dir = desired.current > pos.current ? 1 : -1;
+        const boundary =
+          dir > 0
+            ? Math.floor(pos.current + 1e-9) + 1
+            : Math.ceil(pos.current - 1e-9) - 1;
+        const segment = dir > 0 ? boundary - 1 : boundary;
+        const next =
+          pos.current +
+          (dir * dt) / STEP_DURATIONS[clamp(segment, 0, STEP_COUNT - 1)];
+
+        if (dir > 0 ? next >= boundary : next <= boundary) {
+          pos.current = boundary;
+          if (boundary !== desired.current) hold.current = STEP_PAUSE;
+        } else {
+          pos.current = next;
+        }
       }
 
-      current.current += diff * (1 - Math.exp(-SMOOTHING * dt));
-      paint.current(current.current);
-      raf = requestAnimationFrame(tick);
+      paint.current();
+
+      const busy =
+        elapsed.current < DOT_TOTAL_TIME ||
+        pos.current !== desired.current ||
+        hold.current > 0;
+
+      raf = busy ? requestAnimationFrame(tick) : 0;
     };
 
-    const onScroll = () => {
-      readScroll();
-
+    const wake = () => {
       if (!raf) {
         last = performance.now();
         raf = requestAnimationFrame(tick);
       }
     };
 
-    readScroll();
-    current.current = target.current;
-    paint.current(current.current);
+    /* Can this direction move a line right now? (page must be at the top) */
+    const canStep = (dir: 1 | -1) =>
+      atTop() &&
+      (dir > 0 ? desired.current < STEP_COUNT : desired.current > 0);
 
+    /* Send the line one dot forward / back. Returns true if the gesture was
+     * used up by the hero (so the page must NOT scroll). */
+    const step = (dir: 1 | -1) => {
+      if (!canStep(dir)) return false;
+
+      const now = performance.now();
+
+      if (now >= lockUntil.current) {
+        const segment = dir > 0 ? desired.current : desired.current - 1;
+        desired.current += dir;
+        lockUntil.current =
+          now + (STEP_DURATIONS[segment] + GESTURE_REST) * 1000;
+        wake();
+      }
+
+      return true;
+    };
+
+    /* mouse wheel / trackpad */
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) < 1) return;
+      if (step(e.deltaY > 0 ? 1 : -1)) e.preventDefault();
+    };
+
+    /* touch swipe */
+    let touchY = 0;
+    let touchUsed = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0].clientY;
+      touchUsed = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const dy = touchY - e.touches[0].clientY; // finger up = scroll down
+      if (Math.abs(dy) < 2) return;
+
+      const dir: 1 | -1 = dy > 0 ? 1 : -1;
+      if (!canStep(dir)) return;
+
+      e.preventDefault(); // keep the page still while the hero is drawing
+
+      if (!touchUsed && Math.abs(dy) > 24) {
+        touchUsed = true;
+        step(dir);
+      }
+    };
+
+    /* keyboard */
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+      if (el?.isContentEditable) return;
+
+      let dir: 1 | -1 | 0 = 0;
+      if (e.key === "ArrowDown" || e.key === "PageDown") dir = 1;
+      else if (e.key === "ArrowUp" || e.key === "PageUp") dir = -1;
+      else if (e.key === " ") dir = e.shiftKey ? -1 : 1;
+
+      if (dir && step(dir)) e.preventDefault();
+    };
+
+    /* scrollbar drag / anchor links: if the page leaves the top, finish the lines */
+    const onScroll = () => {
+      if (!atTop() && desired.current < STEP_COUNT) {
+        desired.current = STEP_COUNT;
+        wake();
+      }
+    };
+
+    /* start: if the page opens already scrolled (refresh), show lines complete */
+    desired.current = atTop() ? 0 : STEP_COUNT;
+    pos.current = desired.current;
+    paint.current();
+    wake();
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
 
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
@@ -307,16 +385,15 @@ export default function HeroSection() {
   );
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative bg-white"
-      style={{ minHeight: `${SECTION_HEIGHT_SVH}svh` }}
-    >
+    <section ref={sectionRef} className="relative bg-white">
       <div className="sticky top-[72px] h-[calc(100svh-72px)] overflow-hidden sm:top-[84px] sm:h-[calc(100svh-84px)]">
         <div className="relative h-full w-full [--art:min(92svh,90vw)]">
           {/* Heading – Medium. Size and position are tied to the artwork, so the
               composition is identical at every screen size */}
-          <div className="absolute bottom-[calc(var(--art)*0.7405)] left-1/2 z-50 -translate-x-1/2 text-center">
+          <div
+            className="absolute bottom-[calc(var(--art)*0.7405)] z-50 -translate-x-1/2 text-center"
+            style={{ left: `calc(50% + var(--art) * ${HEADING_SHIFT})` }}
+          >
             <p className="m-0 whitespace-nowrap font-medium leading-[1.37] text-black [font-size:clamp(22px,calc(var(--art)*0.0516),44px)]">
               Hello,
             </p>
