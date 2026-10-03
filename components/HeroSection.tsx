@@ -51,8 +51,9 @@ const FRONT_CLEAN_HOLES: { cx: number; cy: number; r: number }[] = [];
  * arms are sped through so the line never appears to stall mid-stroke. */
 const TIME_TO_LENGTH: [number, number][] = [[0.0, 0.0], [0.0171, 0.0158], [0.0283, 0.0251], [0.0389, 0.034], [0.0483, 0.0419], [0.0574, 0.0495], [0.0665, 0.057], [0.0755, 0.0646], [0.085, 0.0725], [0.1012, 0.095], [0.1133, 0.1051], [0.1243, 0.1143], [0.1345, 0.1228], [0.1442, 0.1308], [0.1538, 0.1389], [0.164, 0.1474], [0.1813, 0.1823], [0.1905, 0.19], [0.1996, 0.1976], [0.2087, 0.2052], [0.2182, 0.2131], [0.2283, 0.2215], [0.2395, 0.2309], [0.2546, 0.2527], [0.2691, 0.2648], [0.2789, 0.2729], [0.2902, 0.2823], [0.3068, 0.3083], [0.3168, 0.3167], [0.3258, 0.3242], [0.3348, 0.3317], [0.344, 0.3394], [0.3547, 0.3483], [0.3649, 0.3569], [0.374, 0.3645], [0.384, 0.3728], [0.4016, 0.3945], [0.4108, 0.4021], [0.4246, 0.4307], [0.4436, 0.4732], [0.4546, 0.4824], [0.4652, 0.4912], [0.4755, 0.4998], [0.4854, 0.508], [0.495, 0.5161], [0.5043, 0.5238], [0.5134, 0.5315], [0.5224, 0.539], [0.5316, 0.5467], [0.5416, 0.555], [0.5663, 0.5841], [0.5762, 0.5925], [0.5855, 0.6002], [0.5947, 0.6078], [0.6037, 0.6154], [0.6127, 0.6229], [0.6218, 0.6305], [0.6311, 0.6383], [0.6408, 0.6463], [0.6509, 0.6549], [0.6621, 0.6641], [0.6746, 0.6746], [0.6857, 0.6839], [0.6958, 0.6924], [0.7054, 0.7003], [0.7145, 0.708], [0.7235, 0.7155], [0.7326, 0.723], [0.7418, 0.7308], [0.7564, 0.7452], [0.7717, 0.7653], [0.7824, 0.7742], [0.7924, 0.7826], [0.8021, 0.7907], [0.8163, 0.805], [0.8254, 0.8126], [0.8345, 0.8202], [0.8443, 0.8284], [0.8558, 0.838], [0.8704, 0.8607], [0.8798, 0.8686], [0.889, 0.8763], [0.8992, 0.8848], [0.9109, 0.8946], [0.9216, 0.9035], [0.9394, 0.9404], [0.9495, 0.9488], [0.9588, 0.9565], [0.9678, 0.9641], [0.9825, 0.9854], [0.9976, 0.998], [1.0, 1.0]];
 
-/* draw-clock position of each dot along the stroke */
-const DOT_CLOCK = [0.0896, 0.2511, 0.548, 0.7568, 0.8649, 0.9791];
+/* draw-clock position of each dot along the stroke. Each value makes the line
+ * reach a little past the dot's centre, so the line always touches its dot. */
+const DOT_CLOCK = [0.0926, 0.2511, 0.5565, 0.7595, 0.8649, 0.9791];
 
 /* 6 steps: free end → dot1, dot1 → dot2, … , dot5 → dot6 (+ small tail) */
 const STEP_BOUNDS = [0, ...DOT_CLOCK.slice(0, 5), 1];
@@ -86,12 +87,17 @@ const DOT_TOTAL_TIME =
  * It travels there on its own, touches the dot, rests, and only the next
  * gesture sends it on to the following dot. */
 const STEP_COUNT = STEP_BOUNDS.length - 1; // 6 lines
-const STEP_PAUSE = 0.55; // seconds the line rests if it has to pass a dot
-const GESTURE_REST = 0.5; // seconds the line rests on a dot before the next scroll counts
-/* seconds a line takes to reach its dot (longer strokes get a bit longer) */
+const STEP_PAUSE = 0.35; // seconds the line rests if it has to pass a dot
+const GESTURE_REST = 0.3; // seconds the line rests on a dot before the next scroll counts
+/* seconds a line takes to reach its dot (longer strokes get a bit longer).
+ * Lower the 2.4 (or the 0.65 / 1.0 limits) to make the lines even faster. */
 const STEP_DURATIONS = STEP_BOUNDS.slice(0, -1).map((b, i) =>
-  clamp(Math.sqrt(STEP_BOUNDS[i + 1] - b) * 3, 0.8, 1.3)
+  clamp(Math.sqrt(STEP_BOUNDS[i + 1] - b) * 2.4, 0.65, 1.0)
 );
+
+/* Gentle ease: soft start and landing, but never crawls – so the line cannot
+ * look "stuck" just before it reaches a dot. */
+const easeStep = (t: number) => 0.5 * t + 0.5 * easeInOutSine(t);
 
 /* HEADING – nudge to the right (fraction of the artwork width, ≈ 2 spaces) */
 const HEADING_SHIFT = 0.026;
@@ -103,7 +109,7 @@ function clockAtPos(pos: number) {
   const from = STEP_BOUNDS[i];
   const to = STEP_BOUNDS[i + 1];
 
-  return from + (to - from) * easeInOutSine(frac);
+  return from + (to - from) * easeStep(frac);
 }
 
 function clockToLength(clock: number) {
@@ -237,20 +243,38 @@ export default function HeroSection() {
     const canStep = (dir: 1 | -1) =>
       atTop() && (dir > 0 ? !isFinished() : desired.current > 0);
 
+    /* a scroll made while a line is still travelling is remembered and starts
+     * the moment the line has landed – so scrolling never feels stuck */
+    let pending = 0;
+
+    const room = (dir: 1 | -1) =>
+      dir > 0 ? desired.current < STEP_COUNT : desired.current > 0;
+
+    const advance = (dir: 1 | -1) => {
+      const segment = dir > 0 ? desired.current : desired.current - 1;
+      desired.current += dir;
+      lockUntil.current =
+        performance.now() + (STEP_DURATIONS[segment] + GESTURE_REST) * 1000;
+      wake();
+    };
+
     /* Send the line one dot forward / back. Returns true if the gesture was
      * used up by the hero (so the page must NOT scroll). */
-    const step = (dir: 1 | -1) => {
+    const step = (dir: 1 | -1, fresh = true) => {
       if (!canStep(dir)) return false;
+      if (!room(dir)) return true; // last dot still settling – hold the page
 
       const now = performance.now();
-      const room = dir > 0 ? desired.current < STEP_COUNT : desired.current > 0;
 
-      if (now >= lockUntil.current && room) {
-        const segment = dir > 0 ? desired.current : desired.current - 1;
-        desired.current += dir;
-        lockUntil.current =
-          now + (STEP_DURATIONS[segment] + GESTURE_REST) * 1000;
-        wake();
+      if (now >= lockUntil.current) {
+        window.clearTimeout(pending);
+        pending = 0;
+        advance(dir);
+      } else if (fresh && !pending) {
+        pending = window.setTimeout(() => {
+          pending = 0;
+          if (atTop() && room(dir)) advance(dir);
+        }, lockUntil.current - now + 20);
       }
 
       /* consumed even while a line is still travelling / resting, so a fast
@@ -281,7 +305,7 @@ export default function HeroSection() {
         return;
       }
 
-      if (step(dir)) e.preventDefault();
+      if (step(dir, !continuing)) e.preventDefault();
     };
 
     /* touch swipe */
@@ -319,7 +343,7 @@ export default function HeroSection() {
       else if (e.key === "ArrowUp" || e.key === "PageUp") dir = -1;
       else if (e.key === " ") dir = e.shiftKey ? -1 : 1;
 
-      if (dir && step(dir)) e.preventDefault();
+      if (dir && step(dir, !e.repeat)) e.preventDefault();
     };
 
     /* scrollbar drag / anchor links: if the page leaves the top, finish the lines */
@@ -344,6 +368,7 @@ export default function HeroSection() {
 
     return () => {
       cancelAnimationFrame(raf);
+      window.clearTimeout(pending);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
@@ -364,7 +389,7 @@ export default function HeroSection() {
   ) => (
     <svg
       viewBox="0 0 1200 1200"
-      className={`pointer-events-none absolute inset-0 ${zClass} h-full w-full select-none`}
+      className={`pointer-events-none absolute inset-0 ${zClass} h-full w-full select-none will-change-transform`}
       aria-hidden="true"
     >
       <defs>
