@@ -39,6 +39,16 @@ const DOT_CENTERS: [number, number][] = [
 
 const DOT_RADIUS = 32.5; // perfectly round, a hair larger than the cut-out
 
+/* per-dot radius – only the bottom dot (index 2) is slightly larger so it fully
+ * covers the rough ring that sits in lines-front.png */
+const DOT_RADII = [32.5, 32.5, 35, 32.5, 32.5, 32.5];
+
+/* circles erased from the FRONT line layer only, so no ring/stubs poke out
+ * around the bottom dot (same clean look as the top-left dot) */
+const FRONT_CLEAN_HOLES: { cx: number; cy: number; r: number }[] = [
+  { cx: 496, cy: 1101, r: 35 },
+];
+
 /* time (draw clock) → fraction of path length. Invisible bridges behind the
  * arms are sped through so the line never appears to stall mid-stroke. */
 const TIME_TO_LENGTH: [number, number][] = [[0.0, 0.0], [0.0171, 0.0158], [0.0283, 0.0251], [0.0389, 0.034], [0.0483, 0.0419], [0.0574, 0.0495], [0.0665, 0.057], [0.0755, 0.0646], [0.085, 0.0725], [0.1012, 0.095], [0.1133, 0.1051], [0.1243, 0.1143], [0.1345, 0.1228], [0.1442, 0.1308], [0.1538, 0.1389], [0.164, 0.1474], [0.1813, 0.1823], [0.1905, 0.19], [0.1996, 0.1976], [0.2087, 0.2052], [0.2182, 0.2131], [0.2283, 0.2215], [0.2395, 0.2309], [0.2546, 0.2527], [0.2691, 0.2648], [0.2789, 0.2729], [0.2902, 0.2823], [0.3068, 0.3083], [0.3168, 0.3167], [0.3258, 0.3242], [0.3348, 0.3317], [0.344, 0.3394], [0.3547, 0.3483], [0.3649, 0.3569], [0.374, 0.3645], [0.384, 0.3728], [0.4016, 0.3945], [0.4108, 0.4021], [0.4246, 0.4307], [0.4436, 0.4732], [0.4546, 0.4824], [0.4652, 0.4912], [0.4755, 0.4998], [0.4854, 0.508], [0.495, 0.5161], [0.5043, 0.5238], [0.5134, 0.5315], [0.5224, 0.539], [0.5316, 0.5467], [0.5416, 0.555], [0.5663, 0.5841], [0.5762, 0.5925], [0.5855, 0.6002], [0.5947, 0.6078], [0.6037, 0.6154], [0.6127, 0.6229], [0.6218, 0.6305], [0.6311, 0.6383], [0.6408, 0.6463], [0.6509, 0.6549], [0.6621, 0.6641], [0.6746, 0.6746], [0.6857, 0.6839], [0.6958, 0.6924], [0.7054, 0.7003], [0.7145, 0.708], [0.7235, 0.7155], [0.7326, 0.723], [0.7418, 0.7308], [0.7564, 0.7452], [0.7717, 0.7653], [0.7824, 0.7742], [0.7924, 0.7826], [0.8021, 0.7907], [0.8163, 0.805], [0.8254, 0.8126], [0.8345, 0.8202], [0.8443, 0.8284], [0.8558, 0.838], [0.8704, 0.8607], [0.8798, 0.8686], [0.889, 0.8763], [0.8992, 0.8848], [0.9109, 0.8946], [0.9216, 0.9035], [0.9394, 0.9404], [0.9495, 0.9488], [0.9588, 0.9565], [0.9678, 0.9641], [0.9825, 0.9854], [0.9976, 0.998], [1.0, 1.0]];
@@ -236,8 +246,16 @@ export default function HeroSection() {
     };
   }, []);
 
-  /* One reveal-mask + line image. The same stroke drives both layers. */
-  const renderLines = (id: string, src: string, zClass: string, index: number) => (
+  /* One reveal-mask + line image. The same stroke drives both layers.
+   * `holes` are circles wiped out of the mask (black = hidden), used to
+   * remove the rough ring/stubs around a dot in the front layer. */
+  const renderLines = (
+    id: string,
+    src: string,
+    zClass: string,
+    index: number,
+    holes: { cx: number; cy: number; r: number }[] = []
+  ) => (
     <svg
       viewBox="0 0 1200 1200"
       className={`pointer-events-none absolute inset-0 ${zClass} h-full w-full select-none`}
@@ -268,6 +286,11 @@ export default function HeroSection() {
               strokeDashoffset: 1,
             }}
           />
+
+          {/* black = hidden: wipes the ring/stubs around the dot */}
+          {holes.map((h, i) => (
+            <circle key={i} cx={h.cx} cy={h.cy} r={h.r} fill="#000" />
+          ))}
         </mask>
       </defs>
 
@@ -320,7 +343,13 @@ export default function HeroSection() {
               />
 
               {/* Lines crossing over her trousers – above the girl, still under the dots */}
-              {renderLines(`${maskId}-front`, LINES_FRONT, "z-[25]", 1)}
+              {renderLines(
+                `${maskId}-front`,
+                LINES_FRONT,
+                "z-[25]",
+                1,
+                FRONT_CLEAN_HOLES
+              )}
 
               {/* Dots – drawn as true circles, always above the lines */}
               <svg
@@ -362,32 +391,32 @@ export default function HeroSection() {
                   </filter>
                 </defs>
 
-              {DOT_CENTERS.map(([cx, cy], index) => (
-  <g
-    key={index}
-    ref={(el) => {
-      dotRefs.current[index] = el;
-    }}
-    style={{ opacity: DOT_FADED_OPACITY }}
-  >
-    {/* Solid base guarantees that no line can show through the dot */}
-    <circle
-      cx={cx}
-      cy={cy}
-      r={DOT_RADIUS}
-      fill={`url(#${maskId}-dot)`}
-    />
+                {DOT_CENTERS.map(([cx, cy], index) => (
+                  <g
+                    key={index}
+                    ref={(el) => {
+                      dotRefs.current[index] = el;
+                    }}
+                    style={{ opacity: DOT_FADED_OPACITY }}
+                  >
+                    {/* Solid base guarantees that no line can show through the dot */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={DOT_RADII[index] ?? DOT_RADIUS}
+                      fill={`url(#${maskId}-dot)`}
+                    />
 
-    {/* Watercolour texture stays on top of the solid dot */}
-    <circle
-      cx={cx}
-      cy={cy}
-      r={DOT_RADIUS}
-      fill={`url(#${maskId}-dot)`}
-      filter={`url(#${maskId}-grain)`}
-    />
-  </g>
-))}
+                    {/* Watercolour texture stays on top of the solid dot */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={DOT_RADII[index] ?? DOT_RADIUS}
+                      fill={`url(#${maskId}-dot)`}
+                      filter={`url(#${maskId}-grain)`}
+                    />
+                  </g>
+                ))}
               </svg>
             </div>
           </div>
