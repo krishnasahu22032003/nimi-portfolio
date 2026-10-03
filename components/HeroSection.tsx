@@ -385,7 +385,10 @@ export default function HeroSection() {
   );
 
   return (
-    <section ref={sectionRef} className="relative bg-white">
+    <section
+      ref={sectionRef}
+      className="relative bg-white pt-[72px] sm:pt-[84px]"
+    >
       <div className="sticky top-[72px] h-[calc(100svh-72px)] overflow-hidden sm:top-[84px] sm:h-[calc(100svh-84px)]">
         <div className="relative h-full w-full [--art:min(92svh,90vw)]">
           {/* Heading – Medium. Size and position are tied to the artwork, so the
