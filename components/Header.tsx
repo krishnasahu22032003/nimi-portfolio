@@ -7,7 +7,6 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -18,72 +17,117 @@ const NAV_LINKS = [
   { label: "Contact", href: "/contact" },
 ];
 
-const FRAMES = [0, 1, 2, 3, 4, 5].map((i) => `/hourglass/frame-${i}.webp`);
+const FRAME_COUNT = 6;
 
-const LAST = FRAMES.length - 1;
+const FRAMES = Array.from(
+  { length: FRAME_COUNT },
+  (_, index) => `/hourglass/frame-${index}-1024.webp`
+);
+
+const LAST = FRAME_COUNT - 1;
 
 const EASE = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 
-/*
-  HOURGLASS FILL
-  The sand does not move during the hero. Once the visitor scrolls past it, the
-  sand drops gradually the further they go down the landing page, and it is full
-  only at the very bottom.
-
-  It does NOT depend on how the other sections are built. It only needs to know
-  where the hero ends:
-    - the hero is the element with [data-hero-section] (preferred), otherwise
-      the first <section> on the page
-    - the sand starts moving when the hero's bottom edge enters the screen
-
-  EXPECTED_SECTIONS is how many sections the finished landing page will have
-  (hero included) and SECTION_HEIGHT_VH is roughly how tall each one is, in
-  screen-heights. Together they set the minimum scroll length the sand is spread
-  over, so a half-built page (e.g. only two sections) does not fill it early.
-  Once the real page is longer than that, the real length is used.
-
-  Optional exact mode: put data-section on every landing section (hero too) and
-  the sand will step down section by section instead.
-*/
 const EXPECTED_SECTIONS = 5;
+
 const SECTION_HEIGHT_VH = 1;
+
+const SMOOTHING_MS = 160;
 
 const findHero = (): HTMLElement | null =>
   document.querySelector<HTMLElement>("[data-hero-section]") ??
   document.querySelector<HTMLElement>("section");
 
-type Keyframe = { y: number; level: number };
-
-const SMOOTHING_MS = 160; // how softly the sand follows the scroll
+type Keyframe = {
+  y: number;
+  level: number;
+};
 
 export default function Header() {
   const pathname = usePathname() ?? "";
 
   const headerRef = useRef<HTMLElement>(null);
+
   const frameRefs = useRef<(HTMLImageElement | null)[]>([]);
 
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const header = headerRef.current;
+
     if (!header) return;
+
+    let cancelled = false;
+
+    let cleanupAnimation = () => {};
+
+    const frameImages = FRAMES.map((src) => {
+      const image = new Image();
+
+      image.src = src;
+      image.decoding = "async";
+
+      return image;
+    });
+
+    const preloadFrames = async () => {
+      await Promise.all(
+        frameImages.map(async (image) => {
+          if (typeof image.decode === "function") {
+            try {
+              await image.decode();
+            } catch {
+              // Image can still be displayed if decode is unavailable.
+            }
+          } else {
+            await new Promise<void>((resolve) => {
+              if (image.complete) {
+                resolve();
+                return;
+              }
+
+              image.addEventListener("load", () => resolve(), {
+                once: true,
+              });
+
+              image.addEventListener("error", () => resolve(), {
+                once: true,
+              });
+            });
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      startAnimation();
+    };
+
+    let target = 0;
+
+    let current = 0;
+
+    let raf: number | null = null;
+
+    let lastTime = 0;
+
+    let shown = 0;
+
+    let keyframes: Keyframe[] = [];
+
+    let pageScroll = 0;
 
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    let target = 0;
-    let current = 0;
-    let raf: number | null = null;
-    let last = 0;
-
-    let keyframes: Keyframe[] = [];
-    let pageScroll = 0;
-
-    /* Reads positions. Runs on mount and whenever the layout changes. */
     const layout = () => {
       const vh = window.innerHeight;
-      pageScroll = Math.max(document.documentElement.scrollHeight - vh, 0);
+
+      pageScroll = Math.max(
+        document.documentElement.scrollHeight - vh,
+        0
+      );
 
       keyframes = [];
 
@@ -92,102 +136,220 @@ export default function Header() {
       );
 
       if (marked.length >= 2) {
-        /* Exact mode: one step per marked section */
         const count = marked.length;
-        const total = Math.max(count, EXPECTED_SECTIONS);
-        const tops = marked.map(
-          (el) => el.getBoundingClientRect().top + window.scrollY
+
+        const total = Math.max(
+          count,
+          EXPECTED_SECTIONS
         );
 
-        keyframes.push({ y: Math.max(tops[1] - vh, 0), level: 0 });
+        const tops = marked.map(
+          (element) =>
+            element.getBoundingClientRect().top +
+            window.scrollY
+        );
 
-        for (let k = 1; k < count; k++) {
+        keyframes.push({
+          y: Math.max(tops[1] - vh, 0),
+          level: 0,
+        });
+
+        for (let index = 1; index < count; index++) {
           keyframes.push({
-            y: Math.min(tops[k], pageScroll),
-            level: k / total,
+            y: Math.min(
+              tops[index],
+              pageScroll
+            ),
+            level: index / total,
           });
         }
 
-        keyframes.push({ y: pageScroll, level: count / total });
-        keyframes.sort((a, b) => a.y - b.y || a.level - b.level);
+        keyframes.push({
+          y: pageScroll,
+          level: count / total,
+        });
+
+        keyframes.sort(
+          (a, b) =>
+            a.y - b.y ||
+            a.level - b.level
+        );
+
         return;
       }
 
       const hero = findHero();
-      if (!hero) return; /* no hero (other pages): plain page progress */
 
-      /* Empty until the hero ends, then one even run down the rest of the page */
-      const heroBottom = hero.getBoundingClientRect().bottom + window.scrollY;
-      const start = Math.max(heroBottom - vh, 0);
+      if (!hero) {
+        return;
+      }
+
+      const heroBottom =
+        hero.getBoundingClientRect().bottom +
+        window.scrollY;
+
+      const start = Math.max(
+        heroBottom - vh,
+        0
+      );
+
       const length = Math.max(
         pageScroll - start,
-        (EXPECTED_SECTIONS - 1) * SECTION_HEIGHT_VH * vh
+        (EXPECTED_SECTIONS - 1) *
+          SECTION_HEIGHT_VH *
+          vh
       );
 
       keyframes = [
-        { y: start, level: 0 },
-        { y: start + length, level: 1 },
+        {
+          y: start,
+          level: 0,
+        },
+        {
+          y: start + length,
+          level: 1,
+        },
       ];
     };
 
     const levelAt = (y: number) => {
       if (!keyframes.length) {
-        /* No sections to key off (e.g. a short page): plain page progress */
-        return pageScroll > 0 ? Math.min(Math.max(y / pageScroll, 0), 1) : 0;
+        return pageScroll > 0
+          ? Math.min(
+              Math.max(
+                y / pageScroll,
+                0
+              ),
+              1
+            )
+          : 0;
       }
 
-      if (y <= keyframes[0].y) return keyframes[0].level;
+      if (y <= keyframes[0].y) {
+        return keyframes[0].level;
+      }
 
-      for (let i = 1; i < keyframes.length; i++) {
-        const a = keyframes[i - 1];
-        const b = keyframes[i];
+      for (
+        let index = 1;
+        index < keyframes.length;
+        index++
+      ) {
+        const previous =
+          keyframes[index - 1];
 
-        if (y <= b.y) {
-          return b.y === a.y
-            ? b.level
-            : a.level + ((y - a.y) / (b.y - a.y)) * (b.level - a.level);
+        const next =
+          keyframes[index];
+
+        if (y <= next.y) {
+          if (next.y === previous.y) {
+            return next.level;
+          }
+
+          const progress =
+            (y - previous.y) /
+            (next.y - previous.y);
+
+          return (
+            previous.level +
+            progress *
+              (next.level -
+                previous.level)
+          );
         }
       }
 
-      return keyframes[keyframes.length - 1].level;
+      return keyframes[
+        keyframes.length - 1
+      ].level;
     };
 
-    const measure = () => {
-      target = Math.min(Math.max(levelAt(window.scrollY), 0), 1);
-      header.dataset.scrolled = window.scrollY > 8 ? "true" : "false";
+    const setFrame = (frameIndex: number) => {
+      const nextFrame = Math.min(
+        Math.max(frameIndex, 0),
+        LAST
+      );
+
+      if (nextFrame === shown) {
+        return;
+      }
+
+      shown = nextFrame;
+
+      frameRefs.current.forEach(
+        (image, index) => {
+          if (!image) return;
+
+          image.style.display =
+            index === shown
+              ? "block"
+              : "none";
+        }
+      );
     };
 
     const paint = () => {
-      const frameProgress = current * LAST;
+      const raw = current * LAST;
 
-      frameRefs.current.forEach((image, index) => {
-        if (!image || index === 0) return;
+      const nextFrame = Math.round(raw);
 
-        const opacity = Math.min(Math.max(frameProgress - (index - 1), 0), 1);
+      setFrame(nextFrame);
+    };
 
-        image.style.opacity = opacity.toFixed(3);
-      });
+    const measure = () => {
+      target = Math.min(
+        Math.max(
+          levelAt(window.scrollY),
+          0
+        ),
+        1
+      );
+
+      header.dataset.scrolled =
+        window.scrollY > 8
+          ? "true"
+          : "false";
     };
 
     const tick = (now: number) => {
-      const dt = last ? Math.min(now - last, 64) : 16;
-      last = now;
+      const delta = lastTime
+        ? Math.min(
+            now - lastTime,
+            64
+          )
+        : 16;
 
-      current += reduceMotion
-        ? target - current
-        : (target - current) * (1 - Math.exp(-dt / SMOOTHING_MS));
+      lastTime = now;
 
-      if (Math.abs(target - current) < 0.0004) {
+      if (reduceMotion) {
+        current = target;
+      } else {
+        current +=
+          (target - current) *
+          (1 -
+            Math.exp(
+              -delta /
+                SMOOTHING_MS
+            ));
+      }
+
+      if (
+        Math.abs(
+          target - current
+        ) < 0.0004
+      ) {
         current = target;
       }
 
       paint();
 
       if (current !== target) {
-        raf = requestAnimationFrame(tick);
+        raf =
+          requestAnimationFrame(
+            tick
+          );
       } else {
         raf = null;
-        last = 0;
+        lastTime = 0;
       }
     };
 
@@ -195,36 +357,94 @@ export default function Header() {
       measure();
 
       if (raf === null) {
-        raf = requestAnimationFrame(tick);
+        raf =
+          requestAnimationFrame(
+            tick
+          );
       }
     };
 
     const onLayout = () => {
       layout();
+
       onScroll();
     };
 
-    /* Set the correct sand level immediately (e.g. after a reload mid-page) */
-    layout();
-    measure();
-    current = target;
-    paint();
+    const startAnimation = () => {
+      if (cancelled) return;
 
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onLayout);
+      layout();
 
-    const resizeObserver = new ResizeObserver(onLayout);
-    resizeObserver.observe(document.body);
+      measure();
+
+      current = target;
+
+      shown = Math.round(
+        current * LAST
+      );
+
+      frameRefs.current.forEach(
+        (image, index) => {
+          if (!image) return;
+
+          image.style.display =
+            index === shown
+              ? "block"
+              : "none";
+        }
+      );
+
+      window.addEventListener(
+        "scroll",
+        onScroll,
+        {
+          passive: true,
+        }
+      );
+
+      window.addEventListener(
+        "resize",
+        onLayout
+      );
+
+      const resizeObserver =
+        new ResizeObserver(
+          onLayout
+        );
+
+      resizeObserver.observe(
+        document.body
+      );
+
+      cleanupAnimation = () => {
+        window.removeEventListener(
+          "scroll",
+          onScroll
+        );
+
+        window.removeEventListener(
+          "resize",
+          onLayout
+        );
+
+        resizeObserver.disconnect();
+
+        if (raf !== null) {
+          cancelAnimationFrame(
+            raf
+          );
+
+          raf = null;
+        }
+      };
+    };
+
+    preloadFrames();
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onLayout);
+      cancelled = true;
 
-      resizeObserver.disconnect();
-
-      if (raf !== null) {
-        cancelAnimationFrame(raf);
-      }
+      cleanupAnimation();
     };
   }, [pathname]);
 
@@ -239,7 +459,9 @@ export default function Header() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (
+      event: KeyboardEvent
+    ) => {
       if (event.key === "Escape") {
         closeMenu();
       }
@@ -251,20 +473,38 @@ export default function Header() {
       }
     };
 
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onResize);
+    document.addEventListener(
+      "keydown",
+      onKeyDown
+    );
 
-    document.body.style.overflow = "hidden";
+    window.addEventListener(
+      "resize",
+      onResize
+    );
+
+    document.body.style.overflow =
+      "hidden";
 
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onResize);
+      document.removeEventListener(
+        "keydown",
+        onKeyDown
+      );
 
-      document.body.style.overflow = "";
+      window.removeEventListener(
+        "resize",
+        onResize
+      );
+
+      document.body.style.overflow =
+        "";
     };
   }, [menuOpen, closeMenu]);
 
-  const onLogoClick = (event: MouseEvent<HTMLAnchorElement>) => {
+  const onLogoClick = (
+    event: MouseEvent<HTMLAnchorElement>
+  ) => {
     closeMenu();
 
     if (pathname === "/") {
@@ -293,7 +533,8 @@ export default function Header() {
           "data-[scrolled=true]:bg-white/[.86]",
           "data-[scrolled=true]:backdrop-blur-[14px]",
           "data-[scrolled=true]:backdrop-saturate-[1.4]",
-          menuOpen && "bg-white/[.92] backdrop-blur-[14px]"
+          menuOpen &&
+            "bg-white/[.92] backdrop-blur-[14px]"
         )}
       >
         <div
@@ -309,7 +550,7 @@ export default function Header() {
             onClick={onLogoClick}
             className={cn(
               "group/logo inline-flex shrink-0",
-              "aspect-[248/336]",
+              "aspect-[1024/1387]",
               "h-9 md:h-10 min-[1100px]:h-11",
               "items-center rounded-lg",
               "outline-offset-[6px]",
@@ -324,80 +565,101 @@ export default function Header() {
           >
             <span
               aria-hidden="true"
-              className="relative block h-full w-full mix-blend-multiply"
+              className="relative block h-full w-full"
             >
-              {FRAMES.map((src, index) => (
-                <Image
-                  key={src}
-                  ref={(element) => {
-                    frameRefs.current[index] = element;
-                  }}
-                  src={src}
-                  alt=""
-                  width={248}
-                  height={336}
-                  priority
-                  unoptimized
-                  draggable={false}
-                  style={{
-                    opacity: index === 0 ? 1 : 0,
-                  }}
-                  className={cn(
-                    "pointer-events-none absolute inset-0",
-                    "h-full w-full max-w-none",
-                    "select-none object-contain",
-                    "will-change-[opacity]"
-                  )}
-                />
-              ))}
+              {FRAMES.map(
+                (src, index) => (
+                  <img
+                    key={src}
+                    ref={(element) => {
+                      frameRefs.current[
+                        index
+                      ] = element;
+                    }}
+                    src={src}
+                    alt=""
+                    width={1024}
+                    height={1387}
+                    loading="eager"
+                    decoding="async"
+                    draggable={false}
+                    style={{
+                      display:
+                        index === 0
+                          ? "block"
+                          : "none",
+                    }}
+                    className={cn(
+                      "pointer-events-none absolute inset-0",
+                      "h-full w-full",
+                      "select-none object-contain"
+                    )}
+                  />
+                )
+              )}
             </span>
           </Link>
 
-          <nav aria-label="Primary navigation" className="hidden md:block">
+          <nav
+            aria-label="Primary navigation"
+            className="hidden md:block"
+          >
             <ul
               className={cn(
                 "m-0 flex list-none items-center p-0",
                 "gap-7 lg:gap-9"
               )}
             >
-              {NAV_LINKS.map(({ label, href }) => {
-                const isActive =
-                  pathname === href || pathname.startsWith(`${href}/`);
+              {NAV_LINKS.map(
+                ({
+                  label,
+                  href,
+                }) => {
+                  const isActive =
+                    pathname === href ||
+                    pathname.startsWith(
+                      `${href}/`
+                    );
 
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      aria-current={isActive ? "page" : undefined}
-                      className={cn(
-                        "group/nav relative inline-flex items-center",
-                        "px-2 py-2",
-                        "text-[16px] leading-6 font-normal",
-                        "text-[#555252]",
-                        "no-underline",
-                        "outline-none",
-                        "transition-[color,transform]",
-                        "duration-300",
-                        EASE,
-                        "hover:-translate-y-[1px]",
-                        "hover:scale-[1.015]",
-                        "hover:text-black",
-                        "focus-visible:-translate-y-[1px]",
-                        "focus-visible:scale-[1.015]",
-                        "focus-visible:text-black",
-                        "aria-[current=page]:text-black",
-                        "motion-reduce:transition-none",
-                        "motion-reduce:hover:translate-y-0",
-                        "motion-reduce:hover:scale-100",
-                        "motion-reduce:focus-visible:translate-y-0",
-                        "motion-reduce:focus-visible:scale-100"
-                      )}
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                );
-              })}
+                  return (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        aria-current={
+                          isActive
+                            ? "page"
+                            : undefined
+                        }
+                        className={cn(
+                          "group/nav relative inline-flex items-center",
+                          "px-2 py-2",
+                          "text-[16px] leading-6 font-normal",
+                          "text-[#555252]",
+                          "no-underline",
+                          "outline-none",
+                          "transition-[color,transform]",
+                          "duration-300",
+                          EASE,
+                          "hover:-translate-y-[1px]",
+                          "hover:scale-[1.015]",
+                          "hover:text-black",
+                          "focus-visible:-translate-y-[1px]",
+                          "focus-visible:scale-[1.015]",
+                          "focus-visible:text-black",
+                          "aria-[current=page]:text-black",
+                          "motion-reduce:transition-none",
+                          "motion-reduce:hover:translate-y-0",
+                          "motion-reduce:hover:scale-100",
+                          "motion-reduce:focus-visible:translate-y-0",
+                          "motion-reduce:focus-visible:scale-100"
+                        )}
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  );
+                }
+              )}
             </ul>
           </nav>
 
@@ -405,8 +667,16 @@ export default function Header() {
             type="button"
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMenuOpen((value) => !value)}
+            aria-label={
+              menuOpen
+                ? "Close menu"
+                : "Open menu"
+            }
+            onClick={() =>
+              setMenuOpen(
+                (value) => !value
+              )
+            }
             className={cn(
               "relative -mr-3 h-12 w-12",
               "cursor-pointer rounded-lg",
@@ -415,25 +685,35 @@ export default function Header() {
               "focus-visible:outline-2",
               "focus-visible:outline-black",
               "md:hidden",
-              menuOpen ? "text-black" : "text-[#555252]"
+              menuOpen
+                ? "text-black"
+                : "text-[#555252]"
             )}
           >
-            {["top-[19px]", "top-[28px]"].map((position, index) => (
-              <span
-                key={position}
-                className={cn(
-                  "absolute inset-x-3 h-[1.5px]",
-                  "bg-current",
-                  "transition-transform duration-500",
-                  EASE,
-                  position,
-                  menuOpen &&
-                    (index === 0
-                      ? "translate-y-[4.25px] rotate-45"
-                      : "-translate-y-[4.25px] -rotate-45")
-                )}
-              />
-            ))}
+            {[
+              "top-[19px]",
+              "top-[28px]",
+            ].map(
+              (
+                position,
+                index
+              ) => (
+                <span
+                  key={position}
+                  className={cn(
+                    "absolute inset-x-3 h-[1.5px]",
+                    "bg-current",
+                    "transition-transform duration-500",
+                    EASE,
+                    position,
+                    menuOpen &&
+                      (index === 0
+                        ? "translate-y-[4.25px] rotate-45"
+                        : "-translate-y-[4.25px] -rotate-45")
+                  )}
+                />
+              )
+            )}
           </button>
         </div>
       </header>
@@ -455,56 +735,85 @@ export default function Header() {
         )}
       >
         <ul className="m-0 flex list-none flex-col p-0">
-          {NAV_LINKS.map(({ label, href }, index) => {
-            const isActive =
-              pathname === href || pathname.startsWith(`${href}/`);
+          {NAV_LINKS.map(
+            (
+              {
+                label,
+                href,
+              },
+              index
+            ) => {
+              const isActive =
+                pathname === href ||
+                pathname.startsWith(
+                  `${href}/`
+                );
 
-            return (
-              <li
-                key={href}
-                style={{
-                  transitionDelay: menuOpen ? `${100 + index * 60}ms` : "0ms",
-                }}
-                className={cn(
-                  "transition-[opacity,transform]",
-                  "duration-500",
-                  EASE,
-                  menuOpen
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0"
-                )}
-              >
-                <Link
-                  href={href}
-                  tabIndex={menuOpen ? 0 : -1}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={closeMenu}
+              return (
+                <li
+                  key={href}
+                  style={{
+                    transitionDelay:
+                      menuOpen
+                        ? `${
+                            100 +
+                            index *
+                              60
+                          }ms`
+                        : "0ms",
+                  }}
                   className={cn(
-                    "group/mobile relative block",
-                    "border-b border-[#555252]/15",
-                    "py-5",
-                    "text-2xl leading-8 font-normal",
-                    "text-[#555252]",
-                    "no-underline",
-                    "outline-none",
-                    "transition-[color,transform]",
-                    "duration-300",
+                    "transition-[opacity,transform]",
+                    "duration-500",
                     EASE,
-                    "hover:translate-x-1",
-                    "hover:text-black",
-                    "focus-visible:translate-x-1",
-                    "focus-visible:text-black",
-                    isActive && "text-black",
-                    "motion-reduce:transition-none",
-                    "motion-reduce:hover:translate-x-0",
-                    "motion-reduce:focus-visible:translate-x-0"
+                    menuOpen
+                      ? "translate-y-0 opacity-100"
+                      : "translate-y-4 opacity-0"
                   )}
                 >
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
+                  <Link
+                    href={href}
+                    tabIndex={
+                      menuOpen
+                        ? 0
+                        : -1
+                    }
+                    aria-current={
+                      isActive
+                        ? "page"
+                        : undefined
+                    }
+                    onClick={
+                      closeMenu
+                    }
+                    className={cn(
+                      "group/mobile relative block",
+                      "border-b border-[#555252]/15",
+                      "py-5",
+                      "text-2xl leading-8 font-normal",
+                      "text-[#555252]",
+                      "no-underline",
+                      "outline-none",
+                      "transition-[color,transform]",
+                      "duration-300",
+                      EASE,
+                      "hover:translate-x-1",
+                      "hover:text-black",
+                      "focus-visible:translate-x-1",
+                      "focus-visible:text-black",
+                      isActive &&
+                        "text-black",
+                      "motion-reduce:transition-none",
+                      "motion-reduce:hover:translate-x-0",
+                      "motion-reduce:focus-visible:translate-x-0"
+                    )}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            }
+          )}
         </ul>
       </nav>
     </>

@@ -4,55 +4,70 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 /* -------------------------------------------------------------------------
- * ASSET (public/hero/Girl2.png) – 1200 × 1200 artwork
+ * ASSETS – copy the whole /hero folder into  public/hero
+ *
+ * The 1200 × 1200 illustration is split into layers so ONLY the objects
+ * move and the hands never do:
+ *
+ *   props        toolbox + tape measure      (static, never rocks)
+ *   base         girl, bench, rocker, hands  (rocks with the bench)
+ *   phone        the phone alone             (rings)
+ *   paint        the canvas alone            (pops)
+ *   drill        the drill alone             (vibrates)
+ *   phone-over   fingers in front of phone   (static)
+ *   paint-over   hand + brush in front       (static)
+ *
+ * x / y / w / h = where each cropped PNG sits in the 1200 × 1200 artwork.
  * ---------------------------------------------------------------------- */
-const ART = "/hero/Girl2.png";
+const L = {
+  props: { src: "/hero/Girl2-props.png", x: 32, y: 905, w: 1155, h: 277 },
+  base: { src: "/hero/Girl2-base.png", x: 185, y: 168, w: 1008, h: 1030 },
+  phone: { src: "/hero/Girl2-phone.png", x: 300, y: 281, w: 133, h: 213 },
+  paint: { src: "/hero/Girl2-paint.png", x: 930, y: 356, w: 203, h: 201 },
+  drill: { src: "/hero/Girl2-drill.png", x: 540, y: 578, w: 303, h: 218 },
+  phoneOver: { src: "/hero/Girl2-phone-over.png", x: 300, y: 351, w: 86, h: 112 },
+  paintOver: { src: "/hero/Girl2-paint-over.png", x: 836, y: 296, w: 175, h: 216 },
+} as const;
+
+type LayerKey = keyof typeof L;
+
+const box = (k: LayerKey): React.CSSProperties => ({
+  left: `${(L[k].x / 1200) * 100}%`,
+  top: `${(L[k].y / 1200) * 100}%`,
+  width: `${(L[k].w / 1200) * 100}%`,
+  height: `${(L[k].h / 1200) * 100}%`,
+});
 
 /* -------------------------------------------------------------------------
  * TUNING
  * ---------------------------------------------------------------------- */
-const LABEL_SIZE = 14; // cursor label (px) – client's latest note: 14
-const MAX_TILT = 4.5; // degrees the see-saw rocks at the screen edges
-const MAX_SHIFT = 2.4; // % of artwork width the runner rolls sideways
+const LABEL_SIZE = 14; // cursor label, px
+const MAX_TILT = 7; // degrees the bench rocks at the screen edges
+const MAX_SHIFT = 3.2; // % of artwork width the rocker rolls sideways
 const STIFFNESS = 70; // spring: higher = snappier
-const DAMPING = 9; // spring: lower = more bounce (9 ≈ one soft overshoot)
-
-/* Pivot of the rocker, as % of the artwork (bottom-centre of the runner) */
-const PIVOT = "55% 90%";
+const DAMPING = 9; // spring: lower = more bounce
+const PIVOT = "55% 90%"; // rocker pivot (bottom centre of the runner)
 
 /* -------------------------------------------------------------------------
- * HOTSPOTS
- * Polygons are traced in the 1200 × 1200 artwork space around each object
- * (plus the hand holding it). If you export each object as its own PNG
- * layer, replace `clip` with the layer's `src` and drop the clip-path.
+ * HOTSPOTS – invisible hit areas (artwork px) around object + hand
  * ---------------------------------------------------------------------- */
 type Pt = [number, number];
-type HotspotId = "about" | "contact" | "projects";
+type Id = "about" | "contact" | "projects";
 
 const toClip = (pts: Pt[]) =>
   `polygon(${pts
     .map(([x, y]) => `${(x / 12).toFixed(2)}% ${(y / 12).toFixed(2)}%`)
     .join(",")})`;
 
-const HOTSPOTS: {
-  id: HotspotId;
-  label: string;
-  aria: string;
-  href: string;
-  origin: string;
-  activeClass: string;
-  clip: string;
-}[] = [
+const HOTSPOTS: { id: Id; label: string; aria: string; href: string; clip: string }[] = [
   {
     id: "about",
-    label: "About",
+    label: "About Me",
     aria: "About me",
     href: "/about",
-    origin: "86% 36%",
-    activeClass: "hs-pop",
     clip: toClip([
-      [838, 292], [962, 305], [968, 352], [1132, 362], [1128, 545], [1088, 552],
-      [935, 512], [932, 470], [990, 440], [985, 400], [900, 385], [868, 345],
+      [838, 292], [962, 305], [968, 352], [1140, 362], [1146, 470], [1100, 560],
+      [935, 535], [925, 495], [935, 470], [990, 440], [985, 400], [900, 392], [868, 345],
     ]),
   },
   {
@@ -60,10 +75,8 @@ const HOTSPOTS: {
     label: "Contact",
     aria: "Contact",
     href: "/contact",
-    origin: "29% 32%",
-    activeClass: "hs-ring",
     clip: toClip([
-      [300, 280], [435, 296], [435, 402], [415, 498], [345, 496], [336, 468],
+      [300, 274], [442, 274], [442, 415], [420, 500], [335, 500], [322, 470],
       [285, 462], [268, 415], [290, 360], [303, 330],
     ]),
   },
@@ -72,17 +85,22 @@ const HOTSPOTS: {
     label: "Projects",
     aria: "Projects",
     href: "/projects",
-    origin: "57% 57%",
-    activeClass: "hs-drill",
     clip: toClip([
-      [565, 588], [640, 588], [700, 628], [740, 690], [860, 745], [862, 782],
-      [745, 730], [700, 740], [655, 748], [615, 798], [540, 792], [540, 760],
-      [558, 735], [560, 675],
+      [565, 586], [640, 586], [700, 626], [742, 690], [862, 742], [866, 784],
+      [745, 732], [700, 746], [655, 752], [615, 802], [536, 800], [536, 760],
+      [556, 735], [560, 675],
     ]),
   },
 ];
 
-/* drill-tip sparks: direction (px) and stagger (s) */
+/* class applied to the moving layer of each object */
+const ACTIVE_CLASS: Record<Id, string> = {
+  about: "hs-pop",
+  contact: "hs-ring",
+  projects: "hs-drill",
+};
+
+/* drill-bit sparks (px travel, stagger in s) */
 const SPARKS = [
   { dx: 26, dy: -22, d: 0 },
   { dx: 34, dy: -6, d: 0.12 },
@@ -100,8 +118,8 @@ export default function MoveAroundSection() {
   const rockRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
 
-  const [active, setActive] = useState<HotspotId | null>(null);
-  const [hinted, setHinted] = useState(true); // idle "I'm clickable" nudge
+  const [active, setActive] = useState<Id | null>(null);
+  const [hinted, setHinted] = useState(true);
 
   const label = HOTSPOTS.find((h) => h.id === active)?.label ?? "Move around";
 
@@ -123,7 +141,6 @@ export default function MoveAroundSection() {
       rock.style.transform = `translate3d(${x * MAX_SHIFT}%,0,0) rotate(${x * MAX_TILT}deg)`;
     };
 
-    /* spring → the see-saw settles with a small, natural overshoot */
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000 || 0.016, 0.034);
       last = now;
@@ -148,12 +165,39 @@ export default function MoveAroundSection() {
       }
     };
 
+    let inside = false;
+
+    const onLeave = () => {
+      inside = false;
+      target = 0;
+      cursor.style.opacity = "0";
+      if (reduce) {
+        x = 0;
+        render();
+      } else {
+        wake();
+      }
+    };
+
+    /* Listens on the window (not the section) so nothing layered on top can
+       swallow the movement. Only reacts while the pointer is over this section. */
     const onMove = (e: PointerEvent) => {
       const r = section.getBoundingClientRect();
-      const nx = (e.clientX - r.left) / r.width;
+      const over =
+        e.clientX >= r.left &&
+        e.clientX <= r.right &&
+        e.clientY >= r.top &&
+        e.clientY <= r.bottom;
 
-      /* left half → rocks left, right half → rocks right; tanh keeps the
+      if (!over) {
+        if (inside) onLeave();
+        return;
+      }
+      inside = true;
+
+      /* left half rocks left, right half rocks right; tanh keeps the
          centre calm and reaches full tilt near the edges */
+      const nx = (e.clientX - r.left) / r.width;
       target = Math.tanh((nx - 0.5) * 6);
 
       if (reduce) {
@@ -169,26 +213,44 @@ export default function MoveAroundSection() {
       }
     };
 
-    const onLeave = () => {
-      target = 0;
-      cursor.style.opacity = "0";
-      reduce ? ((x = 0), render()) : wake();
-    };
-
-    section.addEventListener("pointermove", onMove);
-    section.addEventListener("pointerleave", onLeave);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
 
     return () => {
       cancelAnimationFrame(raf);
-      section.removeEventListener("pointermove", onMove);
-      section.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
     };
   }, []);
 
-  const engage = (id: HotspotId) => {
+  const engage = (id: Id) => {
     setActive(id);
     setHinted(false);
   };
+
+  /* one image layer */
+  const layer = (k: LayerKey, extra = "", style: React.CSSProperties = {}) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={L[k].src}
+      alt=""
+      draggable={false}
+      decoding="async"
+      className={`pointer-events-none absolute select-none ${extra}`}
+      style={{ ...box(k), ...style }}
+    />
+  );
+
+  /* moving layer of an object: pops / rings / vibrates only while active */
+  const mover = (k: "phone" | "paint" | "drill", id: Id, origin: string, i: number) =>
+    layer(
+      k,
+      `hs-layer ${active === id ? ACTIVE_CLASS[id] : hinted ? "hs-hint" : ""}`,
+      {
+        transformOrigin: origin,
+        animationDelay: hinted && active !== id ? `${2.4 + i * 0.4}s` : undefined,
+      }
+    );
 
   return (
     <section
@@ -199,70 +261,59 @@ export default function MoveAroundSection() {
     >
       <h2 className="sr-only">Explore: projects, about me, contact</h2>
 
-      {/* Visible window: crops the empty top of the artwork so the figure
+      {/* Visible window – crops the empty top of the artwork so the figure
           sits optically centred, like the PDF layout */}
       <div className="relative h-[calc(var(--art)*0.8)] w-[var(--art)] [--art:min(92vw,calc((100svh-132px)*1.2),920px)]">
         <div className="absolute left-0 top-[calc(var(--art)*-0.21)] aspect-square w-full">
-          {/* Everything inside rocks together: bench, girl, objects */}
+          {/* Toolbox + tape measure stay on the floor */}
+          {layer("props")}
+
+          {/* Everything inside rocks together: bench, girl, hands, objects */}
           <div
             ref={rockRef}
-            className="absolute inset-0 will-change-transform"
-            style={{ transformOrigin: PIVOT }}
+            className="absolute inset-0"
+            style={{ transformOrigin: PIVOT, willChange: "transform" }}
           >
-            {/* Static artwork */}
+            {/* Girl, bench, rocker, hands (objects removed) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={ART}
+              src={L.base.src}
               alt="Nimi at work on a rocking bench, with six arms holding a phone, a paintbrush and palette, a drill, a toolbox and a tape measure"
               draggable={false}
-              className="pointer-events-none absolute inset-0 h-full w-full select-none"
+              decoding="async"
+              className="pointer-events-none absolute select-none"
+              style={box("base")}
             />
 
-            {/* Clickable copies of the three objects (clipped to their shape) */}
-            {HOTSPOTS.map((h, i) => (
-              <Link
-                key={h.id}
-                href={h.href}
-                aria-label={h.aria}
-                onPointerEnter={() => engage(h.id)}
-                onPointerLeave={() => setActive(null)}
-                onFocus={() => engage(h.id)}
-                onBlur={() => setActive(null)}
-                draggable={false}
-                className={`absolute inset-0 block outline-none will-change-transform ${
-                  active === h.id ? h.activeClass : hinted ? "hs-hint" : ""
-                }`}
-                style={{
-                  clipPath: h.clip,
-                  transformOrigin: h.origin,
-                  transition: "transform .45s cubic-bezier(.34,1.56,.64,1)",
-                  animationDelay: hinted && active !== h.id ? `${2.4 + i * 0.4}s` : undefined,
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={ART}
-                  alt=""
-                  draggable={false}
-                  className="pointer-events-none h-full w-full select-none"
-                />
-              </Link>
-            ))}
+            {/* Moving objects */}
+            {mover("phone", "contact", "41% 65%", 0)}
+            {mover("paint", "about", "49% 49%", 1)}
+            {mover("drill", "projects", "50% 51%", 2)}
 
-            {/* Drill: glow + sparks at the bit */}
+            {/* Hands + brush stay in front and never move */}
+            {layer("phoneOver")}
+            {layer("paintOver")}
+
+            {/* Drill bit: glow + sparks */}
             {active === "projects" && (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute"
-                style={{ left: "70.4%", top: "63.5%" }}
-              >
-                <span className="hs-glow absolute h-[3.2%] w-[3.2%]" />
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+                <span
+                  className="hs-glow absolute"
+                  style={{
+                    left: "70.4%",
+                    top: "63.5%",
+                    width: "calc(var(--art) * 0.034)",
+                    height: "calc(var(--art) * 0.034)",
+                  }}
+                />
                 {SPARKS.map((s, i) => (
                   <span
                     key={i}
                     className="hs-spark absolute h-[3px] w-[3px] rounded-full"
                     style={
                       {
+                        left: "70.4%",
+                        top: "63.5%",
                         "--dx": `${s.dx}px`,
                         "--dy": `${s.dy}px`,
                         animationDelay: `${s.d}s`,
@@ -272,11 +323,27 @@ export default function MoveAroundSection() {
                 ))}
               </div>
             )}
+
+            {/* Invisible click areas */}
+            {HOTSPOTS.map((h) => (
+              <Link
+                key={h.id}
+                href={h.href}
+                aria-label={h.aria}
+                onPointerEnter={() => engage(h.id)}
+                onPointerLeave={() => setActive(null)}
+                onFocus={() => engage(h.id)}
+                onBlur={() => setActive(null)}
+                draggable={false}
+                className="absolute inset-0 block outline-none"
+                style={{ clipPath: h.clip }}
+              />
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Custom cursor: arrow + plain label, no box (fine pointers only) */}
+      {/* Custom cursor: arrow + plain label, no box (mouse only) */}
       <div
         ref={cursorRef}
         aria-hidden="true"
@@ -310,28 +377,30 @@ export default function MoveAroundSection() {
         .hs-label { animation: hs-fade .16s ease-out both; }
         @keyframes hs-fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-        /* About: painting pops forward */
-        .hs-pop { transform: scale(1.09) rotate(-1.5deg); }
+        .hs-layer { transition: transform .45s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
 
-        /* Contact: phone rings, then rests */
+        /* About: canvas pops forward (brush + hand stay put) */
+        .hs-pop { transform: scale(1.08) rotate(-1.2deg); }
+
+        /* Contact: phone rings, fingers stay put */
         .hs-ring { animation: hs-ring 1s ease-in-out infinite; }
         @keyframes hs-ring {
-          0%, 60%, 100% { transform: scale(1.07) rotate(0deg); }
-          8%  { transform: scale(1.07) rotate(-7deg); }
-          16% { transform: scale(1.07) rotate(7deg); }
-          24% { transform: scale(1.07) rotate(-6deg); }
-          32% { transform: scale(1.07) rotate(6deg); }
-          42% { transform: scale(1.07) rotate(-3deg); }
-          50% { transform: scale(1.07) rotate(2deg); }
+          0%, 60%, 100% { transform: scale(1.04) rotate(0deg); }
+          8%  { transform: scale(1.04) rotate(-5deg); }
+          16% { transform: scale(1.04) rotate(5deg); }
+          24% { transform: scale(1.04) rotate(-4deg); }
+          32% { transform: scale(1.04) rotate(4deg); }
+          42% { transform: scale(1.04) rotate(-2deg); }
+          50% { transform: scale(1.04) rotate(1.5deg); }
         }
 
-        /* Projects: drill vibrates */
+        /* Projects: drill vibrates, hand stays put */
         .hs-drill { animation: hs-drill .09s linear infinite; }
         @keyframes hs-drill {
-          0%, 100% { transform: scale(1.05) translate(0, 0); }
-          25% { transform: scale(1.05) translate(-1.2px, .8px) rotate(.3deg); }
-          50% { transform: scale(1.05) translate(1px, -.8px); }
-          75% { transform: scale(1.05) translate(-.8px, -1px) rotate(-.3deg); }
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          25% { transform: translate(-1.2px, .8px) rotate(.25deg); }
+          50% { transform: translate(1px, -.8px) rotate(0deg); }
+          75% { transform: translate(-.8px, -1px) rotate(-.25deg); }
         }
         .hs-glow {
           transform: translate(-50%, -50%);
@@ -350,11 +419,11 @@ export default function MoveAroundSection() {
           100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3); }
         }
 
-        /* Idle nudge: a quick, quiet pulse every few seconds until first hover */
+        /* Idle nudge until first hover: a quick, quiet pulse every few seconds */
         .hs-hint { animation: hs-hint 6s ease-in-out infinite; }
         @keyframes hs-hint {
           0%, 88%, 100% { transform: scale(1); }
-          94% { transform: scale(1.045); }
+          94% { transform: scale(1.04); }
         }
 
         @media (prefers-reduced-motion: reduce) {
