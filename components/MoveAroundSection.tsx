@@ -190,11 +190,17 @@ export default function MoveAroundSection() {
        Only reacts while the pointer is over this section. */
     const onMove = (e: PointerEvent) => {
       const r = section.getBoundingClientRect();
-      const over =
+      const inRect =
         e.clientX >= r.left &&
         e.clientX <= r.right &&
         e.clientY >= r.top &&
         e.clientY <= r.bottom;
+
+      /* The fixed header (and mobile menu) sit on top of this section, so the
+         pointer can be inside the section's box while hovering the nav.
+         Treat that as "outside": no custom cursor, no label, no rocking. */
+      const onChrome = !!(e.target as Element | null)?.closest?.("header, nav");
+      const over = inRect && !onChrome;
 
       if (!over) {
         if (inside) onLeave();
