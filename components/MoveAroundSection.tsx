@@ -4,32 +4,41 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 /* -------------------------------------------------------------------------
- * ASSETS – copy the whole /hero folder into  public/hero
+ * ASSETS – copy the /hero folder into  public/hero
  *
- * The 1200 × 1200 illustration is split into layers so ONLY the objects
- * move and the hands never do:
+ * All layers are cut from the 1200 × 1200 illustration, flattened to be fully
+ * opaque (the original watercolour alpha caused ghosting and white slivers).
  *
- *   props        toolbox + tape measure      (static, never rocks)
- *   base         girl, bench, rocker, hands  (rocks with the bench)
- *   phone        the phone alone             (rings)
- *   paint        the canvas alone            (pops)
- *   drill        the drill alone             (vibrates)
- *   phone-over   fingers in front of phone   (static)
- *   paint-over   hand + brush in front       (static)
+ *   toolbox      toolbox                      static, never rocks
+ *   tape         tape measure                 static, never rocks
+ *   base         girl, bench, rocker, hands   rocks with the bench
+ *   phone        phone only                   rings
+ *   paint        canvas only                  pops
+ *   drill        drill only                   vibrates (a static copy sits
+ *                                             underneath so no gap can show)
+ *   phone-over   fingers in front of phone    static
+ *   paint-over   hand + brush in front        static
  *
  * x / y / w / h = where each cropped PNG sits in the 1200 × 1200 artwork.
  * ---------------------------------------------------------------------- */
 const L = {
-  props: { src: "/hero/Girl2-props.png", x: 32, y: 905, w: 1155, h: 277 },
-  base: { src: "/hero/Girl2-base.png", x: 185, y: 168, w: 1008, h: 1030 },
-  phone: { src: "/hero/Girl2-phone.png", x: 300, y: 281, w: 133, h: 213 },
-  paint: { src: "/hero/Girl2-paint.png", x: 930, y: 356, w: 203, h: 201 },
-  drill: { src: "/hero/Girl2-drill.png", x: 540, y: 578, w: 303, h: 218 },
-  phoneOver: { src: "/hero/Girl2-phone-over.png", x: 300, y: 351, w: 86, h: 112 },
-  paintOver: { src: "/hero/Girl2-paint-over.png", x: 836, y: 296, w: 175, h: 216 },
+  /* toolbox + tape sit on the floor, well clear of the bench shadow even at
+     full tilt (they were moved outwards from the original artwork) */
+  toolbox: { src: "/hero/Girl2-toolbox.png", x: -80, y: 933, w: 275, h: 236 },
+  tape: { src: "/hero/Girl2-tape.png", x: 916, y: 1176, w: 313, h: 108 },
+  base: { src: "/hero/Girl2-base.png", x: 183, y: 296, w: 1012, h: 904 },
+  phone: { src: "/hero/Girl2-phone.png", x: 296, y: 279, w: 138, h: 217 },
+  paint: { src: "/hero/Girl2-paint.png", x: 848, y: 304, w: 287, h: 255 },
+  drill: { src: "/hero/Girl2-drill.png", x: 538, y: 587, w: 318, h: 211 },
+  phoneOver: { src: "/hero/Girl2-phone-over.png", x: 312, y: 348, w: 55, h: 94 },
+  paintOver: { src: "/hero/Girl2-paint-over.png", x: 840, y: 294, w: 176, h: 147 },
 } as const;
 
 type LayerKey = keyof typeof L;
+
+/* Bounding box of the whole drawing at rest (artwork px). The visible window
+   is cut to exactly this, so the drawing is centred in the frame. */
+const COMP = { x: -80, y: 279, w: 1309, h: 1005 };
 
 const box = (k: LayerKey): React.CSSProperties => ({
   left: `${(L[k].x / 1200) * 100}%`,
@@ -41,7 +50,7 @@ const box = (k: LayerKey): React.CSSProperties => ({
 /* -------------------------------------------------------------------------
  * TUNING
  * ---------------------------------------------------------------------- */
-const LABEL_SIZE = 14; // cursor label, px
+const LABEL_SIZE = 16; // cursor label, px (design brief: 14 or 16 – change here)
 const MAX_TILT = 7; // degrees the bench rocks at the screen edges
 const MAX_SHIFT = 3.2; // % of artwork width the rocker rolls sideways
 const STIFFNESS = 70; // spring: higher = snappier
@@ -93,7 +102,6 @@ const HOTSPOTS: { id: Id; label: string; aria: string; href: string; clip: strin
   },
 ];
 
-/* class applied to the moving layer of each object */
 const ACTIVE_CLASS: Record<Id, string> = {
   about: "hs-pop",
   contact: "hs-ring",
@@ -136,6 +144,7 @@ export default function MoveAroundSection() {
     let v = 0;
     let raf = 0;
     let last = 0;
+    let inside = false;
 
     const render = () => {
       rock.style.transform = `translate3d(${x * MAX_SHIFT}%,0,0) rotate(${x * MAX_TILT}deg)`;
@@ -165,8 +174,6 @@ export default function MoveAroundSection() {
       }
     };
 
-    let inside = false;
-
     const onLeave = () => {
       inside = false;
       target = 0;
@@ -179,8 +186,8 @@ export default function MoveAroundSection() {
       }
     };
 
-    /* Listens on the window (not the section) so nothing layered on top can
-       swallow the movement. Only reacts while the pointer is over this section. */
+    /* Window-level listener so nothing layered on top can swallow movement.
+       Only reacts while the pointer is over this section. */
     const onMove = (e: PointerEvent) => {
       const r = section.getBoundingClientRect();
       const over =
@@ -195,8 +202,8 @@ export default function MoveAroundSection() {
       }
       inside = true;
 
-      /* left half rocks left, right half rocks right; tanh keeps the
-         centre calm and reaches full tilt near the edges */
+      /* left half rocks left, right half rocks right; tanh keeps the centre
+         calm and reaches full tilt near the edges */
       const nx = (e.clientX - r.left) / r.width;
       target = Math.tanh((nx - 0.5) * 6);
 
@@ -261,13 +268,26 @@ export default function MoveAroundSection() {
     >
       <h2 className="sr-only">Explore: projects, about me, contact</h2>
 
-      {/* Visible window – crops the empty top of the artwork so the figure
-          sits optically centred, like the PDF layout */}
-      <div className="relative h-[calc(var(--art)*0.8)] w-[var(--art)] [--art:min(92vw,calc((100svh-132px)*1.2),920px)]">
-        <div className="absolute left-0 top-[calc(var(--art)*-0.21)] aspect-square w-full">
-          {/* Toolbox + tape measure stay on the floor */}
-          {layer("props")}
-
+      {/* Visible window – cut to the drawing's own bounding box (COMP) so the
+          whole illustration sits centred in the frame */}
+      <div
+        className="relative"
+        style={
+          {
+            "--art": `min(calc(92vw * ${1200 / COMP.w}), calc((100svh - 132px) * ${1200 / COMP.h}), 920px)`,
+            width: `calc(var(--art) * ${COMP.w / 1200})`,
+            height: `calc(var(--art) * ${COMP.h / 1200})`,
+          } as React.CSSProperties
+        }
+      >
+        <div
+          className="absolute aspect-square"
+          style={{
+            width: "var(--art)",
+            left: `calc(var(--art) * ${-COMP.x / 1200})`,
+            top: `calc(var(--art) * ${-COMP.y / 1200})`,
+          }}
+        >
           {/* Everything inside rocks together: bench, girl, hands, objects */}
           <div
             ref={rockRef}
@@ -285,12 +305,15 @@ export default function MoveAroundSection() {
               style={box("base")}
             />
 
+            {/* Static copy of the drill: guarantees no gap shows while it vibrates */}
+            {layer("drill")}
+
             {/* Moving objects */}
             {mover("phone", "contact", "41% 65%", 0)}
             {mover("paint", "about", "49% 49%", 1)}
             {mover("drill", "projects", "50% 51%", 2)}
 
-            {/* Hands + brush stay in front and never move */}
+            {/* Fingers + brush stay in front and never move */}
             {layer("phoneOver")}
             {layer("paintOver")}
 
@@ -340,10 +363,14 @@ export default function MoveAroundSection() {
               />
             ))}
           </div>
+
+          {/* Toolbox + tape measure: static, in front of the shadow, never rock */}
+          {layer("toolbox")}
+          {layer("tape")}
         </div>
       </div>
 
-      {/* Custom cursor: arrow + plain label, no box (mouse only) */}
+      {/* Custom cursor: arrow + plain label underneath. No box, no border. */}
       <div
         ref={cursorRef}
         aria-hidden="true"
@@ -374,7 +401,11 @@ export default function MoveAroundSection() {
           .hs-cursor { display: block; }
         }
 
-        .hs-label { animation: hs-fade .16s ease-out both; }
+        /* soft halo keeps the plain text legible over the artwork without a box */
+        .hs-label {
+          text-shadow: 0 0 6px #fff, 0 0 3px #fff;
+          animation: hs-fade .16s ease-out both;
+        }
         @keyframes hs-fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
         .hs-layer { transition: transform .45s cubic-bezier(.34,1.56,.64,1); will-change: transform; }
