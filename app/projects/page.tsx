@@ -23,7 +23,7 @@ const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["500"], display:
 type Project = { slug: string; title: string; orientation: "v" | "h"; img: string; href: string };
 
 const seedImg = (seed: string, o: "v" | "h") =>
-  `https://picsum.photos/seed/${seed}/${o === "v" ? "900/1600" : "1600/900"}`;
+  `https://picsum.photos/seed/${seed}/${o === "v" ? "1100/1600" : "1600/900"}`;
 
 const PROJECTS: Project[] = [
   { slug: "one", title: "Project One", orientation: "v" },
@@ -46,20 +46,34 @@ const N = PROJECTS.length;
 const LOOP = [...PROJECTS, ...PROJECTS, ...PROJECTS];
 
 /* -------------------------------------------------------------------------
- * TUNING
+ * TUNING  (all frame sizes in --u, where 1u = 1vw capped by viewport height)
  * ---------------------------------------------------------------------- */
-const V_W = 27; // vertical frame width, in --u   (height = 48u)
-const H_W = 48; // horizontal frame width, in --u (height = 27u)
+const U_BASE = 45.7; // sizes the unit --u (unchanged → horizontal frames stay exactly the same)
+const V_W = 32; // vertical frame width (unchanged)
+const V_H = 41; // vertical frame height — reduced from 45.7, frames stay centred
+const H_W = 48; // horizontal frame width (unchanged)
+const H_H = 27; // horizontal frame height (unchanged)
 const EASE = 0.085; // slider smoothing (lower = floatier)
 const WHEEL_SPEED = 1.15; // wheel px -> slider px
 const PARALLAX = 0.12; // image drifts inside its frame
 const LABEL = "OPEN PROJECT";
 
 /* flower / diamond */
-const ICON_PX = 24; // size of the big flower
-const SMALL_SCALE = 0.28; // resting size of the flower (fraction of ICON_PX)
+const ICON_PX = 24; // size of the big flower (after interaction, unchanged)
+const SMALL_SCALE = 0.6; // resting size of the flower (fraction of ICON_PX)
 const ROTATE_DEG = 360; // must be a multiple of 360 so the flower's hole lands back on the diamond
-const ANIM_MS = 1000; // grow + rotate duration
+
+/* timings measured frame-by-frame from her slow-motion recording */
+const ENTER_MS = 1400; // flower grow + rotate on hover
+const LEAVE_MS = 1200; // flower shrink + rotate back on leave
+const DIAMOND_IN_DELAY = 550; // diamond appears this long after the flower starts growing
+const DIAMOND_IN_MS = 900;
+const DIAMOND_OUT_MS = 600; // diamond shrinks first on leave, no delay
+const LABEL_IN_DELAY = 250; // label rises this long after hover starts
+const LABEL_IN_MS = 650;
+const LABEL_OUT_DELAY = 350; // label drops out this long after leave starts
+const LABEL_OUT_MS = 450;
+
 /* The diamond PNG's centre isn't where the flower's hole is, so it's offset
    (in % of icon size). Nudge these if the diamond looks off-centre. */
 const DIAMOND_X = -3.4;
@@ -93,7 +107,7 @@ export default function ProjectsSection() {
     goTo: (_i: number) => {},
   });
 
-  /* ---------- slider engine ---------- */
+  /* ---------- slider engine (unchanged) ---------- */
   useEffect(() => {
     const section = sectionRef.current;
     const track = trackRef.current;
@@ -295,8 +309,8 @@ export default function ProjectsSection() {
       className={`ps-section ${grotesk.className} relative flex h-[100svh] min-h-[480px] items-center overflow-hidden bg-white`}
       style={{
         touchAction: "pan-y",
-        // frame height = 48u = 100svh − 140px → 70px of white above and below, carousel dead-centre
-        ["--u" as string]: "min(1vw, calc((100svh - 140px) / 48))",
+        // --u is sized from U_BASE (not V_H) so horizontal frames never change when V_H changes
+        ["--u" as string]: `min(1vw, calc((100svh - 140px) / ${U_BASE}))`,
       }}
     >
       <h2 className="sr-only">Projects</h2>
@@ -320,7 +334,7 @@ export default function ProjectsSection() {
               className="ps-frame relative block shrink-0 overflow-hidden bg-[#efefef]"
               style={{
                 width: `calc(var(--u) * ${v ? V_W : H_W})`,
-                aspectRatio: v ? "9 / 16" : "16 / 9",
+                height: `calc(var(--u) * ${v ? V_H : H_H})`,
                 ["--i" as string]: i % N,
               }}
             >
@@ -353,12 +367,9 @@ export default function ProjectsSection() {
                     <img src={ICON_DIAMOND} alt="" draggable={false} />
                   </div>
                 </div>
+                {/* whole line rises out of a mask, as in the reference */}
                 <span className="ps-label">
-                  {LABEL.split("").map((ch, k) => (
-                    <span key={k} style={{ ["--k" as string]: k }}>
-                      {ch === " " ? "\u00A0" : ch}
-                    </span>
-                  ))}
+                  <span className="ps-label-in">{LABEL}</span>
                 </span>
               </div>
             </Link>
@@ -386,56 +397,63 @@ export default function ProjectsSection() {
           filter: invert(1); user-select: none; -webkit-user-drag: none;
         }
 
-        /* flower: always there, very small, in the centre */
+        /* ---------- RESTING / LEAVE state (these transitions play when the cursor leaves) ---------- */
+
+        /* flower: always there, small, in the centre */
         .ps-flower {
           position: absolute; inset: 0;
           transform-origin: 50% 50%;
           transform: scale(${SMALL_SCALE}) rotate(0deg);
-          transition: transform ${ANIM_MS}ms cubic-bezier(.22,1,.36,1);
+          transition: transform ${LEAVE_MS}ms cubic-bezier(.45,0,.2,1);
           will-change: transform;
         }
-        /* solid flower ↔ flower with the diamond hole (same silhouette, so it reads as one shape) */
-        .ps-solid { opacity: 1; transition: opacity .4s ease; }
-        .ps-big   { opacity: 0; transition: opacity .1s linear .5s; }
+        /* solid flower ↔ flower with the diamond hole (same silhouette) — swap once the diamond is gone */
+        .ps-solid { opacity: 1; transition: opacity .25s ease ${DIAMOND_OUT_MS - 50}ms; }
+        .ps-big   { opacity: 0; transition: opacity .25s ease ${DIAMOND_OUT_MS - 50}ms; }
 
-        /* diamond: small → big, no rotation */
+        /* diamond: shrinks first, straight away, no rotation */
         .ps-diamond {
           position: absolute; inset: 0;
           transform-origin: ${HOLE_OX}% ${HOLE_OY}%;
           transform: scale(0);
-          transition: transform ${ANIM_MS}ms cubic-bezier(.22,1,.36,1);
+          transition: transform ${DIAMOND_OUT_MS}ms cubic-bezier(.45,0,.2,1) 0s;
           will-change: transform;
         }
         .ps-diamond img { transform: translate(${DIAMOND_X}%, ${DIAMOND_Y}%); }
 
-        /* label: letters slide up out of a mask, to the right of the flower */
+        /* label: one line in a mask, to the right of the flower */
         .ps-label {
           position: absolute; left: ${ICON_PX / 2 + 8}px; top: 0; transform: translateY(-50%);
-          display: flex; overflow: hidden; white-space: nowrap;
+          display: block; overflow: hidden; white-space: nowrap;
           font-size: 12px; line-height: 1.5; font-weight: 500;
           letter-spacing: .02em; text-transform: uppercase;
         }
-        .ps-label span {
-          display: inline-block; transform: translateY(110%);
-          transition: transform .4s cubic-bezier(.22,1,.36,1);
+        .ps-label-in {
+          display: block; transform: translateY(110%);
+          transition: transform ${LABEL_OUT_MS}ms cubic-bezier(.45,0,.2,1) ${LABEL_OUT_DELAY}ms;
         }
 
-        /* hover = everything happens at once; un-hover reverses it */
+        /* ---------- HOVER / ENTER state (these transitions play when the cursor enters) ---------- */
         @media (hover: hover) and (pointer: fine) {
-          .ps-frame:hover .ps-flower  { transform: scale(1) rotate(${ROTATE_DEG}deg); }
-          .ps-frame:hover .ps-solid   { opacity: 0; transition: opacity .5s ease .15s; }
-          .ps-frame:hover .ps-big     { opacity: 1; transition: opacity .1s linear 0s; }
-          .ps-frame:hover .ps-diamond { transform: scale(1); }
-          .ps-frame:hover .ps-label span {
+          .ps-frame:hover .ps-flower {
+            transform: scale(1) rotate(${ROTATE_DEG}deg);
+            transition: transform ${ENTER_MS}ms cubic-bezier(.22,1,.36,1);
+          }
+          .ps-frame:hover .ps-solid { opacity: 0; transition: opacity .3s ease ${DIAMOND_IN_DELAY - 50}ms; }
+          .ps-frame:hover .ps-big   { opacity: 1; transition: opacity .3s ease ${DIAMOND_IN_DELAY - 50}ms; }
+          .ps-frame:hover .ps-diamond {
+            transform: scale(1);
+            transition: transform ${DIAMOND_IN_MS}ms cubic-bezier(.22,1,.36,1) ${DIAMOND_IN_DELAY}ms;
+          }
+          .ps-frame:hover .ps-label-in {
             transform: translateY(0);
-            transition: transform .65s cubic-bezier(.22,1,.36,1);
-            transition-delay: calc(var(--k) * 18ms + 60ms);
+            transition: transform ${LABEL_IN_MS}ms cubic-bezier(.22,1,.36,1) ${LABEL_IN_DELAY}ms;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .ps-frame { animation: none; }
-          .ps-flower, .ps-diamond, .ps-solid, .ps-big, .ps-label span { transition-duration: .01s !important; transition-delay: 0s !important; }
+          .ps-flower, .ps-diamond, .ps-solid, .ps-big, .ps-label-in { transition-duration: .01s !important; transition-delay: 0s !important; }
         }
       `}</style>
     </section>
