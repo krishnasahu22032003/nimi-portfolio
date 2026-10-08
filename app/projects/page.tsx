@@ -62,36 +62,68 @@ const LABEL = "OPEN PROJECT";
 const ICON_PX = 24; // size of the big flower (after interaction, unchanged)
 const SMALL_SCALE = 0.6; // resting size of the flower (fraction of ICON_PX)
 
-/* ROTATION — must be a multiple of 90 so the flower's 4-pointed hole still lands on the
-   (non-rotating) diamond at the end.  360 = previous · 180 = half (trial) · 90 = least. */
+/* ROTATION — 90 / 180 / 360. The diamond is positioned from this value (see geometry below),
+   so any multiple of 90 stays perfectly aligned.  360 = full turn · 180 = half · 90 = quarter. */
 const ROTATE_DEG = 180;
 
-/* ENTER timings (unchanged — already matches her recording) */
+/* label vertical alignment: lifts the text so its cap-height centre sits on the flower's centre */
+const LABEL_NUDGE_EM = 0.14;
+
+/* ENTER timings (unchanged) */
 const ENTER_MS = 1400; // flower grow + rotate on hover
 const DIAMOND_IN_DELAY = 550; // diamond appears this long after the flower starts growing
 const DIAMOND_IN_MS = 900;
-const LABEL_IN_DELAY = 250; // label rises this long after hover starts
+const LABEL_IN_DELAY = 250; // label rises (from below) this long after hover starts
 const LABEL_IN_MS = 650;
 
-/* LEAVE timings — measured frame-by-frame from leave.mp4 (slow, steady shrink) */
-const LEAVE_DELAY = 200; // short hold before anything moves
+/* LEAVE timings — measured from her reference recordings */
+const LEAVE_DELAY = 200; // short hold before the flower moves
 const LEAVE_MS = 1800; // flower shrink + rotate back (long, steady)
 const DIAMOND_OUT_DELAY = 200;
 const DIAMOND_OUT_MS = 600; // diamond gone by ~0.8s
-const LABEL_OUT_DELAY = 400; // label drops out ~0.4s → ~1.0s
-const LABEL_OUT_MS = 600;
+const LABEL_OUT_DELAY = 450; // label slides UP and out through the top of its mask ~0.45s → ~1.0s
+const LABEL_OUT_MS = 550;
 const SWAP_OUT_DELAY = 750; // big-flower-with-hole → solid flower once the diamond is gone
 
-/* The diamond PNG's centre isn't where the flower's hole is, so it's offset
-   (in % of icon size). Nudge these if the diamond looks off-centre. */
-const DIAMOND_X = -3.4;
-const DIAMOND_Y = 3.4;
-/* the hole's centre inside the flower canvas = scale origin for the diamond */
-const HOLE_OX = 50.3;
-const HOLE_OY = 53.4;
+/* -------------------------------------------------------------------------
+ * DIAMOND GEOMETRY — measured from the 3000×3000 PNGs
+ *   hole in Big.png  : bbox x 1002–2001, y 1086–2112  → centre (1501.5, 1599), 999 × 1026
+ *   Diamond.png ink  : bbox x 1061–2149, y 972–2021   → centre (1605, 1496.5), 1088 × 1049
+ * The flower rotates about the canvas centre, so the hole moves when it rotates. We therefore
+ * park the diamond where the hole ENDS UP, and stretch it to the hole's exact width/height
+ * (+1.2 % overlap so no hairline gap shows). The diamond's outer edge then merges with the
+ * petals and the lines read clean.
+ * ---------------------------------------------------------------------- */
+const CANVAS = 3000;
+const HOLE_C = { x: 1501.5, y: 1599 };
+const HOLE_SZ = { w: 999, h: 1026 };
+const DIA_C = { x: 1605, y: 1496.5 };
+const DIA_SZ = { w: 1088, h: 1049 };
+const OVERLAP = 1.012;
+
+const RAD = (ROTATE_DEG * Math.PI) / 180;
+const HX = HOLE_C.x / CANVAS - 0.5;
+const HY = HOLE_C.y / CANVAS - 0.5;
+const END_X = 0.5 + HX * Math.cos(RAD) - HY * Math.sin(RAD); // hole centre after rotation (fraction of icon)
+const END_Y = 0.5 + HX * Math.sin(RAD) + HY * Math.cos(RAD);
+const QUARTER = Math.round(ROTATE_DEG / 90) % 2 === 1; // 90°/270° swap the hole's width and height
+const D_SX = ((QUARTER ? HOLE_SZ.h : HOLE_SZ.w) / DIA_SZ.w) * OVERLAP;
+const D_SY = ((QUARTER ? HOLE_SZ.w : HOLE_SZ.h) / DIA_SZ.h) * OVERLAP;
+const D_TX = ((END_X - DIA_C.x / CANVAS) * 100).toFixed(3); // % translate: diamond centre → hole centre
+const D_TY = ((END_Y - DIA_C.y / CANVAS) * 100).toFixed(3);
+const D_OX = (END_X * 100).toFixed(3); // scale-in origin = where the hole ends up
+const D_OY = (END_Y * 100).toFixed(3);
+const D_IMG_OX = ((DIA_C.x / CANVAS) * 100).toFixed(3); // stretch about the diamond's own centre
+const D_IMG_OY = ((DIA_C.y / CANVAS) * 100).toFixed(3);
 
 const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 const mod = (a: number, b: number) => ((a % b) + b) % b;
+
+/* current translateY (px) of an element, even mid-animation */
+const currentY = (el: HTMLElement) => {
+  const t = getComputedStyle(el).transform;
+  return !t || t === "none" ? 0 : new DOMMatrixReadOnly(t).m42;
+};
 
 /* -------------------------------------------------------------------------
  * COMPONENT
@@ -310,6 +342,42 @@ export default function ProjectsSection() {
     }
   };
 
+  /* ---------- label: two different motions ----------
+     enter → rises in from BELOW · leave → slides UP and out through the top of the mask.
+     We read the label's live position so leaving/entering mid-animation never jumps. */
+  const labelEnter = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const a = e.currentTarget;
+    const el = a.querySelector<HTMLElement>(".ps-label-in");
+    if (!el) return;
+    const h = el.offsetHeight;
+    const y = currentY(el);
+    const hidden = y >= h * 0.98 || y <= -h * 0.98; // fully clipped (below or above) → start from below
+    el.style.setProperty("--ly0", `${hidden ? h * 1.1 : y}px`);
+    a.classList.remove("is-out", "is-in");
+    void el.offsetWidth; // restart the animation
+    a.classList.add("is-in");
+  };
+
+  const labelLeave = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const a = e.currentTarget;
+    const el = a.querySelector<HTMLElement>(".ps-label-in");
+    if (!el) return;
+    const h = el.offsetHeight;
+    const y = currentY(el);
+    if (y >= h * 0.98) {
+      // never became visible → nothing to exit
+      a.classList.remove("is-in", "is-out");
+      return;
+    }
+    el.style.setProperty("--ly0", `${y}px`);
+    el.style.setProperty("--ly1", `${-h * 1.1}px`);
+    a.classList.remove("is-in", "is-out");
+    void el.offsetWidth;
+    a.classList.add("is-out");
+  };
+
   return (
     <section
       id="projects"
@@ -339,6 +407,8 @@ export default function ProjectsSection() {
               tabIndex={isMain ? undefined : -1}
               draggable={false}
               onClick={(e) => onFrameClick(e, i)}
+              onPointerEnter={labelEnter}
+              onPointerLeave={labelLeave}
               className="ps-frame relative block shrink-0 overflow-hidden bg-[#efefef]"
               style={{
                 width: `calc(var(--u) * ${v ? V_W : H_W})`,
@@ -369,13 +439,12 @@ export default function ProjectsSection() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className="ps-big" src={ICON_BIG} alt="" draggable={false} />
                   </div>
-                  {/* diamond: scales only, never rotates */}
+                  {/* diamond: scales only, never rotates; parked exactly on the hole */}
                   <div className="ps-diamond">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={ICON_DIAMOND} alt="" draggable={false} />
                   </div>
                 </div>
-                {/* whole line rises out of a mask, as in the reference */}
                 <span className="ps-label">
                   <span className="ps-label-in">{LABEL}</span>
                 </span>
@@ -419,29 +488,37 @@ export default function ProjectsSection() {
         .ps-solid { opacity: 1; transition: opacity .25s ease ${SWAP_OUT_DELAY}ms; }
         .ps-big   { opacity: 0; transition: opacity .25s ease ${SWAP_OUT_DELAY}ms; }
 
-        /* diamond: shrinks first, no rotation */
+        /* diamond: scales about the hole's final centre, no rotation.
+           The inner img is stretched to the hole's exact size so the outline merges cleanly with the petals. */
         .ps-diamond {
           position: absolute; inset: 0;
-          transform-origin: ${HOLE_OX}% ${HOLE_OY}%;
+          transform-origin: ${D_OX}% ${D_OY}%;
           transform: scale(0);
           transition: transform ${DIAMOND_OUT_MS}ms cubic-bezier(.4,0,.2,1) ${DIAMOND_OUT_DELAY}ms;
           will-change: transform;
         }
-        .ps-diamond img { transform: translate(${DIAMOND_X}%, ${DIAMOND_Y}%); }
+        .ps-diamond img {
+          transform-origin: ${D_IMG_OX}% ${D_IMG_OY}%;
+          transform: translate(${D_TX}%, ${D_TY}%) scale(${D_SX.toFixed(4)}, ${D_SY.toFixed(4)});
+        }
 
-        /* label: one line in a mask, to the right of the flower */
+        /* label: one line in a mask, to the right of the flower, optically centred on it */
         .ps-label {
-          position: absolute; left: ${ICON_PX / 2 + 8}px; top: 0; transform: translateY(-50%);
+          position: absolute; left: ${ICON_PX / 2 + 8}px; top: 0;
+          transform: translateY(calc(-50% - ${LABEL_NUDGE_EM}em));
           display: block; overflow: hidden; white-space: nowrap;
           font-size: 12px; line-height: 1.5; font-weight: 500;
           letter-spacing: .02em; text-transform: uppercase;
         }
-        .ps-label-in {
-          display: block; transform: translateY(110%);
-          transition: transform ${LABEL_OUT_MS}ms cubic-bezier(.45,0,.2,1) ${LABEL_OUT_DELAY}ms;
-        }
+        .ps-label-in { display: block; transform: translateY(110%); } /* idle: hidden below the mask */
 
-        /* ---------- HOVER / ENTER state (unchanged) ---------- */
+        /* enter: rises from below · leave: slides up and out through the top (positions set live by JS) */
+        @keyframes ps-lab-in  { from { transform: translateY(var(--ly0, 110%)); } to { transform: translateY(0); } }
+        @keyframes ps-lab-out { from { transform: translateY(var(--ly0, 0px)); }  to { transform: translateY(var(--ly1, -110%)); } }
+        .ps-frame.is-in  .ps-label-in { animation: ps-lab-in  ${LABEL_IN_MS}ms cubic-bezier(.22,1,.36,1) ${LABEL_IN_DELAY}ms both; }
+        .ps-frame.is-out .ps-label-in { animation: ps-lab-out ${LABEL_OUT_MS}ms cubic-bezier(.45,0,.2,1) ${LABEL_OUT_DELAY}ms both; }
+
+        /* ---------- HOVER / ENTER state (flower + diamond; unchanged) ---------- */
         @media (hover: hover) and (pointer: fine) {
           .ps-frame:hover .ps-flower {
             transform: scale(1) rotate(${ROTATE_DEG}deg);
@@ -453,15 +530,12 @@ export default function ProjectsSection() {
             transform: scale(1);
             transition: transform ${DIAMOND_IN_MS}ms cubic-bezier(.22,1,.36,1) ${DIAMOND_IN_DELAY}ms;
           }
-          .ps-frame:hover .ps-label-in {
-            transform: translateY(0);
-            transition: transform ${LABEL_IN_MS}ms cubic-bezier(.22,1,.36,1) ${LABEL_IN_DELAY}ms;
-          }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .ps-frame { animation: none; }
-          .ps-flower, .ps-diamond, .ps-solid, .ps-big, .ps-label-in { transition-duration: .01s !important; transition-delay: 0s !important; }
+          .ps-flower, .ps-diamond, .ps-solid, .ps-big { transition-duration: .01s !important; transition-delay: 0s !important; }
+          .ps-frame.is-in .ps-label-in, .ps-frame.is-out .ps-label-in { animation-duration: .01s !important; animation-delay: 0s !important; }
         }
       `}</style>
     </section>
