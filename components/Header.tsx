@@ -24,6 +24,12 @@ const FRAMES = Array.from(
   (_, index) => `/hourglass/frame-${index}-1024.webp`
 );
 
+const STATIC_FRAMES: Record<string, string> = {
+  "/projects": "/hourglass/frame-3-1024.webp",
+  "/about": "/hourglass/frame-4-1024.webp",
+  "/contact": "/hourglass/frame-5-1024.webp",
+};
+
 const LAST = FRAME_COUNT - 1;
 
 const EASE = "ease-[cubic-bezier(0.22,1,0.36,1)]";
@@ -61,6 +67,30 @@ export default function Header() {
 
     let cleanupAnimation = () => {};
 
+    const isHomePage = pathname === "/";
+
+    /*
+     * Only run the scroll animation on the home page.
+     * Projects, About and Contact use one fixed frame.
+     */
+    if (!isHomePage) {
+      const staticFrame = STATIC_FRAMES[pathname];
+
+      frameRefs.current.forEach((image, index) => {
+        if (!image) return;
+
+        image.style.display = "none";
+
+        if (FRAMES[index] === staticFrame) {
+          image.style.display = "block";
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const frameImages = FRAMES.map((src) => {
       const image = new Image();
 
@@ -86,13 +116,21 @@ export default function Header() {
                 return;
               }
 
-              image.addEventListener("load", () => resolve(), {
-                once: true,
-              });
+              image.addEventListener(
+                "load",
+                () => resolve(),
+                {
+                  once: true,
+                }
+              );
 
-              image.addEventListener("error", () => resolve(), {
-                once: true,
-              });
+              image.addEventListener(
+                "error",
+                () => resolve(),
+                {
+                  once: true,
+                }
+              );
             });
           }
         })
