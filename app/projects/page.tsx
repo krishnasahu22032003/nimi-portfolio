@@ -3,24 +3,22 @@
 import Link from "next/link";
 import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 /* -------------------------------------------------------------------------
- * ASSETS
- *   public/projects/cursor-small.png   <- Small_.png  (closed flower)
- *   public/projects/cursor-big.png     <- Big.png     (open flower)
- * Both PNGs are black; the cursor inverts them to white and uses
- * mix-blend-mode: difference, so they turn black on white / white on dark
- * images automatically (same trick as the reference).
+ * ASSETS  (all PNGs are black; CSS inverts them to white and the overlay
+ * uses mix-blend-mode: difference → black on light images, white on dark)
+ *   public/projects/cursor-small.png    <- Small_.png   (solid small flower)
+ *   public/projects/cursor-big.png      <- Big.png      (big flower w/ diamond hole)
+ *   public/projects/cursor-diamond.png  <- Diamond.png  (outlined diamond)
  * ---------------------------------------------------------------------- */
 const ICON_SMALL = "/projects/cursor-small.png";
 const ICON_BIG = "/projects/cursor-big.png";
+const ICON_DIAMOND = "/projects/cursor-diamond.png";
 
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["500"], display: "swap" });
 
 /* -------------------------------------------------------------------------
  * PROJECTS – 4 vertical + 4 horizontal, alternating (V H V H …)
- * Replace `img` and `href` with the real ones later.
  * ---------------------------------------------------------------------- */
 type Project = { slug: string; title: string; orientation: "v" | "h"; img: string; href: string };
 
@@ -46,16 +44,20 @@ const PROJECTS: Project[] = [
 /* -------------------------------------------------------------------------
  * TUNING
  * Reference at 1280px: vertical 329px (25.7vw) · horizontal 622px (48.6vw)
- * → three frames fill the viewport edge to edge, no gaps. Vertical = 9:16,
- * horizontal = 16:9.
  * ---------------------------------------------------------------------- */
-const V_W = 25.7; // vertical frame width, in --u (1u = 1vw, capped by height)
+const V_W = 25.7; // vertical frame width, in --u
 const H_W = 48.6; // horizontal frame width, in --u
 const EASE = 0.085; // slider smoothing (lower = floatier)
 const WHEEL_SPEED = 1.15; // wheel px -> slider px
 const PARALLAX = 0.12; // image drifts inside its frame
-const DWELL_MS = 380; // time on an image before "OPEN PROJECT" + big icon
+const DWELL_MS = 380; // time on an image before "OPEN PROJECT" + big flower
 const LABEL = "OPEN PROJECT";
+
+/* Diamond sits inside the big flower's hole. Both PNGs share a square canvas,
+   but the hole is not exactly where the diamond is drawn, so we offset it.
+   Nudge these (in % of icon size) if you want to fine-tune the fit. */
+const DIAMOND_X = -3.4;
+const DIAMOND_Y = 2.2;
 
 const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
 
@@ -67,15 +69,14 @@ export default function ProjectsSection() {
   const trackRef = useRef<HTMLDivElement>(null);
   const frameRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const imgRefs = useRef<(HTMLImageElement | null)[]>([]);
-  const cursorRef = useRef<HTMLDivElement>(null);
 
-  const [mounted, setMounted] = useState(false);
-  const [stage, setStage] = useState<0 | 1 | 2>(0); // 0 hidden · 1 small icon · 2 label + big icon
+  // which frame is hovered + animation stage (0 idle · 1 small flower · 2 label + big flower + diamond)
+  const [hover, setHover] = useState<{ i: number; stage: 0 | 1 | 2 }>({ i: -1, stage: 0 });
 
   const api = useRef({
     centers: [] as number[],
     widths: [] as number[],
-    f: 0, // current focus (track px at viewport centre)
+    f: 0,
     target: 0,
     raf: 0,
     active: 0,
@@ -84,8 +85,6 @@ export default function ProjectsSection() {
     goTo: (_i: number) => {},
   });
   const dwell = useRef<number | undefined>(undefined);
-
-  useEffect(() => setMounted(true), []);
 
   /* ---------- slider engine ---------- */
   useEffect(() => {
@@ -156,8 +155,6 @@ export default function ProjectsSection() {
 
     const snap = () => s.goTo(nearest(s.target));
 
-    /* wheel / trackpad: vertical or horizontal both move the slider.
-       At either end the page is allowed to scroll on. */
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -170,7 +167,6 @@ export default function ProjectsSection() {
       snapTimer = window.setTimeout(snap, 140);
     };
 
-    /* drag / swipe */
     let down = false;
     let startX = 0;
     let startF = 0;
@@ -245,28 +241,18 @@ export default function ProjectsSection() {
     };
   }, []);
 
-  /* ---------- cursor follows the pointer (mouse only) ---------- */
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
-      const c = cursorRef.current;
-      if (c) c.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0)`;
-    };
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => window.removeEventListener("pointermove", move);
-  }, []);
+  useEffect(() => () => window.clearTimeout(dwell.current), []);
 
-  const enter = (e: React.PointerEvent) => {
+  /* ---------- hover: icon + label live in the CENTRE of the hovered frame ---------- */
+  const enter = (e: React.PointerEvent, i: number) => {
     if (e.pointerType !== "mouse") return;
-    const c = cursorRef.current;
-    if (c) c.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0)`;
-    setStage(1);
+    setHover({ i, stage: 1 });
     window.clearTimeout(dwell.current);
-    dwell.current = window.setTimeout(() => setStage(2), DWELL_MS);
+    dwell.current = window.setTimeout(() => setHover({ i, stage: 2 }), DWELL_MS);
   };
   const leave = () => {
     window.clearTimeout(dwell.current);
-    setStage(0);
+    setHover({ i: -1, stage: 0 });
   };
 
   const onFrameClick = (e: React.MouseEvent, i: number) => {
@@ -282,9 +268,10 @@ export default function ProjectsSection() {
     <section
       id="projects"
       ref={sectionRef}
-      className={`ps-section ${grotesk.className} relative flex min-h-[100svh] items-center overflow-hidden bg-white pt-[72px] sm:pt-[84px]`}
+      className={`ps-section ${grotesk.className} relative flex h-[100svh] min-h-[480px] items-center overflow-hidden bg-white`}
       style={{
         touchAction: "pan-y",
+        // frame height = 100svh − 200px → 100px of white above and below, carousel dead-centre
         ["--u" as string]: "min(1vw, calc((100svh - 200px) / 45.7))",
       }}
     >
@@ -293,6 +280,7 @@ export default function ProjectsSection() {
       <div ref={trackRef} className="ps-track flex w-max items-center" style={{ willChange: "transform" }}>
         {PROJECTS.map((p, i) => {
           const v = p.orientation === "v";
+          const stage = hover.i === i ? hover.stage : 0;
           return (
             <Link
               key={p.slug}
@@ -303,7 +291,7 @@ export default function ProjectsSection() {
               aria-label={`Open project: ${p.title}`}
               draggable={false}
               onClick={(e) => onFrameClick(e, i)}
-              onPointerEnter={enter}
+              onPointerEnter={(e) => enter(e, i)}
               onPointerLeave={leave}
               className="ps-frame relative block shrink-0 overflow-hidden bg-[#efefef]"
               style={{
@@ -324,81 +312,95 @@ export default function ProjectsSection() {
                 className="pointer-events-none absolute top-0 h-full max-w-none select-none object-cover"
                 style={{ width: "120%", left: "-10%", willChange: "transform" }}
               />
+
+              {/* centred hover overlay (icon + label) */}
+              <div className="ps-hover" aria-hidden="true" data-stage={stage}>
+                <div className="ps-icon">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="ps-small" src={ICON_SMALL} alt="" draggable={false} />
+                  <div className="ps-big">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="ps-flower" src={ICON_BIG} alt="" draggable={false} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="ps-diamond" src={ICON_DIAMOND} alt="" draggable={false} />
+                  </div>
+                </div>
+                <span className="ps-label">
+                  {LABEL.split("").map((ch, k) => (
+                    <span key={k} style={{ transitionDelay: `${k * 18}ms` }}>
+                      {ch === " " ? "\u00A0" : ch}
+                    </span>
+                  ))}
+                </span>
+              </div>
             </Link>
           );
         })}
       </div>
 
-      {mounted &&
-        createPortal(
-          <div ref={cursorRef} aria-hidden="true" className={`ps-cursor ${grotesk.className}`} data-stage={stage}>
-            <div className="ps-icon">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="ps-small" src={ICON_SMALL} alt="" draggable={false} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="ps-big" src={ICON_BIG} alt="" draggable={false} />
-            </div>
-            <span className="ps-label">
-              {LABEL.split("").map((ch, i) => (
-                <span key={i} style={{ transitionDelay: `${i * 18}ms` }}>
-                  {ch === " " ? "\u00A0" : ch}
-                </span>
-              ))}
-            </span>
-          </div>,
-          document.body
-        )}
-
       <style>{`
-        .ps-cursor { display: none; }
-        @media (pointer: fine) {
-          .ps-section, .ps-section a { cursor: none; }
-          .ps-cursor { display: block; }
-        }
-
         /* intro: frames unveil left → right */
         .ps-frame { animation: ps-in 1.1s cubic-bezier(.77,0,.18,1) both; animation-delay: calc(var(--i) * 70ms); }
         @keyframes ps-in { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
 
-        /* custom cursor: white + difference = black on white, white on dark */
-        .ps-cursor {
-          position: fixed; left: 0; top: 0; z-index: 100;
-          pointer-events: none; color: #fff; mix-blend-mode: difference;
-          opacity: 0; transition: opacity .25s ease;
-          will-change: transform;
+        /* hover overlay — centred in the frame, hidden on touch devices */
+        .ps-hover { display: none; }
+        @media (pointer: fine) {
+          .ps-hover {
+            display: flex; align-items: center; gap: 8px;
+            position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2; pointer-events: none;
+            color: #fff; mix-blend-mode: difference;   /* white on dark, black on light */
+          }
         }
-        .ps-cursor:not([data-stage="0"]) { opacity: 1; }
 
-        .ps-icon { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; }
+        .ps-icon { position: relative; width: 24px; height: 24px; flex: none; }
         .ps-icon img {
           position: absolute; inset: 0; width: 100%; height: 100%;
-          filter: invert(1);
-          transform-origin: 0 100%;            /* swings from the bottom-left corner */
-          transition: transform .7s cubic-bezier(.22,1,.36,1), opacity .35s ease;
+          filter: invert(1); user-select: none;
         }
-        /* small icon: swings in on hover, swings away when the label arrives */
-        .ps-small { transform: rotate(-90deg); opacity: 0; }
-        .ps-cursor[data-stage="1"] .ps-small { transform: rotate(0); opacity: 1; }
-        .ps-cursor[data-stage="2"] .ps-small { transform: rotate(90deg); opacity: 0; }
-        /* big icon: swings in from the same side */
-        .ps-big { transform: rotate(-90deg); opacity: 0; }
-        .ps-cursor[data-stage="2"] .ps-big { transform: rotate(0); opacity: 1; }
+        .ps-small, .ps-big {
+          position: absolute; inset: 0;
+          transform-origin: 0 100%;                 /* swings from the bottom-left corner */
+          opacity: 0;
+          transition: transform .8s cubic-bezier(.22,1,.36,1), opacity .4s ease;
+        }
+        .ps-small { transform: rotate(-90deg) scale(.55); }
+        .ps-big   { transform: rotate(-90deg) scale(.55); }
+
+        /* stage 1: small flower swings in */
+        .ps-hover[data-stage="1"] .ps-small { transform: rotate(0) scale(.55); opacity: 1; }
+
+        /* stage 2: small flower grows + rotates away, big flower takes over */
+        .ps-hover[data-stage="2"] .ps-small { transform: rotate(90deg) scale(1); opacity: 0; }
+        .ps-hover[data-stage="2"] .ps-big   { transform: rotate(0) scale(1); opacity: 1; }
+
+        /* diamond grows inside the flower's hole (rotates together with the flower) */
+        .ps-diamond {
+          transform-origin: 53.6% 50%;               /* diamond's own centre in its canvas */
+          transform: translate(${DIAMOND_X}%, ${DIAMOND_Y}%) scale(0);
+          transition: transform .7s cubic-bezier(.22,1,.36,1) 0s;
+        }
+        .ps-hover[data-stage="2"] .ps-diamond {
+          transform: translate(${DIAMOND_X}%, ${DIAMOND_Y}%) scale(1);
+          transition-delay: .35s;
+        }
 
         .ps-label {
-          position: absolute; left: 18px; top: 0; transform: translateY(-50%);
           display: flex; overflow: hidden; white-space: nowrap;
-          font-size: 12px; line-height: 1.4; font-weight: 500;
+          font-size: 12px; line-height: 1.5; font-weight: 500;
           letter-spacing: .02em; text-transform: uppercase;
         }
         .ps-label span {
           display: inline-block; transform: translateY(110%);
           transition: transform .55s cubic-bezier(.22,1,.36,1);
         }
-        .ps-cursor[data-stage="2"] .ps-label span { transform: translateY(0); }
+        .ps-hover[data-stage="2"] .ps-label span { transform: translateY(0); }
 
         @media (prefers-reduced-motion: reduce) {
           .ps-frame { animation: none; }
-          .ps-icon img, .ps-label span { transition-duration: .01s; transition-delay: 0s !important; }
+          .ps-small, .ps-big, .ps-diamond, .ps-label span { transition-duration: .01s; transition-delay: 0s !important; }
         }
       `}</style>
     </section>
