@@ -50,7 +50,7 @@ const LOOP = [...PROJECTS, ...PROJECTS, ...PROJECTS];
  * ---------------------------------------------------------------------- */
 const U_BASE = 45.7; // sizes the unit --u (unchanged → horizontal frames stay exactly the same)
 const V_W = 32; // vertical frame width (unchanged)
-const V_H = 41; // vertical frame height — reduced from 45.7, frames stay centred
+const V_H = 41; // vertical frame height (unchanged)
 const H_W = 48; // horizontal frame width (unchanged)
 const H_H = 27; // horizontal frame height (unchanged)
 const EASE = 0.085; // slider smoothing (lower = floatier)
@@ -61,18 +61,26 @@ const LABEL = "OPEN PROJECT";
 /* flower / diamond */
 const ICON_PX = 24; // size of the big flower (after interaction, unchanged)
 const SMALL_SCALE = 0.6; // resting size of the flower (fraction of ICON_PX)
-const ROTATE_DEG = 360; // must be a multiple of 360 so the flower's hole lands back on the diamond
 
-/* timings measured frame-by-frame from her slow-motion recording */
+/* ROTATION — must be a multiple of 90 so the flower's 4-pointed hole still lands on the
+   (non-rotating) diamond at the end.  360 = previous · 180 = half (trial) · 90 = least. */
+const ROTATE_DEG = 180;
+
+/* ENTER timings (unchanged — already matches her recording) */
 const ENTER_MS = 1400; // flower grow + rotate on hover
-const LEAVE_MS = 1200; // flower shrink + rotate back on leave
 const DIAMOND_IN_DELAY = 550; // diamond appears this long after the flower starts growing
 const DIAMOND_IN_MS = 900;
-const DIAMOND_OUT_MS = 600; // diamond shrinks first on leave, no delay
 const LABEL_IN_DELAY = 250; // label rises this long after hover starts
 const LABEL_IN_MS = 650;
-const LABEL_OUT_DELAY = 350; // label drops out this long after leave starts
-const LABEL_OUT_MS = 450;
+
+/* LEAVE timings — measured frame-by-frame from leave.mp4 (slow, steady shrink) */
+const LEAVE_DELAY = 200; // short hold before anything moves
+const LEAVE_MS = 1800; // flower shrink + rotate back (long, steady)
+const DIAMOND_OUT_DELAY = 200;
+const DIAMOND_OUT_MS = 600; // diamond gone by ~0.8s
+const LABEL_OUT_DELAY = 400; // label drops out ~0.4s → ~1.0s
+const LABEL_OUT_MS = 600;
+const SWAP_OUT_DELAY = 750; // big-flower-with-hole → solid flower once the diamond is gone
 
 /* The diamond PNG's centre isn't where the flower's hole is, so it's offset
    (in % of icon size). Nudge these if the diamond looks off-centre. */
@@ -399,24 +407,24 @@ export default function ProjectsSection() {
 
         /* ---------- RESTING / LEAVE state (these transitions play when the cursor leaves) ---------- */
 
-        /* flower: always there, small, in the centre */
+        /* flower: always there, small, in the centre — slow steady shrink + rotate back */
         .ps-flower {
           position: absolute; inset: 0;
           transform-origin: 50% 50%;
           transform: scale(${SMALL_SCALE}) rotate(0deg);
-          transition: transform ${LEAVE_MS}ms cubic-bezier(.45,0,.2,1);
+          transition: transform ${LEAVE_MS}ms cubic-bezier(.4,0,.2,1) ${LEAVE_DELAY}ms;
           will-change: transform;
         }
         /* solid flower ↔ flower with the diamond hole (same silhouette) — swap once the diamond is gone */
-        .ps-solid { opacity: 1; transition: opacity .25s ease ${DIAMOND_OUT_MS - 50}ms; }
-        .ps-big   { opacity: 0; transition: opacity .25s ease ${DIAMOND_OUT_MS - 50}ms; }
+        .ps-solid { opacity: 1; transition: opacity .25s ease ${SWAP_OUT_DELAY}ms; }
+        .ps-big   { opacity: 0; transition: opacity .25s ease ${SWAP_OUT_DELAY}ms; }
 
-        /* diamond: shrinks first, straight away, no rotation */
+        /* diamond: shrinks first, no rotation */
         .ps-diamond {
           position: absolute; inset: 0;
           transform-origin: ${HOLE_OX}% ${HOLE_OY}%;
           transform: scale(0);
-          transition: transform ${DIAMOND_OUT_MS}ms cubic-bezier(.45,0,.2,1) 0s;
+          transition: transform ${DIAMOND_OUT_MS}ms cubic-bezier(.4,0,.2,1) ${DIAMOND_OUT_DELAY}ms;
           will-change: transform;
         }
         .ps-diamond img { transform: translate(${DIAMOND_X}%, ${DIAMOND_Y}%); }
@@ -433,7 +441,7 @@ export default function ProjectsSection() {
           transition: transform ${LABEL_OUT_MS}ms cubic-bezier(.45,0,.2,1) ${LABEL_OUT_DELAY}ms;
         }
 
-        /* ---------- HOVER / ENTER state (these transitions play when the cursor enters) ---------- */
+        /* ---------- HOVER / ENTER state (unchanged) ---------- */
         @media (hover: hover) and (pointer: fine) {
           .ps-frame:hover .ps-flower {
             transform: scale(1) rotate(${ROTATE_DEG}deg);
