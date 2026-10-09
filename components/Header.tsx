@@ -24,11 +24,24 @@ const FRAMES = Array.from(
   (_, index) => `/hourglass/frame-${index}-1024.webp`
 );
 
-const STATIC_FRAMES: Record<string, string> = {
-  "/projects": "/hourglass/frame-3-1024.webp",
-  "/about": "/hourglass/frame-4-1024.webp",
-  "/contact": "/hourglass/frame-5-1024.webp",
-};
+/*
+ * Fixed hourglass for every page except the landing page.
+ * /projects also covers /projects/[slug], so every opened project
+ * shows the same image. Anything unmatched falls back to Projects.
+ */
+const PAGE_FRAMES = [
+  { href: "/projects", src: "/hourglass/page-projects-1024.webp" },
+  { href: "/about", src: "/hourglass/page-about-1024.webp" },
+  { href: "/contact", src: "/hourglass/page-contact-1024.webp" },
+];
+
+const getPageFrame = (pathname: string) =>
+  (
+    PAGE_FRAMES.find(
+      ({ href }) =>
+        pathname === href || pathname.startsWith(`${href}/`)
+    ) ?? PAGE_FRAMES[0]
+  ).src;
 
 const LAST = FRAME_COUNT - 1;
 
@@ -52,6 +65,8 @@ type Keyframe = {
 export default function Header() {
   const pathname = usePathname() ?? "";
 
+  const isHome = pathname === "/";
+
   const headerRef = useRef<HTMLElement>(null);
 
   const frameRefs = useRef<(HTMLImageElement | null)[]>([]);
@@ -71,21 +86,9 @@ export default function Header() {
 
     /*
      * Only run the scroll animation on the home page.
-     * Projects, About and Contact use one fixed frame.
+     * Projects, About and Contact render one fixed image (see JSX).
      */
     if (!isHomePage) {
-      const staticFrame = STATIC_FRAMES[pathname];
-
-      frameRefs.current.forEach((image, index) => {
-        if (!image) return;
-
-        image.style.display = "none";
-
-        if (FRAMES[index] === staticFrame) {
-          image.style.display = "block";
-        }
-      });
-
       return () => {
         cancelled = true;
       };
@@ -605,35 +608,52 @@ export default function Header() {
               aria-hidden="true"
               className="relative block h-full w-full"
             >
-              {FRAMES.map(
-                (src, index) => (
-                  <img
-                    key={src}
-                    ref={(element) => {
-                      frameRefs.current[
-                        index
-                      ] = element;
-                    }}
-                    src={src}
-                    alt=""
-                    width={1024}
-                    height={1387}
-                    loading="eager"
-                    decoding="async"
-                    draggable={false}
-                    style={{
-                      display:
-                        index === 0
-                          ? "block"
-                          : "none",
-                    }}
-                    className={cn(
-                      "pointer-events-none absolute inset-0",
-                      "h-full w-full",
-                      "select-none object-contain"
-                    )}
-                  />
+              {isHome ? (
+                FRAMES.map(
+                  (src, index) => (
+                    <img
+                      key={src}
+                      ref={(element) => {
+                        frameRefs.current[
+                          index
+                        ] = element;
+                      }}
+                      src={src}
+                      alt=""
+                      width={1024}
+                      height={1387}
+                      loading="eager"
+                      decoding="async"
+                      draggable={false}
+                      style={{
+                        display:
+                          index === 0
+                            ? "block"
+                            : "none",
+                      }}
+                      className={cn(
+                        "pointer-events-none absolute inset-0",
+                        "h-full w-full",
+                        "select-none object-contain"
+                      )}
+                    />
+                  )
                 )
+              ) : (
+                <img
+                  src={getPageFrame(pathname)}
+                  alt=""
+                  width={1024}
+                  height={1387}
+                  loading="eager"
+                  decoding="async"
+                  draggable={false}
+                  className={cn(
+                    "pointer-events-none absolute inset-0",
+                    "h-full w-full",
+                    "select-none object-contain"
+                  )}
+                />
               )}
             </span>
           </Link>
