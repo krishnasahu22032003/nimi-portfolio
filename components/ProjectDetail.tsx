@@ -4,14 +4,15 @@
  *
  * Type spec — straight from her Canva annotations, used as LITERAL CSS px (no fluid scaling):
  *   PAGE 1   title + tagline ........ 18 Medium  #000
- *            tags / meta / note ..... 14 Regular #404040 (grey sampled from her recording)
+ *            tags / meta / note ..... 14 Regular #404040
  *   PAGE 2   heading ................ 16 Medium  #000
- *            body ................... 14 Regular #000
+ *            body ................... 14 Regular #000  (JUSTIFIED)
  *
- * Layout — measured from her 1440 × 900 recording:
- *   video  x 26 · 694 × 852 (ratio 0.8146) → left margin 1.8cqw, fills the screen BELOW the header
- *   both text blocks are centred (page 1: in the space right of the video · page 2: on the page)
- *   text is left-aligned, never justified (no stretched word gaps)
+ * Layout — from her latest annotations:
+ *   BLACK LINE : video's left edge starts exactly at the logo's left edge  → VIDEO_LEFT
+ *   GREEN LINE : distance between the video frame and the text block       → TEXT_GAP
+ *   PAGE 2     : body text is justified (her line breaks are kept; every line except the
+ *                last of each paragraph is stretched to the block width)
  */
 import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef } from "react";
@@ -21,23 +22,32 @@ import type { ProjectDetailData } from "../data/projects";
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
-const HEADER_H = 96; // px — height of your site header. The video starts BELOW it so the logo never touches it.
+const HEADER_H = 96; // px — height of your site header. The video starts BELOW it.
 const COLOR_INK = "#000";
 const COLOR_GREY = "#404040";
 
-/* page-1 text block, relative to the video:  v: "center" | "end"   h: "center" | "start" */
+/* BLACK LINE — video left edge = logo left edge.
+   Measured: logo left x=137 on a 1600-wide screenshot → 8.56cqw.
+   If your header's logo has a different left padding, change this number (in cqw = % of page width). */
+const VIDEO_LEFT = 8.56;
 
+/* GREEN LINE — gap between the video's right edge and the text.
+   Measured: ~117px on a 1600-wide screenshot → 7.3cqw. */
+const TEXT_GAP = 7.3;
+
+/* page-1 text block, relative to the video:  v: "center" | "end"   h: "center" | "start" */
 const INTRO_V: "center" | "end" = "end";
 const INTRO_H: "center" | "start" = "start";
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 
-/* one forced line per string (desktop); below 1280px the lines reflow as one paragraph */
+/* one forced line per string (desktop); below 1280px the lines reflow as one paragraph.
+   The last line of each block gets .pd-last so it is NOT stretched when justified. */
 function Lines({ lines }: { lines: string[] }) {
   return (
     <>
       {lines.map((text: string, i: number) => (
-        <span key={i} className="pd-line">
+        <span key={i} className={`pd-line${i === lines.length - 1 ? " pd-last" : ""}`}>
           {text}
           {i < lines.length - 1 ? " " : null}
         </span>
@@ -135,6 +145,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
         "--header-h": `${HEADER_H}px`,
         "--ink": COLOR_INK,
         "--grey": COLOR_GREY,
+        "--video-left": `${VIDEO_LEFT}cqw`,
+        "--text-gap": `${TEXT_GAP}cqw`,
         "--intro-align": INTRO_V === "center" ? "center" : "end",
         "--intro-justify": INTRO_H === "center" ? "center" : "start",
         "--intro-pb": INTRO_V === "end" ? "calc(var(--vid-h) * 0.074)" : "0px",
@@ -227,18 +239,20 @@ html.pd-snap { scroll-snap-type: y mandatory; }
 
 /* ------------------------------- type (literal px) ------------------------------- */
 .pd-title   { margin: 0; font-size: 18px; line-height: 30px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
-.pd-heading { margin: 0; font-size: 16px; line-height: 27px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
+.pd-heading { margin: 0; font-size: 16px; line-height: 27px; font-weight: 500; letter-spacing: 0; color: var(--ink); text-align: left; }
 .pd-meta    { margin: 0; font-size: 14px; line-height: 24px; font-weight: 400; letter-spacing: 0; color: var(--grey); }
-.pd-body p  { margin: 0; font-size: 14px; line-height: 24px; font-weight: 400; letter-spacing: 0; color: var(--ink); text-align: left; }
+/* body text: JUSTIFIED (left + right edges aligned) */
+.pd-body p  { margin: 0; font-size: 14px; line-height: 24px; font-weight: 400; letter-spacing: 0; color: var(--ink); text-align: justify; hyphens: none; }
 
 /* ------------------------------ PAGE 1 ------------------------------ */
 .pd-hero {
-  /* video fills the screen below the header; bottom margin 25/1440 like the Canva page */
+  /* BLACK LINE: video starts at --video-left (the logo's left edge).
+     Video fills the screen below the header; bottom margin 25/1440 like the Canva page. */
   --pad-b: 1.74cqw;
   --vid-h: min(calc(var(--page-h) - var(--header-h) - var(--pad-b)), 59.17cqw);
   --vid-w: calc(var(--vid-h) * 0.8146);
   height: var(--page-h);
-  padding: var(--header-h) 0 0 1.8cqw;
+  padding: var(--header-h) 0 0 var(--video-left);
   display: grid;
   grid-template-columns: var(--vid-w) minmax(0, 1fr);
   grid-template-rows: var(--vid-h);
@@ -260,15 +274,12 @@ html.pd-snap { scroll-snap-type: y mandatory; }
 }
 .pd-video-el.ready { opacity: 1; }
 
-/* text block: centred beside the video (set INTRO_V / INTRO_H in the component to change) */
-
-
-
-
+/* text block beside the video.
+   GREEN LINE: padding-left = --text-gap = distance between the video's right edge and the text. */
 .pd-intro {
   grid-column: 2;
   grid-row: 1;
-  align-self: end;
+  align-self: var(--intro-align, end);
   justify-self: stretch;
 
   width: auto;
@@ -279,8 +290,8 @@ html.pd-snap { scroll-snap-type: y mandatory; }
   padding:
     0
     clamp(24px, 3cqw, 56px)
-    calc(var(--vid-h) * 0.074)
-    clamp(24px, 3cqw, 56px);
+    var(--intro-pb, calc(var(--vid-h) * 0.074))
+    var(--text-gap);
 
   text-align: left;
 }
@@ -291,17 +302,12 @@ html.pd-snap { scroll-snap-type: y mandatory; }
   text-align: left;
 }
 
-.pd-tags {
-  margin-top: 12px;
-}
-
-.pd-note {
-  margin-top: 12px;
-}
+.pd-tags { margin-top: 12px; }
+.pd-note { margin-top: 12px; }
 
 /* ------------------------------ PAGE 2 ------------------------------ */
 .pd-story { min-height: var(--page-h); display: grid; place-items: center; padding: 72px 24px; }
-.pd-read  { width: max-content; max-width: 100%; } /* the block is exactly as wide as its longest line → truly centred */
+.pd-read  { width: max-content; max-width: 100%; } /* block is exactly as wide as its longest line → truly centred, and the justified edges line up with it */
 .pd-heading { margin-bottom: 20px; }
 .pd-body  { display: flex; flex-direction: column; gap: 24px; } /* one blank line between paragraphs */
 
@@ -319,14 +325,22 @@ html.pd-snap { scroll-snap-type: y mandatory; }
 /* ---------- ≥1280px: DESIGN MODE — every string is exactly one line, as she broke it in Canva ---------- */
 @media (min-width: 1280px) {
   .pd-line { display: block; white-space: nowrap; }
+
+  /* JUSTIFY: stretch every line of a body paragraph to the full block width,
+     except the last line of the paragraph (stays left-aligned, like normal justified text). */
+  .pd-body .pd-line:not(.pd-last) {
+    text-align: justify;
+    text-align-last: justify;
+  }
+  .pd-body .pd-line.pd-last { text-align: left; }
 }
 
-/* ---------- 821–1279px: same layout, text reflows naturally ---------- */
+/* ---------- 821–1279px: same layout, text reflows naturally (and stays justified) ---------- */
 @media (max-width: 1279.98px) {
   .pd-read  { width: min(100%, 34rem); }
-  .pd-intro { width: min(100%, 30rem); }
+  .pd-intro { width: auto; }
   .pd-heading { text-wrap: balance; }
-  .pd-meta, .pd-body p { text-wrap: pretty; }
+  .pd-meta { text-wrap: pretty; }
 }
 
 /* ---------- ≤820px: single column ---------- */
