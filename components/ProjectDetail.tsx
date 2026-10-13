@@ -1,0 +1,353 @@
+"use client";
+
+/* components/ProjectDetail.tsx   (or src/components/ProjectDetail.tsx)
+ *
+ * Type spec — straight from her Canva annotations, used as LITERAL CSS px (no fluid scaling):
+ *   PAGE 1   title + tagline ........ 18 Medium  #000
+ *            tags / meta / note ..... 14 Regular #404040 (grey sampled from her recording)
+ *   PAGE 2   heading ................ 16 Medium  #000
+ *            body ................... 14 Regular #000
+ *
+ * Layout — measured from her 1440 × 900 recording:
+ *   video  x 26 · 694 × 852 (ratio 0.8146) → left margin 1.8cqw, fills the screen BELOW the header
+ *   both text blocks are centred (page 1: in the space right of the video · page 2: on the page)
+ *   text is left-aligned, never justified (no stretched word gaps)
+ */
+import { Familjen_Grotesk } from "next/font/google";
+import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
+import type { ProjectDetailData } from "../data/projects";
+
+const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+
+/* ------------------------------ TUNING ------------------------------ */
+const HEADER_H = 96; // px — height of your site header. The video starts BELOW it so the logo never touches it.
+const COLOR_INK = "#000";
+const COLOR_GREY = "#404040";
+
+/* page-1 text block, relative to the video:  v: "center" | "end"   h: "center" | "start" */
+
+const INTRO_V: "center" | "end" = "end";
+const INTRO_H: "center" | "start" = "start";
+
+const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
+
+/* one forced line per string (desktop); below 1280px the lines reflow as one paragraph */
+function Lines({ lines }: { lines: string[] }) {
+  return (
+    <>
+      {lines.map((text: string, i: number) => (
+        <span key={i} className="pd-line">
+          {text}
+          {i < lines.length - 1 ? " " : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
+export default function ProjectDetail({ project }: { project: ProjectDetailData }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  /* page 1 reveals on mount, page 2 when it scrolls into view; two-page snap on desktop */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const pages = Array.from(root.querySelectorAll<HTMLElement>(".pd-page"));
+
+    const html = document.documentElement;
+    const mq = window.matchMedia("(min-width: 821px) and (min-height: 560px)");
+    const applySnap = () => html.classList.toggle("pd-snap", mq.matches);
+    applySnap();
+    mq.addEventListener("change", applySnap);
+
+    const io = new IntersectionObserver(
+      (entries: IntersectionObserverEntry[]) =>
+        entries.forEach((e: IntersectionObserverEntry) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-in");
+            io.unobserve(e.target);
+          }
+        }),
+      { threshold: 0.35 }
+    );
+    if (pages[1]) io.observe(pages[1]);
+
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => pages[0]?.classList.add("is-in"));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      io.disconnect();
+      mq.removeEventListener("change", applySnap);
+      html.classList.remove("pd-snap");
+    };
+  }, []);
+
+  /* video: silent endless loop, fades in once the first frame is ready, pauses off-screen */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true; // React doesn't always render the muted attribute → force it, or autoplay is blocked
+    v.defaultMuted = true;
+
+    const show = () => v.classList.add("ready");
+    if (v.readyState >= 2) show();
+    v.addEventListener("loadeddata", show);
+    v.addEventListener("canplay", show);
+    const fallback = window.setTimeout(show, 2500);
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let io: IntersectionObserver | undefined;
+    if (!reduce) {
+      v.play().catch(() => {});
+      io = new IntersectionObserver(
+        (entries: IntersectionObserverEntry[]) => {
+          const e = entries[0];
+          if (!e) return;
+          if (e.isIntersecting) v.play().catch(() => {});
+          else v.pause();
+        },
+        { threshold: 0.15 }
+      );
+      io.observe(v);
+    }
+
+    return () => {
+      window.clearTimeout(fallback);
+      v.removeEventListener("loadeddata", show);
+      v.removeEventListener("canplay", show);
+      io?.disconnect();
+    };
+  }, []);
+
+  const { video, story } = project;
+
+  return (
+    <main
+      ref={rootRef}
+      className={`pd-root ${grotesk.className}`}
+      style={cssVars({
+        "--header-h": `${HEADER_H}px`,
+        "--ink": COLOR_INK,
+        "--grey": COLOR_GREY,
+        "--intro-align": INTRO_V === "center" ? "center" : "end",
+        "--intro-justify": INTRO_H === "center" ? "center" : "start",
+        "--intro-pb": INTRO_V === "end" ? "calc(var(--vid-h) * 0.074)" : "0px",
+      })}
+    >
+      {/* ============================ PAGE 1 — video + intro ============================ */}
+      <section className="pd-page pd-hero" aria-label={`${project.title} — overview`}>
+        <div className="pd-video">
+          <video
+            ref={videoRef}
+            className="pd-video-el"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            tabIndex={-1}
+            aria-label={video.label}
+            disablePictureInPicture
+            disableRemotePlayback
+            style={{ objectPosition: video.position ?? "50% 50%" }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            {video.webm && <source src={video.webm} type="video/webm" />}
+            <source src={video.mp4} type="video/mp4" />
+          </video>
+        </div>
+
+        <div className="pd-intro">
+          <h1 className="pd-title pd-reveal" style={cssVars({ "--d": 0 })}>
+            <span className="pd-block">{project.title}</span>
+            <span className="pd-block">{project.tagline}</span>
+          </h1>
+
+          <p className="pd-meta pd-tags pd-reveal" style={cssVars({ "--d": 1 })}>
+            <span className="pd-block">{project.tags}</span>
+            <span className="pd-block">{project.meta}</span>
+          </p>
+
+          <p className="pd-meta pd-note pd-reveal" style={cssVars({ "--d": 2 })}>
+            <Lines lines={project.note} />
+          </p>
+        </div>
+      </section>
+
+      {/* ============================ PAGE 2 — story ============================ */}
+      <section className="pd-page pd-story" aria-label={`${project.title} — story`}>
+        <div className="pd-read">
+          <h2 className="pd-heading pd-reveal" style={cssVars({ "--d": 0 })}>
+            <Lines lines={story.heading} />
+          </h2>
+
+          <div className="pd-body">
+            {story.paragraphs.map((lines: string[], i: number) => (
+              <p key={i} className="pd-reveal" style={cssVars({ "--d": i + 1 })}>
+                <Lines lines={lines} />
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <noscript>
+        <style>{`.pd-reveal{opacity:1!important;transform:none!important}.pd-video{clip-path:none!important}.pd-video-el{opacity:1!important;transform:none!important}`}</style>
+      </noscript>
+
+      <style>{CSS}</style>
+    </main>
+  );
+}
+
+/* Static CSS — every tunable arrives as a custom property, so there is nothing to interpolate. */
+const CSS = `
+html.pd-snap { scroll-snap-type: y mandatory; }
+
+.pd-root {
+  container-type: inline-size;
+  background: #fff; color: var(--ink);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility; font-synthesis: none;
+}
+
+.pd-page {
+  --page-h: max(100svh, 560px);
+  position: relative; box-sizing: border-box;
+  scroll-snap-align: start; scroll-snap-stop: always;
+}
+
+.pd-block { display: block; }
+
+/* ------------------------------- type (literal px) ------------------------------- */
+.pd-title   { margin: 0; font-size: 18px; line-height: 30px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
+.pd-heading { margin: 0; font-size: 16px; line-height: 27px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
+.pd-meta    { margin: 0; font-size: 14px; line-height: 24px; font-weight: 400; letter-spacing: 0; color: var(--grey); }
+.pd-body p  { margin: 0; font-size: 14px; line-height: 24px; font-weight: 400; letter-spacing: 0; color: var(--ink); text-align: left; }
+
+/* ------------------------------ PAGE 1 ------------------------------ */
+.pd-hero {
+  /* video fills the screen below the header; bottom margin 25/1440 like the Canva page */
+  --pad-b: 1.74cqw;
+  --vid-h: min(calc(var(--page-h) - var(--header-h) - var(--pad-b)), 59.17cqw);
+  --vid-w: calc(var(--vid-h) * 0.8146);
+  height: var(--page-h);
+  padding: var(--header-h) 0 0 1.8cqw;
+  display: grid;
+  grid-template-columns: var(--vid-w) minmax(0, 1fr);
+  grid-template-rows: var(--vid-h);
+  align-content: start;
+}
+
+.pd-video {
+  position: relative; overflow: hidden; background: #efefef;
+  width: var(--vid-w); height: var(--vid-h);
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1);
+}
+.pd-video-el {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  opacity: 0; transform: scale(1.08);
+  transition: opacity .6s ease, transform 1.8s cubic-bezier(.22, 1, .36, 1) .2s;
+  pointer-events: none; user-select: none;
+}
+.pd-video-el.ready { opacity: 1; }
+
+/* text block: centred beside the video (set INTRO_V / INTRO_H in the component to change) */
+
+
+
+
+.pd-intro {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  justify-self: stretch;
+
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+
+  padding:
+    0
+    clamp(24px, 3cqw, 56px)
+    calc(var(--vid-h) * 0.074)
+    clamp(24px, 3cqw, 56px);
+
+  text-align: left;
+}
+
+.pd-title,
+.pd-tags,
+.pd-note {
+  text-align: left;
+}
+
+.pd-tags {
+  margin-top: 12px;
+}
+
+.pd-note {
+  margin-top: 12px;
+}
+
+/* ------------------------------ PAGE 2 ------------------------------ */
+.pd-story { min-height: var(--page-h); display: grid; place-items: center; padding: 72px 24px; }
+.pd-read  { width: max-content; max-width: 100%; } /* the block is exactly as wide as its longest line → truly centred */
+.pd-heading { margin-bottom: 20px; }
+.pd-body  { display: flex; flex-direction: column; gap: 24px; } /* one blank line between paragraphs */
+
+/* ------------------------------ reveal ------------------------------ */
+.pd-reveal {
+  opacity: 0; transform: translate3d(0, 14px, 0);
+  transition: opacity .9s cubic-bezier(.22, 1, .36, 1), transform 1.1s cubic-bezier(.22, 1, .36, 1);
+  transition-delay: calc(var(--d, 0) * 90ms + 500ms);
+}
+.pd-story .pd-reveal { transition-delay: calc(var(--d, 0) * 110ms + 100ms); }
+.is-in .pd-reveal { opacity: 1; transform: none; }
+.is-in .pd-video { clip-path: inset(0 0 0 0); }
+.is-in .pd-video-el { transform: scale(1); }
+
+/* ---------- ≥1280px: DESIGN MODE — every string is exactly one line, as she broke it in Canva ---------- */
+@media (min-width: 1280px) {
+  .pd-line { display: block; white-space: nowrap; }
+}
+
+/* ---------- 821–1279px: same layout, text reflows naturally ---------- */
+@media (max-width: 1279.98px) {
+  .pd-read  { width: min(100%, 34rem); }
+  .pd-intro { width: min(100%, 30rem); }
+  .pd-heading { text-wrap: balance; }
+  .pd-meta, .pd-body p { text-wrap: pretty; }
+}
+
+/* ---------- ≤820px: single column ---------- */
+@media (max-width: 820px) {
+  .pd-page { scroll-snap-align: none; scroll-snap-stop: normal; }
+  .pd-hero {
+    --vid-w: min(100%, calc(72svh * 0.8146));
+    height: auto; padding: var(--header-h) 16px 40px;
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
+    row-gap: 32px; align-content: start;
+  }
+  .pd-video { width: var(--vid-w); height: auto; aspect-ratio: 694 / 852; }
+  .pd-intro { align-self: start; justify-self: start; padding: 0; width: 100%; }
+  .pd-story { min-height: 0; place-items: start center; padding: 56px 16px 96px; }
+  .pd-read  { width: 100%; max-width: 34rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-reveal, .pd-video, .pd-video-el { transition: none !important; }
+  .pd-reveal { opacity: 1; transform: none; }
+  .pd-video { clip-path: none; }
+  .pd-video-el { transform: none; }
+}
+`;
