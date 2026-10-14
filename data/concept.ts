@@ -11,11 +11,18 @@
  *    last line of a paragraph is stretched to this width → JUSTIFIED.
  *
  * MEDIA
- *  - all frames share ONE size (430 × 644, the portrait frame). Photos are scaled evenly
- *    to fill it (object-fit: cover). Use `position` to choose which part stays visible.
+ *  - portrait frame 430 × 644 for every image, EXCEPT the two landscape ones (shape: "landscape"),
+ *    which use the Canva landscape frame 597 × 398. Photos are scaled evenly to fill the frame
+ *    (object-fit: cover). Use `position` to choose which part stays visible.
  *  - put the files in  public/projects/seesaw/concept/
  * ---------------------------------------------------------------------- */
-export type Caption = { width: number; paragraphs: string[][] };
+export type Caption = {
+  /** text-block width in Canva px */
+  width: number;
+  /** Canva x where the block sits: its LEFT edge for a left-photo caption, its RIGHT edge for a right-photo caption. Default 720 */
+  anchor?: number;
+  paragraphs: string[][];
+};
 
 export type ConceptSlide = {
   type: "image" | "video";
@@ -23,6 +30,8 @@ export type ConceptSlide = {
   alt: string;
   /** CSS object-position, default "50% 50%" */
   position?: string;
+  /** "landscape" = 597 × 398 (Canva size) · "portrait" = 430 × 644 (default) */
+  shape?: "portrait" | "landscape";
   /** video only: first-frame image shown until it plays */
   poster?: string;
   caption?: Caption;
@@ -45,9 +54,11 @@ export const SEESAW_CONCEPT: ConceptData = {
       type: "image",
       src: `${D}/01-workshop.JPG`,
       alt: "The seesaw bench in the workshop, lit by a single lamp",
-      position: "50% 60%",
+      position: "50% 50%",
+      shape: "landscape", // Canva page 8: 597 × 398 at (147, 250), text on its right
       caption: {
         width: 449,
+        anchor: 798,
         paragraphs: [
           ["The seesaw bench takes shape **in between.**"],
           [
@@ -122,8 +133,10 @@ export const SEESAW_CONCEPT: ConceptData = {
       src: `${D}/06-split-colour-mono.jpg`,
       alt: "The bench shown half in colour and half in black and white",
       position: "50% 50%",
+      shape: "landscape", // right edge lines up with the portrait frames (x = 1210), text on its left
       caption: {
         width: 476,
+        anchor: 566,
         paragraphs: [
           [
             "Borrowing **movement** from a seesaw. it is",

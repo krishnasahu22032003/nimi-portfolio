@@ -13,7 +13,10 @@
  *                  (the 4 left images, one by one)
  *     5 … 9        left goes off, right comes in · caption on its left
  *                  (the 5 right images, one by one — the last one is the video)
- *     10           both photos back in the original layout, then the page continues
+ *     10           both photos back in the original layout. Scrolling DOWN from here starts again
+ *                  at the first left image; scrolling UP goes to the intro (never in reverse).
+ *
+ *   Photos change instantly (no cross-fade, no slide). Dots / arrows / keys jump straight to the target.
  *
  * UNITS  1u = 1 Canva px, scaled to fit the screen (identical to the artboard at 1440 × 900).
  *        Fonts scale with it too, so her line breaks + justified widths never drift.
@@ -94,7 +97,7 @@ function blob(seed: number, r: number, wobble: number): string {
   return d + "Z";
 }
 const RINGS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 7.4, 0.12)); // empty, white
-const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 21, 4.9, 0.2)); // black, smaller
+const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 21, 5.7, 0.2)); // black, slightly smaller than the ring
 
 function Dots({
   count, active, interactive, onPick, label,
@@ -175,7 +178,7 @@ function Media({ slide, priority }: { slide: ConceptSlide; priority?: boolean })
   );
 }
 
-/* the frame: all slides stacked, the active one fades in on top of the previous one */
+/* the frame: all slides stacked, only the active one is visible — instant swap, no transition */
 function Frame({ slides, idx, playing, priority }: { slides: ConceptSlide[]; idx: number; playing: boolean; priority?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -235,6 +238,24 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
   const stepRef = useRef(0);
   const liveRef = useRef(false);
 
+  /* jump to a step — instantly, no smooth scrolling, so the dot turns black exactly where you click */
+  const jumpTo = useCallback(
+    (target: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const t = clamp(target, 0, LAST);
+      const stepH = track.offsetHeight / (LAST + 1);
+      const top = track.getBoundingClientRect().top + window.scrollY + t * stepH;
+      const html = document.documentElement;
+      stepRef.current = t;
+      setStep(t);
+      html.style.scrollSnapType = "none"; // no snapping fight while we teleport
+      window.scrollTo({ top, behavior: "instant" as ScrollBehavior });
+      requestAnimationFrame(() => requestAnimationFrame(() => (html.style.scrollSnapType = "")));
+    },
+    [LAST]
+  );
+
   /* scroll position → step */
   useEffect(() => {
     const track = trackRef.current;
@@ -245,50 +266,66 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
       const r = track.getBoundingClientRect();
       const stepH = track.offsetHeight / (LAST + 1);
       const s = clamp(Math.round(-r.top / stepH), 0, LAST);
+      liveRef.current = r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.5;
+      if (s === stepRef.current) {
+        if (r.top < window.innerHeight * 0.7) setSeen(true);
+        return;
+      }
+      /* scrolling UP from the end-state → show the intro and start over (never replay in reverse) */
+      if (stepRef.current === LAST && s < LAST && s > 0) {
+        jumpTo(0);
+        return;
+      }
       stepRef.current = s;
       setStep(s);
-      liveRef.current = r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.5;
       if (r.top < window.innerHeight * 0.7) setSeen(true);
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
+
+    /* at the very end (nothing below) → scrolling DOWN again restarts from the first left image */
+    const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY > 0 && stepRef.current === LAST && atBottom()) jumpTo(1);
+    };
+    let touchY = 0;
+    const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0]?.clientY ?? 0; };
+    const onTouchEnd = (e: TouchEvent) => {
+      const y = e.changedTouches[0]?.clientY ?? touchY;
+      if (touchY - y > 50 && stepRef.current === LAST && atBottom()) jumpTo(1);
+    };
+
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [LAST]);
+  }, [LAST, jumpTo]);
 
-  /* step → scroll position (arrows, dots, keys) */
-  const go = useCallback(
-    (target: number) => {
-      const track = trackRef.current;
-      if (!track) return;
-      const t = clamp(target, 0, LAST);
-      const stepH = track.offsetHeight / (LAST + 1);
-      const top = track.getBoundingClientRect().top + window.scrollY + t * stepH;
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const near = Math.abs(t - stepRef.current) <= 1;
-      window.scrollTo({ top, behavior: reduce || !near ? "auto" : "smooth" });
-    },
-    [LAST]
-  );
+  const go = jumpTo;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!liveRef.current || e.altKey || e.ctrlKey || e.metaKey) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (e.key === "ArrowRight") { e.preventDefault(); go(stepRef.current + 1); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); go(stepRef.current - 1); }
+      const cur = stepRef.current;
+      if (e.key === "ArrowRight") { e.preventDefault(); jumpTo(cur === LAST ? 1 : cur + 1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); jumpTo(cur === LAST ? 0 : cur - 1); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go]);
+  }, [jumpTo, LAST]);
 
   /* ---- everything on screen is derived from `step` ---- */
   const inLeft = step >= 1 && step <= L;
@@ -297,7 +334,8 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
   const rightIdx = step <= L || step === LAST ? 0 : step - L - 1;
   const leftOff = step > L && step < LAST; // gone to the left
   const rightOff = step >= 1 && step <= L; // gone to the right
-  const intro = step === 0 || step === LAST;
+  const leftLand = left[leftIdx].shape === "landscape";
+  const rightLand = right[rightIdx].shape === "landscape";
 
   return (
     <section
@@ -316,8 +354,8 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
         <div className="pc-canvas">
           <h2 className="pc-label">{label}</h2>
 
-          {/* LEFT photo: landscape on the intro, uniform portrait frame while stepping */}
-          <div className={`pc-group pc-left${intro ? "" : " is-stepped"}${leftOff ? " is-off" : ""}`}>
+          {/* LEFT photo: landscape (workshop) or the uniform portrait frame, per image */}
+          <div className={`pc-group pc-left${leftLand ? " is-land" : ""}${leftOff ? " is-off" : ""}`}>
             <Frame slides={left} idx={leftIdx} playing={false} priority />
             <Arrow dir="prev" interactive={inLeft} onClick={() => go(step - 1)} />
             <Arrow dir="next" interactive={inLeft} onClick={() => go(step + 1)} />
@@ -325,7 +363,7 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
           </div>
 
           {/* RIGHT photo */}
-          <div className={`pc-group pc-right${rightOff ? " is-off" : ""}`}>
+          <div className={`pc-group pc-right${rightLand ? " is-land" : ""}${rightOff ? " is-off" : ""}`}>
             <Frame slides={right} idx={rightIdx} playing={!rightOff} priority />
             <Arrow dir="prev" interactive={inRight} onClick={() => go(step - 1)} />
             <Arrow dir="next" interactive={inRight} onClick={() => go(step + 1)} />
@@ -338,7 +376,7 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
               <div
                 key={`l${i}`}
                 className={`pc-cap pc-cap-l${inLeft && leftIdx === i ? " is-on" : ""}`}
-                style={cssVars({ "--w": s.caption.width })}
+                style={cssVars({ "--w": s.caption.width, "--a": s.caption.anchor ?? 720, "--b": s.shape === "landscape" ? 248.5 : 115.5 })}
                 aria-hidden={!(inLeft && leftIdx === i)}
               >
                 <CaptionBlock caption={s.caption} />
@@ -350,7 +388,7 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
               <div
                 key={`r${i}`}
                 className={`pc-cap pc-cap-r${inRight && rightIdx === i ? " is-on" : ""}`}
-                style={cssVars({ "--w": s.caption.width })}
+                style={cssVars({ "--w": s.caption.width, "--a": s.caption.anchor ?? 720, "--b": s.shape === "landscape" ? 248.5 : 115.5 })}
                 aria-hidden={!(inRight && rightIdx === i)}
               >
                 <CaptionBlock caption={s.caption} />
@@ -443,19 +481,21 @@ const CSS = `
 /* ----------------------------- groups ----------------------------- */
 .pc-group {
   position: absolute;
-  transition:
-    left 1s var(--ease-io), top 1s var(--ease-io), width 1s var(--ease-io), height 1s var(--ease-io),
-    transform 1.1s var(--ease-io), opacity .7s ease;
+  /* only the slide-on / slide-off of the whole photo animates — never the size/position swap between images */
+  transition: transform 1.1s var(--ease-io), opacity .7s ease;
   --dots-top: 26;
 }
-/* intro (Canva page 7): landscape photo 597 × 398 at (147, 250) */
-.pc-left  { left: calc(147 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); --dots-top: 92; }
-/* stepping: the uniform portrait frame 430 × 644 at (231, 139) */
-.pc-left.is-stepped { left: calc(231 * var(--u)); top: calc(43 * var(--u)); width: calc(${FRAME_W} * var(--u)); height: calc(${FRAME_H} * var(--u)); --dots-top: 26; }
+/* portrait frame 430 × 644 — left at (231, 139), right at (780, 139) */
+.pc-left  { left: calc(231 * var(--u)); top: calc(43 * var(--u)); width: calc(${FRAME_W} * var(--u)); height: calc(${FRAME_H} * var(--u)); }
 .pc-right { left: calc(780 * var(--u)); top: calc(43 * var(--u)); width: calc(${FRAME_W} * var(--u)); height: calc(${FRAME_H} * var(--u)); }
+/* landscape frame 597 × 398 at y = 250 (Canva).
+   left  : x = 147  (dark workshop seesaw, Canva pages 7 / 8)
+   right : x = 613  → its right edge is x = 1210, exactly the right edge of the portrait frames */
+.pc-left.is-land  { left: calc(147 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); --dots-top: 92; }
+.pc-right.is-land { left: calc(613 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); --dots-top: 92; }
 
-.pc-left.is-off  { transform: translate3d(calc(-820 * var(--u)), 0, 0); opacity: 0; }
-.pc-right.is-off { transform: translate3d(calc(820 * var(--u)), 0, 0);  opacity: 0; }
+.pc-left.is-off  { transform: translate3d(calc(-900 * var(--u)), 0, 0); opacity: 0; }
+.pc-right.is-off { transform: translate3d(calc(900 * var(--u)), 0, 0);  opacity: 0; }
 
 /* the frame (reveals from the bottom like the page-1 video) */
 .pc-frame {
@@ -466,11 +506,9 @@ const CSS = `
 .is-in .pc-frame { clip-path: inset(0 0 0 0); }
 .pc-right .pc-frame { transition-delay: .15s; }
 
-.pc-slide {
-  position: absolute; inset: 0; opacity: 0; z-index: 1; transform: scale(1.05);
-  transition: opacity 0s linear .9s, transform 1.6s var(--ease);
-}
-.pc-slide.is-active { opacity: 1; z-index: 2; transform: none; transition: opacity .9s ease, transform 1.6s var(--ease); }
+/* instant swap — a clean, single photo for every dot, no fade / flip in between */
+.pc-slide { position: absolute; inset: 0; visibility: hidden; }
+.pc-slide.is-active { visibility: visible; z-index: 2; }
 .pc-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; user-select: none; }
 
 /* --------------------------- arrows --------------------------- */
@@ -505,25 +543,25 @@ const CSS = `
 }
 .pc-dot:disabled { cursor: default; }
 .pc-dot svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.pc-ring { fill: #fff; stroke: #000; stroke-width: 1.15; opacity: 1; transition: opacity .35s ease; }
-.pc-fill { fill: #000; opacity: 0; transform: scale(.4); transform-origin: 11px 11px; transition: opacity .35s ease, transform .5s var(--ease); }
-.pc-dot.is-on .pc-ring { opacity: 0; }
-.pc-dot.is-on .pc-fill { opacity: 1; transform: none; }
+/* instant: the dot under the cursor turns black immediately, nothing slides or scales */
+.pc-ring { fill: #fff; stroke: #000; stroke-width: 1.15; }
+.pc-fill { fill: #000; }
+.pc-dot .pc-fill { display: none; }
+.pc-dot.is-on .pc-ring { display: none; }
+.pc-dot.is-on .pc-fill { display: block; }
 
 /* --------------------------- captions --------------------------- */
 .pc-cap {
-  position: absolute; bottom: calc(115.5 * var(--u)); width: calc(var(--w) * var(--u)); box-sizing: content-box;
+  position: absolute; bottom: calc(var(--b, 115.5) * var(--u)); width: calc(var(--w) * var(--u)); box-sizing: content-box;
   font-family: var(--serif); font-size: calc(18 * var(--u)); line-height: calc(33 * var(--u)); font-weight: 400;
   letter-spacing: 0; color: #000; text-align: left; font-synthesis: none;
-  opacity: 0; visibility: hidden; transform: translate3d(0, calc(10 * var(--u)), 0);
-  transition: opacity .3s ease, transform .3s ease, visibility 0s linear .3s;
+  opacity: 0; visibility: hidden;
+  transition: opacity .15s ease, visibility 0s linear .15s;
 }
-.pc-cap-l { left: calc(720 * var(--u)); }
-.pc-cap-r { right: calc(720 * var(--u)); }
-.pc-cap.is-on {
-  opacity: 1; visibility: visible; transform: none;
-  transition: opacity .9s var(--ease) .55s, transform 1.1s var(--ease) .55s, visibility 0s;
-}
+/* --a = Canva x of the block: its left edge (left photo) or its right edge (right photo) */
+.pc-cap-l { left: calc(var(--a, 720) * var(--u)); }
+.pc-cap-r { right: calc((1440 - var(--a, 720)) * var(--u)); }
+.pc-cap.is-on { opacity: 1; visibility: visible; transition: opacity .4s ease .1s, visibility 0s; }
 .pc-cap p { margin: 0 0 calc(33 * var(--u)); }
 .pc-cap p:last-child { margin-bottom: 0; }
 .pc-cap strong { font-weight: 700; }
@@ -542,7 +580,6 @@ const CSS = `
 .pc-m-series + .pc-m-series { margin-top: 8px; }
 .pc-m-frame { position: relative; width: 100%; aspect-ratio: ${FRAME_W} / ${FRAME_H}; background: #efefef; overflow: hidden; }
 .pc-m-frame .pc-frame { clip-path: none; transition: none; }
-.pc-m-frame .pc-slide { transform: none; }
 .pc-m-controls { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .pc-m-controls .pc-arrow { position: static; margin: 0; width: 36px; height: 36px; opacity: 1; pointer-events: auto; }
 .pc-m-controls .pc-dots { position: static; transform: none; opacity: 1; }
@@ -553,7 +590,7 @@ const CSS = `
 .pc-m-cap strong { font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pc-label, .pc-group, .pc-frame, .pc-slide, .pc-cap, .pc-dots, .pc-ring, .pc-fill, .pc-arrow { transition: none !important; }
+  .pc-label, .pc-group, .pc-frame, .pc-cap, .pc-dots, .pc-arrow { transition: none !important; }
   .pc-label { opacity: 1; transform: none; }
   .pc-frame { clip-path: none; }
   .pc-dots { opacity: 1; }
