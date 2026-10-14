@@ -133,7 +133,7 @@ function Arrow({ dir, onClick, interactive }: { dir: "prev" | "next"; onClick: (
       onClick={onClick}
     >
       <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M13 8H3M7.4 3.6 3 8l4.4 4.4" />
+        <path d="M10 3 5 8l5 5" />
       </svg>
     </button>
   );
@@ -484,7 +484,7 @@ const CSS = `
   transition: background-color .3s ease, transform .3s var(--ease), opacity .45s ease;
 }
 .pc-arrow:disabled { cursor: default; }
-.pc-arrow svg { width: 50%; height: 50%; fill: none; stroke: #fff; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.pc-arrow svg { width: 50%; height: 50%; fill: none; stroke: #fff; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .pc-arrow-prev { right: calc(100% + 12 * var(--u)); }
 .pc-arrow-next { left:  calc(100% + 12 * var(--u)); }
 .pc-arrow-next svg { transform: rotate(180deg); }
