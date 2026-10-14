@@ -43,7 +43,7 @@ export const SEESAW_CONCEPT: ConceptData = {
   left: [
     {
       type: "image",
-      src: `${D}/01-workshop.jpg`,
+      src: `${D}/01-workshop.JPG`,
       alt: "The seesaw bench in the workshop, lit by a single lamp",
       position: "50% 60%",
       caption: {
