@@ -18,6 +18,7 @@ import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import type { ProjectDetailData } from "../data/projects";
+import ProjectConcept from "./ProjectConcept";
 
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
@@ -208,6 +209,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
           </div>
         </div>
       </section>
+
+      {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
+      {project.concept ? <ProjectConcept concept={project.concept} /> : null}
 
       <noscript>
         <style>{`.pd-reveal{opacity:1!important;transform:none!important}.pd-video{clip-path:none!important}.pd-video-el{opacity:1!important;transform:none!important}`}</style>

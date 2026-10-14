@@ -2,10 +2,14 @@
  * data/projects.ts        (or src/data/projects.ts if you use a src folder)
  *
  * One entry per project (key = slug, must match the slug in the slider).
+ * NEW: optional `concept` field → the CONCEPT section (content lives in data/concept.ts).
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines simply reflow.
  * ---------------------------------------------------------------------- */
+import type { ConceptData } from "./concept";
+import { SEESAW_CONCEPT } from "./concept";
+
 export type ProjectDetailData = {
   slug: string;
   title: string; // 18 · Medium · #000
@@ -24,6 +28,8 @@ export type ProjectDetailData = {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
   };
+  /** optional CONCEPT section (pinned image sequence) */
+  concept?: ConceptData;
 };
 
 export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
@@ -64,6 +70,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
         ],
       ],
     },
+    concept: SEESAW_CONCEPT,
   },
 };
 
