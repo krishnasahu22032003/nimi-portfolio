@@ -358,7 +358,7 @@ export default function ProjectsSection() {
     void el.offsetWidth; // restart the animation
     a.classList.add("is-in");
   };
-
+//update
   const labelLeave = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (e.pointerType !== "mouse") return;
     const a = e.currentTarget;
