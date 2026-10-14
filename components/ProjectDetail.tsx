@@ -1,5 +1,5 @@
 "use client";
-
+//update code 
 /* components/ProjectDetail.tsx   (or src/components/ProjectDetail.tsx)
  *
  * Type spec — straight from her Canva annotations, used as LITERAL CSS px (no fluid scaling):
