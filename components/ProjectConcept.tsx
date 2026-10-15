@@ -18,11 +18,16 @@
  *
  *   Photos change instantly (no cross-fade, no slide). Dots / arrows / keys jump straight to the target.
  *
+ * DOTS (changed)
+ *   - STATIC: the dot rows are no longer inside the photo groups. They sit at one fixed spot on the
+ *     artboard (see DOTS_Y / DOTS_LEFT_X / DOTS_RIGHT_X) — they never slide up/down when the photo
+ *     switches portrait ↔ landscape, and they never travel with the photo when it goes off-screen.
+ *   - The active (black) dot is BIG — it fills the whole circle (same outline as the empty ones).
+ *
  * UNITS  1u = 1 Canva px, scaled to fit the screen (identical to the artboard at 1440 × 900).
  *        Fonts scale with it too, so her line breaks + justified widths never drift.
  *
  * Gambetta is a Fontshare font (not on Google Fonts) → loaded via @import below.
- * Prefer self-hosting? See the note at the bottom of the answer.
  */
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -33,6 +38,12 @@ import type { Caption, ConceptData, ConceptSlide } from "../data/concept";
 const HEADER_H = 96; // px — must match the HEADER_H in ProjectDetail.tsx
 const FRAME_W = 430; // uniform frame (Canva px) — same for every image
 const FRAME_H = 644;
+
+/* STATIC dot rows (Canva px, inside the 1440 × 804 canvas).
+ * Y = just under the portrait frame (43 + 644 + 26). Change these three numbers to nudge the dots. */
+const DOTS_Y = 713;
+const DOTS_LEFT_X = 446; // centre of the left portrait frame  (231 + 430/2)
+const DOTS_RIGHT_X = 995; // centre of the right portrait frame (780 + 430/2)
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -96,14 +107,16 @@ function blob(seed: number, r: number, wobble: number): string {
   }
   return d + "Z";
 }
-const RINGS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 7.4, 0.12)); // empty, white
-const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 21, 5.7, 0.2)); // black, slightly smaller than the ring
+/* ring (empty, white) and fill (black) use the SAME seed → identical outline, so the black dot is simply
+ * the ring filled in — and BIG: radius 8.4 vs the ring's 7.4, so it covers the ring's outline completely. */
+const RINGS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 7.4, 0.12));
+const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 8.4, 0.12));
 
 function Dots({
-  count, active, interactive, onPick, label,
-}: { count: number; active: number; interactive: boolean; onPick: (i: number) => void; label: string }) {
+  count, active, interactive, onPick, label, className = "",
+}: { count: number; active: number; interactive: boolean; onPick: (i: number) => void; label: string; className?: string }) {
   return (
-    <div className="pc-dots" role="group" aria-label={label}>
+    <div className={`pc-dots ${className}`} role="group" aria-label={label}>
       {Array.from({ length: count }, (_, i) => (
         <button
           key={i}
@@ -359,7 +372,6 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
             <Frame slides={left} idx={leftIdx} playing={false} priority />
             <Arrow dir="prev" interactive={inLeft} onClick={() => go(step - 1)} />
             <Arrow dir="next" interactive={inLeft} onClick={() => go(step + 1)} />
-            <Dots count={L} active={leftIdx} interactive={inLeft} label="Left images" onPick={(i) => go(1 + i)} />
           </div>
 
           {/* RIGHT photo */}
@@ -367,8 +379,25 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
             <Frame slides={right} idx={rightIdx} playing={!rightOff} priority />
             <Arrow dir="prev" interactive={inRight} onClick={() => go(step - 1)} />
             <Arrow dir="next" interactive={inRight} onClick={() => go(step + 1)} />
-            <Dots count={R} active={rightIdx} interactive={inRight} label="Right images" onPick={(i) => go(L + 1 + i)} />
           </div>
+
+          {/* STATIC dots — outside the photo groups, fixed position, never move */}
+          <Dots
+            className={`pc-dots-d${leftOff ? " is-off" : ""}`}
+            count={L}
+            active={leftIdx}
+            interactive={inLeft}
+            label="Left images"
+            onPick={(i) => go(1 + i)}
+          />
+          <Dots
+            className={`pc-dots-d pc-dots-r${rightOff ? " is-off" : ""}`}
+            count={R}
+            active={rightIdx}
+            interactive={inRight}
+            label="Right images"
+            onPick={(i) => go(L + 1 + i)}
+          />
 
           {/* captions: left photo → text on its right, right photo → text on its left */}
           {left.map((s: ConceptSlide, i: number) =>
@@ -483,7 +512,6 @@ const CSS = `
   position: absolute;
   /* only the slide-on / slide-off of the whole photo animates — never the size/position swap between images */
   transition: transform 1.1s var(--ease-io), opacity .7s ease;
-  --dots-top: 26;
 }
 /* portrait frame 430 × 644 — left at (231, 139), right at (780, 139) */
 .pc-left  { left: calc(231 * var(--u)); top: calc(43 * var(--u)); width: calc(${FRAME_W} * var(--u)); height: calc(${FRAME_H} * var(--u)); }
@@ -491,8 +519,8 @@ const CSS = `
 /* landscape frame 597 × 398 at y = 250 (Canva).
    left  : x = 147  (dark workshop seesaw, Canva pages 7 / 8)
    right : x = 613  → its right edge is x = 1210, exactly the right edge of the portrait frames */
-.pc-left.is-land  { left: calc(147 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); --dots-top: 92; }
-.pc-right.is-land { left: calc(613 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); --dots-top: 92; }
+.pc-left.is-land  { left: calc(147 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); }
+.pc-right.is-land { left: calc(613 * var(--u)); top: calc(154 * var(--u)); width: calc(597 * var(--u)); height: calc(398 * var(--u)); }
 
 .pc-left.is-off  { transform: translate3d(calc(-900 * var(--u)), 0, 0); opacity: 0; }
 .pc-right.is-off { transform: translate3d(calc(900 * var(--u)), 0, 0);  opacity: 0; }
@@ -531,19 +559,26 @@ const CSS = `
 .pc-arrow:not(:disabled):active { transform: scale(.94); }
 .pc-arrow:focus-visible, .pc-dot:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
 
-/* ---------------------------- dots ---------------------------- */
-.pc-dots {
-  position: absolute; left: 50%; top: calc(100% + var(--dots-top) * var(--u)); z-index: 3;
-  transform: translateX(-50%); display: flex;
-  opacity: 0; transition: top 1s var(--ease-io), opacity .8s ease .5s;
+/* ---------------------------- dots ----------------------------
+   STATIC: absolutely placed on the canvas, outside the photo groups.
+   No transform, no top/left transition, no scale — nothing moves. */
+.pc-dots { display: flex; }
+.pc-dots-d {
+  position: absolute; z-index: 3;
+  left: calc(${DOTS_LEFT_X} * var(--u)); top: calc(${DOTS_Y} * var(--u));
+  translate: -50% 0;
+  opacity: 0; transition: none;
 }
-.is-in .pc-dots { opacity: 1; }
+.pc-dots-d.pc-dots-r { left: calc(${DOTS_RIGHT_X} * var(--u)); }
+.is-in .pc-dots-d { opacity: 1; }
+.is-in .pc-dots-d.is-off { opacity: 0; pointer-events: none; }
+
 .pc-dot {
   width: calc(21 * var(--u)); height: calc(22 * var(--u)); padding: 0; border: 0; background: none; cursor: pointer; display: block;
 }
 .pc-dot:disabled { cursor: default; }
 .pc-dot svg { width: 100%; height: 100%; display: block; overflow: visible; }
-/* instant: the dot under the cursor turns black immediately, nothing slides or scales */
+/* instant: the active dot is a BIG solid black circle (it covers the ring's outline), nothing slides or scales */
 .pc-ring { fill: #fff; stroke: #000; stroke-width: 1.15; }
 .pc-fill { fill: #000; }
 .pc-dot .pc-fill { display: none; }
@@ -582,7 +617,7 @@ const CSS = `
 .pc-m-frame .pc-frame { clip-path: none; transition: none; }
 .pc-m-controls { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .pc-m-controls .pc-arrow { position: static; margin: 0; width: 36px; height: 36px; opacity: 1; pointer-events: auto; }
-.pc-m-controls .pc-dots { position: static; transform: none; opacity: 1; }
+.pc-m-controls .pc-dots { position: static; opacity: 1; }
 .pc-m-controls .pc-dot { width: 21px; height: 22px; }
 .pc-m-cap { min-height: 4.5em; font-family: var(--serif); font-size: 17px; line-height: 28px; color: #000; text-align: justify; hyphens: none; }
 .pc-m-cap p { margin: 0 0 28px; }
@@ -590,9 +625,9 @@ const CSS = `
 .pc-m-cap strong { font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pc-label, .pc-group, .pc-frame, .pc-cap, .pc-dots, .pc-arrow { transition: none !important; }
+  .pc-label, .pc-group, .pc-frame, .pc-cap, .pc-arrow { transition: none !important; }
   .pc-label { opacity: 1; transform: none; }
   .pc-frame { clip-path: none; }
-  .pc-dots { opacity: 1; }
+  .pc-dots-d { opacity: 1; }
 }
 `;
