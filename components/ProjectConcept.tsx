@@ -110,7 +110,7 @@ function blob(seed: number, r: number, wobble: number): string {
 /* ring (empty, white) and fill (black) use the SAME seed → identical outline, so the black dot is simply
  * the ring filled in — and BIG: radius 8.4 vs the ring's 7.4, so it covers the ring's outline completely. */
 const RINGS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 7.4, 0.12));
-const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 5.2, 0.12));
+const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 5.4, 0.12));
 
 function Dots({
   count, active, interactive, onPick, label, className = "",
@@ -584,6 +584,7 @@ const CSS = `
 .pc-ring { fill: #fff; stroke: #000; stroke-width: 1.15; }
 .pc-fill { fill: #000; }
 .pc-dot .pc-fill { display: none; }
+.pc-dot.is-on .pc-ring { display: none; }   /* ← restore: active dot = small black dot only */
 .pc-dot.is-on .pc-fill { display: block; }
 
 /* --------------------------- captions --------------------------- */
