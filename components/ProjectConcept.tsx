@@ -110,7 +110,7 @@ function blob(seed: number, r: number, wobble: number): string {
 /* ring (empty, white) and fill (black) use the SAME seed → identical outline, so the black dot is simply
  * the ring filled in — and BIG: radius 8.4 vs the ring's 7.4, so it covers the ring's outline completely. */
 const RINGS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 7.4, 0.12));
-const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 8.4, 0.12));
+const FILLS: string[] = Array.from({ length: 8 }, (_, i) => blob(i + 1, 5.2, 0.12));
 
 function Dots({
   count, active, interactive, onPick, label, className = "",
@@ -297,16 +297,18 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
       if (!raf) raf = requestAnimationFrame(update);
     };
 
-    /* at the very end (nothing below) → scrolling DOWN again restarts from the first left image */
+    /* at the very end (nothing below) → scrolling DOWN again restarts from the first left image.
+     `liveRef` = the concept is what is on screen; without it, reaching the bottom of the section BELOW (form exploration)
+     would throw the page back up here. */
     const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
     const onWheel = (e: WheelEvent) => {
-      if (e.deltaY > 0 && stepRef.current === LAST && atBottom()) jumpTo(1);
+      if (e.deltaY > 0 && stepRef.current === LAST && liveRef.current && atBottom()) jumpTo(1);
     };
     let touchY = 0;
     const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0]?.clientY ?? 0; };
     const onTouchEnd = (e: TouchEvent) => {
       const y = e.changedTouches[0]?.clientY ?? touchY;
-      if (touchY - y > 50 && stepRef.current === LAST && atBottom()) jumpTo(1);
+      if (touchY - y > 50 && stepRef.current === LAST && liveRef.current && atBottom()) jumpTo(1);
     };
 
     update();
@@ -582,7 +584,6 @@ const CSS = `
 .pc-ring { fill: #fff; stroke: #000; stroke-width: 1.15; }
 .pc-fill { fill: #000; }
 .pc-dot .pc-fill { display: none; }
-.pc-dot.is-on .pc-ring { display: none; }
 .pc-dot.is-on .pc-fill { display: block; }
 
 /* --------------------------- captions --------------------------- */
