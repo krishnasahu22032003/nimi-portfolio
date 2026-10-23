@@ -61,6 +61,7 @@ export const SEESAW_FORM_EXPLORATION: FormExplorationData = {
     { src: `${D}/form-17.jpg`, alt: "Two long curved rocker outlines drawn in graphite", w: 1600, h: 967, size: "medium", lane: 2, dy: -5 },
     { src: `${D}/form-11.jpg`, alt: "Rendering of the finished Seesaw bench with a walnut seat on a black steel base", w: 1600, h: 1057, size: "large", lane: 2, dy: 2 },
     { src: `${D}/form-19.jpg`, alt: "U-shaped frame and labelled seat blocks marked with the word top", w: 1600, h: 1551, size: "medium", lane: 2, dy: -4 },
+    { src: `${D}/ad.jpg`, alt: "Rendering of the Seesaw bench in profile: walnut-faced on the left, black steel on the right, with a loop handle at each end", w: 1600, h: 927, size: "medium", lane: 2, dy: 3 },
     { src: `${D}/form-06.jpg`, alt: "Two long bench profiles, one lightly drawn above a heavily shaded one", w: 1600, h: 1380, size: "medium", lane: 2, dy: 5 },
   ],
 };
