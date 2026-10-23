@@ -2,8 +2,8 @@
  * data/formExploration.ts      (or src/data/formExploration.ts)
  *
  * FORM EXPLORATION — a white field of free-floating frames (like the Celeste Noir reference).
- * Frames drift across the screen at different speeds; hovering a frame stops the drift. Nothing else
- * happens: no black & white → colour, no filters.
+ * Frames drift across the screen at different speeds. Hover a frame → the drift stops and that frame
+ * comes to the front. Press and drag → the field follows your hand (with a little glide on release).
  *
  *   w / h   real pixel size of the image (aspect ratio only)
  *   size    "large" | "medium" | "small"   — "small" = the files she renamed "Small": the smallest frames
@@ -12,7 +12,10 @@
  *   scale   optional fine-tune of ONE frame on top of its size: 1 = as the size says, 1.2 = 20 % larger,
  *           0.85 = 15 % smaller. Width and height scale together, the ratio never changes.
  *
+ *   model   NEW — the "3D MODEL" text at the bottom right. Click → the 3D viewer opens.
+ *
  * Images live in  public/projects/seesaw/form/
+ * 3D model lives in  public/projects/seesaw/model/seesaw.obj
  * ---------------------------------------------------------------------- */
 export type FrameSize = "large" | "medium" | "small";
 
@@ -27,22 +30,41 @@ export type FormTile = {
   scale?: number;
 };
 
+/** NEW — the 3D model that opens from the "3D MODEL" text */
+export type FormModel = {
+  /** the clickable text, Comico 16 */
+  label: string;
+  /** .obj file inside /public */
+  src: string;
+  /** accessible description of the 3D scene */
+  alt: string;
+};
+
 export type FormExplorationData = {
   /** section title — 18 · Medium · #000 */
   label: string;
   tiles: FormTile[];
+  /** NEW — optional 3D model (leave out and the text + viewer simply don't appear) */
+  model?: FormModel;
 };
 
 const D = "/projects/seesaw/form";
 
 export const SEESAW_FORM_EXPLORATION: FormExplorationData = {
   label: "FORM EXPLORATION",
+  /* NEW */
+  model: {
+    label: "3D MODEL",
+    src: "/projects/seesaw/model/seesaw.obj",
+    alt: "Interactive 3D model of the Seesaw bench: a pine seat on a black steel rocker base with a loop handle at each end",
+  },
   tiles: [
     /* lane 1 */
     { src: `${D}/form-01.jpg`, alt: "Early bench studies with perspective lines, a circle and handwritten notes", w: 1600, h: 1196, size: "large", lane: 0, dy: -3 },
     { src: `${D}/form-04.jpg`, alt: "Tall sheet of small seat profiles with notes on earthquake and pendulum motion", w: 1070, h: 1600, size: "medium", lane: 0, dy: 4 },
     { src: `${D}/form-small-01.jpg`, alt: "Three small sketches of a bench form in soft pencil", w: 1600, h: 948, size: "small", lane: 0, dy: -4 },
-    { src: `${D}/form-05.jpg`, alt: "Loose sheet of winged seat forms drawn in blue pencil", w: 1600, h: 1106, size: "medium", lane: 0, dy: 2, scale: 1.2 },
+    /* CHANGED: the sheet of winged seat forms (marked green by her) — scale 1.2 → 1.4 */
+    { src: `${D}/form-05.jpg`, alt: "Loose sheet of winged seat forms drawn in blue pencil", w: 1600, h: 1106, size: "medium", lane: 0, dy: 2, scale: 1.4 },
     { src: `${D}/form-13.jpg`, alt: "Overlapping rocker and bowl forms with a circle at the centre", w: 1600, h: 1078, size: "large", lane: 0, dy: -2 },
     { src: `${D}/form-08.jpg`, alt: "Three wedge-shaped seat profiles, two with hatched shading", w: 1600, h: 1062, size: "medium", lane: 0, dy: 5 },
     { src: `${D}/form-20.jpg`, alt: "Wide, faint sketches of layered rocker arcs", w: 1600, h: 860, size: "medium", lane: 0, dy: -3 },
