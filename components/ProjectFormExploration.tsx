@@ -14,7 +14,7 @@
  *           The three lanes follow at slightly different rates (depth). Let go → it glides and settles.
  *           Touch: the same, with one finger (vertical swipes still scroll the page).
  *   TITLE   NEW. Left-aligned on the SAME grid as the CONCEPT title (same x, same y, same size).
- *   3D      NEW. "3D MODEL" at the bottom right (Comico 16, grey → black on hover). Click → the 3D viewer.
+ *   3D      NEW. "3D MODEL" at the bottom LEFT, under the title's left line (Comico 16, grey → black on hover). Click → the 3D viewer.
  *
  * UNITS  1u = 1vw, capped so the tallest frame always fits the band (see --u in the CSS).
  *        --cu = the CONCEPT section's unit (1 Canva px). Only the title, the 3D text and the viewer use it,
@@ -380,13 +380,21 @@ export default function ProjectFormExploration({ data }: { data: FormExploration
 /* ------------------------------- CSS ------------------------------- */
 const CSS = `
 @import url("https://fonts.googleapis.com/css2?family=Comico&display=swap");
+/* Comico: your own file wins if it exists (public/fonts/Comico-Regular.woff2 or .ttf, or Comico installed on the machine);
+   otherwise the Google Fonts copy above is used; otherwise a plain sans fallback. */
+@font-face {
+  font-family: "Comico"; font-style: normal; font-weight: 400; font-display: swap;
+  src: local("Comico"), local("Comico Regular"), url("/fonts/Comico-Regular.woff2") format("woff2"), url("/fonts/Comico-Regular.ttf") format("truetype");
+}
 
 .fe {
   --ease: cubic-bezier(.22, 1, .36, 1);
   --page-h: max(100svh, 560px);
-  /* THE BAND: from just under the title to a little above the bottom edge */
-  --band-top: 200px;
-  --band-bottom: 72px;
+  /* THE BAND — her two green arrows: the gap UNDER THE TITLE and the gap ABOVE THE BOTTOM EDGE are the same
+     number (--gap), so the frames sit exactly centred between the two. 3D MODEL lives in the bottom gap. */
+  --gap: calc(84 * var(--cu));
+  --band-top: calc(var(--header-h) + 20 * var(--cu) + var(--gap)); /* title bottom (96 − 4 + 24 = 20·cu below the header) + gap */
+  --band-bottom: var(--gap);
   --band-h: calc(var(--page-h) - var(--band-top) - var(--band-bottom));
   /* 1u = 1vw, never so big that the tallest frame (≈ 21u) outgrows the band */
   --u: min(1vw, calc(var(--band-h) / 34));
@@ -454,10 +462,10 @@ const CSS = `
   mix-blend-mode: multiply;
 }
 
-/* "3D MODEL" — bottom right, on the right edge of the CONCEPT photos. Comico 16, grey → black on hover.
-   The 12px padding is a larger hit area; the offsets below cancel it so the TEXT sits exactly on the grid. */
+/* "3D MODEL" — bottom LEFT, on the same left line as the title, vertically centred in the bottom gap.
+   Comico 16, grey → black on hover. The 12px padding is a larger hit area; the offsets cancel it so the TEXT sits on the grid. */
 .fe-3d {
-  position: absolute; z-index: 6; right: calc(var(--edge-r) - 12px); bottom: 24px;
+  position: absolute; z-index: 6; left: calc(var(--edge-l) - 12px); bottom: calc((var(--gap) - 24px) / 2 - 12px);
   margin: 0; padding: 12px; border: 0; background: none; cursor: pointer; border-radius: 2px;
   font-family: "Comico", "Familjen Grotesk", ui-sans-serif, system-ui, sans-serif;
   font-size: 16px; line-height: 24px; font-weight: 400; font-synthesis: none; letter-spacing: .02em;
@@ -480,9 +488,8 @@ const CSS = `
 }
 
 @media (max-width: 820px) {
-  .fe { --band-top: 160px; --band-bottom: 40px; --u: min(2.6vw, calc(var(--band-h) / 34)); --edge-l: 16px; --edge-r: 16px; }
+  .fe { --gap: 48px; --band-top: calc(128px + var(--gap)); --u: min(2.6vw, calc(var(--band-h) / 34)); --edge-l: 16px; --edge-r: 16px; }
   .fe-label { top: 104px; font-size: 16px; line-height: 24px; }
-  .fe-3d { bottom: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
