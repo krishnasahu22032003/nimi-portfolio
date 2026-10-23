@@ -57,7 +57,8 @@ function layoutLanes(tiles: FormTile[]): Lane[] {
       .filter((t: FormTile) => t.lane === lane)
       .map((t: FormTile) => {
         const ratio = t.w / t.h;
-        return { ...t, uw: Math.sqrt(AREA[t.size] * ratio), uh: Math.sqrt(AREA[t.size] / ratio), x: 0 };
+        const k = t.scale ?? 1; // per-frame fine-tune from the data file
+        return { ...t, uw: Math.sqrt(AREA[t.size] * ratio) * k, uh: Math.sqrt(AREA[t.size] / ratio) * k, x: 0 };
       });
     const gaps = placed.map((_, i: number) => GAPS[(i + lane) % GAPS.length]);
     const natural = placed.reduce((sum: number, t: Placed, i: number) => sum + t.uw + gaps[i], 0);
