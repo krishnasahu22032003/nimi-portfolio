@@ -19,7 +19,7 @@ import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import type { ProjectDetailData } from "../data/projects";
 import ProjectConcept from "./ProjectConcept";
-import FormExploration from "./FormExploration";
+import ProjectFormExploration from "./ProjectFormExploration";
 
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
@@ -215,7 +215,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}
 
       {/* ============================ PAGE 4 — form exploration (pinned, scroll-driven gallery) ============================ */}
-      {project.formExploration ? <FormExploration data={project.formExploration} /> : null}
+      {project.formExploration ? <ProjectFormExploration data={project.formExploration} /> : null}
 
       <noscript>
         <style>{`.pd-reveal{opacity:1!important;transform:none!important}.pd-video{clip-path:none!important}.pd-video-el{opacity:1!important;transform:none!important}`}</style>

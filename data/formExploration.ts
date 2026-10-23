@@ -1,36 +1,26 @@
 /* -------------------------------------------------------------------------
  * data/formExploration.ts      (or src/data/formExploration.ts)
  *
- * Everything for the FORM EXPLORATION section. Nothing is hard-coded in the component.
+ * FORM EXPLORATION — a white, endlessly rotating ring of sketches (no colour change, no filters).
+ * Everything the component needs lives here; nothing is hard-coded in the component.
  *
- * COORDINATES — Canva px on the 1440 × 900 page (the exact page from her Canva file).
- *   x / y  = top-left corner of the sketch      w / h = its size
- *   The component scales the whole 1440 × 900 board evenly to the screen (1u = 1 Canva px at 1440 wide),
- *   so every sketch keeps its exact position and its exact size relative to the others.
+ *   w / h    = the image's real pixel size (used for its aspect ratio only)
+ *   small    = true → the SMALLEST frame in the rotation (these are the files she renamed "Small").
  *
- * IMAGES — every file is a crop of her original photographed sheets (IMG_8131 … IMG_8150), cut to the
- *   same window she used in Canva, tone-matched to the Canva page and saved at 3× for sharp retina screens.
- *   Put the files in  public/projects/seesaw/form/
- *
- * ORDER — reading order of the board (top → bottom, left → right). It is also the order used on mobile.
+ * ORDER = the order around the ring. The four small frames are spaced evenly between the others.
+ * Images live in  public/projects/seesaw/form/
  * ---------------------------------------------------------------------- */
 export type FormTile = {
   src: string;
   alt: string;
-  /** Canva px */
-  x: number;
-  y: number;
   w: number;
   h: number;
+  small?: boolean;
 };
 
 export type FormExplorationData = {
-  /** the centred title — 18 · Medium · #000 */
+  /** section title — 18 · Medium · #000 */
   label: string;
-  /** centre-x of the title and the y of its cap-height (top of the capital letters), Canva px */
-  labelAt: { cx: number; capTop: number };
-  /** the hand-lettered “3D MODEL” note (an SVG traced from her Canva page) */
-  note?: { src: string; alt: string; x: number; y: number; w: number; h: number };
   tiles: FormTile[];
 };
 
@@ -38,37 +28,30 @@ const D = "/projects/seesaw/form";
 
 export const SEESAW_FORM_EXPLORATION: FormExplorationData = {
   label: "FORM EXPLORATION",
-  labelAt: { cx: 717, capTop: 96 },
-  note: { src: `${D}/3d-model.svg`, alt: "3D model", x: 1276.17, y: 762.17, w: 71.33, h: 45.92 },
   tiles: [
-    { src: `${D}/form-06.jpg`, alt: "Perspective lines and an ellipse, the first rough frame for the bench", x: 640, y: 0, w: 270, h: 152 },
-    { src: `${D}/form-01.jpg`, alt: "Winged bench form with two raised seat blocks, drawn in perspective", x: 40, y: 50, w: 410, h: 190 },
-    { src: `${D}/form-12.jpg`, alt: "Seat profile resting on a circle with a vertical centre line", x: 1078, y: 45, w: 302, h: 115 },
-    { src: `${D}/form-07.jpg`, alt: "Small bracket-shaped bench profile", x: 880, y: 143, w: 182, h: 55 },
-    { src: `${D}/form-05.jpg`, alt: "Lens-shaped rocker in blue pencil", x: 372, y: 183, w: 260, h: 113 },
-    { src: `${D}/form-08.jpg`, alt: "Faint curved seat with hatching", x: 676, y: 200, w: 204, h: 112 },
-    { src: `${D}/form-11.jpg`, alt: "Overlapping rocker curves", x: 884, y: 198, w: 168, h: 94 },
-    { src: `${D}/form-13.jpg`, alt: "Wedge-shaped seat profile, half shaded", x: 1072, y: 210, w: 308, h: 78 },
-    { src: `${D}/form-03.jpg`, alt: "Small chair outline with a stepped seat", x: 50, y: 292, w: 208, h: 128 },
-    { src: `${D}/form-02.jpg`, alt: "Two small seat-pad details", x: 160, y: 245, w: 90, h: 37 },
-    { src: `${D}/form-09.jpg`, alt: "Narrow dark rocker with layered curves", x: 866, y: 288, w: 168, h: 62 },
-    { src: `${D}/form-04.jpg`, alt: "U-shaped frame standing on a curved rocking base", x: 238, y: 328, w: 264, h: 190 },
-    { src: `${D}/form-10.jpg`, alt: "Bowl-shaped seat on a curved base, front view", x: 572, y: 338, w: 306, h: 94 },
-    { src: `${D}/form-14.jpg`, alt: "Stepped block profile with a shaded seat and dimension notes", x: 1072, y: 348, w: 320, h: 98 },
-    { src: `${D}/form-15.jpg`, alt: "Two long rocker arcs", x: 768, y: 448, w: 244, h: 100 },
-    { src: `${D}/form-16.jpg`, alt: "Small dome-shaped arc", x: 648, y: 492, w: 120, h: 40 },
-    { src: `${D}/form-17.jpg`, alt: "Shallow bowl with a pivot circle", x: 1028, y: 482, w: 232, h: 96 },
-    { src: `${D}/form-18.jpg`, alt: "Lens shape with a flat seat plank", x: 1232, y: 497, w: 156, h: 78 },
-    { src: `${D}/form-19.jpg`, alt: "Small V-shaped seat", x: 55, y: 553, w: 173, h: 65 },
-    { src: `${D}/form-20.jpg`, alt: "Dark arched bridge with a centre post", x: 243, y: 543, w: 219, h: 57 },
-    { src: `${D}/form-22.jpg`, alt: "Height marked as 17 inches", x: 476, y: 566, w: 52, h: 88 },
-    { src: `${D}/form-23.jpg`, alt: "Eye-shaped lens form with a vertical oval, shaded", x: 535, y: 545, w: 283, h: 97 },
-    { src: `${D}/form-24.jpg`, alt: "Layered bowl in green pencil", x: 822, y: 580, w: 176, h: 88 },
-    { src: `${D}/form-25.jpg`, alt: "Shaded bowl with a circle at its centre", x: 1008, y: 588, w: 224, h: 84 },
-    { src: `${D}/form-21.jpg`, alt: "Dark bridge-shaped rocker, side view", x: 162, y: 653, w: 262, h: 69 },
-    { src: `${D}/form-26.jpg`, alt: "Stack of soft, layered forms", x: 1238, y: 598, w: 150, h: 94 },
-    { src: `${D}/form-27.jpg`, alt: "Block split in two halves with a C-shaped cut-out", x: 268, y: 728, w: 344, h: 130 },
-    { src: `${D}/form-28.jpg`, alt: "Folded loop form in soft graphite", x: 672, y: 668, w: 222, h: 184 },
-    { src: `${D}/form-29.jpg`, alt: "Wide bowl with a notch curving up through the centre", x: 935, y: 728, w: 323, h: 107 },
+    { src: `${D}/form-01.jpg`, alt: "Early bench studies with perspective lines, a circle and handwritten notes", w: 1600, h: 1196 },
+    { src: `${D}/form-02.jpg`, alt: "Rows of small rocker profiles, some shaded in graphite and blue pencil", w: 1600, h: 851 },
+    { src: `${D}/form-03.jpg`, alt: "3D model of the bench: a wooden seat split over a grey base, shown in light", w: 1600, h: 966 },
+    { src: `${D}/form-small-01.jpg`, alt: "Three small sketches of a bench form in soft pencil", w: 1600, h: 948, small: true },
+    { src: `${D}/form-04.jpg`, alt: "Tall sheet of small seat profiles with notes on earthquake and pendulum motion", w: 1070, h: 1600 },
+    { src: `${D}/form-05.jpg`, alt: "Loose sheet of winged seat forms drawn in blue pencil", w: 1600, h: 1106 },
+    { src: `${D}/form-06.jpg`, alt: "Two long bench profiles, one lightly drawn above a heavily shaded one", w: 1600, h: 1380 },
+    { src: `${D}/form-07.jpg`, alt: "A dense sheet of dozens of thumbnail seat and rocker silhouettes", w: 1600, h: 1104 },
+    { src: `${D}/form-08.jpg`, alt: "Three wedge-shaped seat profiles, two with hatched shading", w: 1600, h: 1062 },
+    { src: `${D}/form-small-02.jpg`, alt: "Small sketches of bridge-like seat profiles in pencil", w: 1600, h: 833, small: true },
+    { src: `${D}/form-09.jpg`, alt: "Stacked looping rocker curves drawn in soft graphite", w: 1154, h: 1600 },
+    { src: `${D}/form-10.jpg`, alt: "Large sketch of a bench with a C-shaped cut-out, half hatched", w: 1600, h: 895 },
+    { src: `${D}/form-11.jpg`, alt: "Rendering of the finished Seesaw bench with a walnut seat on a black steel base", w: 1600, h: 1057 },
+    { src: `${D}/form-12.jpg`, alt: "Six bench profile studies in pencil, from flat planks to arched bridges", w: 1600, h: 1046 },
+    { src: `${D}/form-13.jpg`, alt: "Overlapping rocker and bowl forms with a circle at the centre", w: 1600, h: 1078 },
+    { src: `${D}/form-small-03.jpg`, alt: "Five small triangular and bowl-shaped seat sketches", w: 1600, h: 1364, small: true },
+    { src: `${D}/form-14.jpg`, alt: "Narrow sheet of seat forms with dimension marks", w: 1141, h: 1600 },
+    { src: `${D}/form-15.jpg`, alt: "Faint studies of a rocker with a flat seat plank, some lines in blue", w: 1600, h: 1003 },
+    { src: `${D}/form-16.jpg`, alt: "Bench side profile with a shaded block and handwritten dimensions", w: 1600, h: 1000 },
+    { src: `${D}/form-17.jpg`, alt: "Two long curved rocker outlines drawn in graphite", w: 1600, h: 967 },
+    { src: `${D}/form-18.jpg`, alt: "Column of lens and bowl shaped forms in soft pencil", w: 1290, h: 1600 },
+    { src: `${D}/form-small-04.jpg`, alt: "Four small bench forms, one heavily shaded", w: 1600, h: 899, small: true },
+    { src: `${D}/form-19.jpg`, alt: "U-shaped frame and labelled seat blocks marked with the word top", w: 1600, h: 1551 },
+    { src: `${D}/form-20.jpg`, alt: "Wide, faint sketches of layered rocker arcs", w: 1600, h: 860 },
   ],
 };
