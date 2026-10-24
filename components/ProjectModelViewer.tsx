@@ -10,21 +10,24 @@
  *   CLOSE    "CLOSE" (top right) · Esc. Focus returns to the "3D MODEL" text.
  *   GRID     The title and CLOSE sit on the same grid as the CONCEPT / FORM EXPLORATION titles.
  *
- * The .obj has NO materials file (Fusion only wrote the names), so the two materials are rebuilt here:
+ * The model can be an .fbx or an .obj — the loader is chosen from the file extension in data/formExploration.ts.
+ * Either way the two materials are rebuilt here (the file's own materials are replaced):
  *   WOOD_BODIES  = the bodies that are the pine seat (everything else = black satin steel).
  *   Tune the colours / roughness in WOOD and STEEL below.
  *
- * The file is Z-up (Fusion 360) → rotated to Y-up, centred, put on the floor and scaled to a fixed size.
+ * .obj is Z-up (Fusion 360) → rotated to Y-up. .fbx is already Y-up → not rotated.
+ * Then centred, put on the floor and scaled to a fixed size (so the file's units don't matter).
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /* ------------------------------ TUNING ------------------------------ */
-const WOOD_BODIES = ["Body5"]; //                                    group names (from the .obj) that are the seat
+const WOOD_BODIES = ["Body5"]; //                                    group names (from the file) that are the seat
 const WOOD = { color: "#9b6a43", roughness: 0.52, metalness: 0 }; //  "3D Pine – Stained light semigloss"
 const STEEL = { color: "#1d1d1f", roughness: 0.42, metalness: 0.85 }; // "Steel – Satin", shown black
 
@@ -197,50 +200,51 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
     ro.observe(stage);
     resize();
 
-    /* load the .obj */
+    /* load the model — .fbx or .obj, chosen by the file extension */
     let model: THREE.Group | null = null;
+    const isFbx = /\.fbx$/i.test(src);
     const woodMat = new THREE.MeshStandardMaterial({ ...WOOD, side: THREE.DoubleSide });
     const steelMat = new THREE.MeshStandardMaterial({ ...STEEL, side: THREE.DoubleSide });
-    new OBJLoader().load(
-      src,
-      (obj: THREE.Group) => {
-        if (disposed) {
-          disposeObject(obj);
-          return;
-        }
-        obj.traverse((o: THREE.Object3D) => {
-          const mesh = o as THREE.Mesh;
-          if (!mesh.isMesh) return;
-          const names = [mesh.name, mesh.parent?.name ?? ""];
-          const isWood = WOOD_BODIES.some((n: string) => names.includes(n));
-          const old = mesh.material as THREE.Material | THREE.Material[];
-          (Array.isArray(old) ? old : [old]).forEach((m: THREE.Material) => m.dispose());
-          mesh.material = isWood ? woodMat : steelMat;
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-        });
 
-        /* Z-up → Y-up, centre it, stand it on the floor, scale to MODEL_SIZE */
-        const pivot = new THREE.Group();
-        obj.rotation.x = -Math.PI / 2;
-        pivot.add(obj);
-        pivot.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(pivot);
-        const size = box.getSize(new THREE.Vector3());
-        const centre = box.getCenter(new THREE.Vector3());
-        obj.position.set(-centre.x, -box.min.y, -centre.z);
-        pivot.scale.setScalar(MODEL_SIZE / Math.max(size.x, size.y, size.z));
-        scene.add(pivot);
-        model = pivot;
-
-        frame((size.y * MODEL_SIZE) / Math.max(size.x, size.y, size.z));
-        setStatus("ready");
-      },
-      undefined,
-      () => {
-        if (!disposed) setStatus("error");
+    const onLoad = (obj: THREE.Group) => {
+      if (disposed) {
+        disposeObject(obj);
+        return;
       }
-    );
+      obj.traverse((o: THREE.Object3D) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const names = [mesh.name, mesh.parent?.name ?? ""];
+        const isWood = WOOD_BODIES.some((n: string) => names.includes(n));
+        const old = mesh.material as THREE.Material | THREE.Material[];
+        (Array.isArray(old) ? old : [old]).forEach((m: THREE.Material) => m.dispose());
+        mesh.material = isWood ? woodMat : steelMat;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      });
+
+      /* .obj: Z-up → Y-up. .fbx is already Y-up. Then centre it, stand it on the floor, scale to MODEL_SIZE */
+      const pivot = new THREE.Group();
+      if (!isFbx) obj.rotation.x = -Math.PI / 2;
+      pivot.add(obj);
+      pivot.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(pivot);
+      const size = box.getSize(new THREE.Vector3());
+      const centre = box.getCenter(new THREE.Vector3());
+      obj.position.set(-centre.x, -box.min.y, -centre.z);
+      pivot.scale.setScalar(MODEL_SIZE / Math.max(size.x, size.y, size.z));
+      scene.add(pivot);
+      model = pivot;
+
+      frame((size.y * MODEL_SIZE) / Math.max(size.x, size.y, size.z));
+      setStatus("ready");
+    };
+    const onError = () => {
+      if (!disposed) setStatus("error");
+    };
+
+    if (isFbx) new FBXLoader().load(src, onLoad, undefined, onError);
+    else new OBJLoader().load(src, onLoad, undefined, onError);
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
