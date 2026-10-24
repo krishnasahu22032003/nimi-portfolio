@@ -12,6 +12,8 @@ import type { ConceptData } from "./concept";
 import { SEESAW_CONCEPT } from "./concept";
 import type { FormExplorationData } from "./formExploration";
 import { SEESAW_FORM_EXPLORATION } from "./formExploration";
+import type { FabricationData } from "./fabrication";
+import { SEESAW_FABRICATION } from "./fabrication";
 
 export type ProjectDetailData = {
   slug: string;
@@ -34,7 +36,8 @@ export type ProjectDetailData = {
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
-  formExploration?: FormExplorationData;
+    formExploration?: FormExplorationData;
+  fabrication?: FabricationData;   // ← add this
 };
 
 export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
@@ -77,6 +80,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     },
     concept: SEESAW_CONCEPT,
     formExploration: SEESAW_FORM_EXPLORATION,
+      fabrication: SEESAW_FABRICATION, 
   },
 };
 

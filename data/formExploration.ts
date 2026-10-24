@@ -55,8 +55,8 @@ export const SEESAW_FORM_EXPLORATION: FormExplorationData = {
   /* NEW */
   model: {
     label: "3D MODEL",
-    src: "/projects/seesaw/model/seesaw.fbx",   // was seesaw.obj — switch back any time to compare
-    alt: "Interactive 3D model of the Seesaw bench: ...",   // leave as is
+    src: "/projects/seesaw/model/seesaw.obj",
+    alt: "Interactive 3D model of the Seesaw bench: a pine seat on a black steel rocker base with a loop handle at each end",
   },
   tiles: [
     /* lane 1 */
