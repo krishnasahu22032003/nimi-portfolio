@@ -393,8 +393,10 @@ const CSS = `
   /* THE BAND — her two green arrows: the gap UNDER THE TITLE and the gap ABOVE THE BOTTOM EDGE are the same
      number (--gap), so the frames sit exactly centred between the two. 3D MODEL lives in the bottom gap. */
   --gap: calc(84 * var(--cu));
-  --band-top: calc(var(--header-h) + 20 * var(--cu) + var(--gap)); /* title bottom (96 − 4 + 24 = 20·cu below the header) + gap */
-  --band-bottom: var(--gap);
+  /* NEW: how far the whole band (red arrow) and the 3D MODEL text are raised. Bigger = higher. */
+  --lift: calc(28 * var(--cu));
+  --band-top: calc(var(--header-h) + 20 * var(--cu) + var(--gap) - var(--lift)); /* band starts higher */
+  --band-bottom: calc(var(--gap) + var(--lift));                                  /* same amount added below, so band height is unchanged */
   --band-h: calc(var(--page-h) - var(--band-top) - var(--band-bottom));
   /* 1u = 1vw, never so big that the tallest frame (≈ 21u) outgrows the band */
   --u: min(1vw, calc(var(--band-h) / 34));
@@ -465,7 +467,7 @@ const CSS = `
 /* "3D MODEL" — bottom LEFT, on the same left line as the title, vertically centred in the bottom gap.
    Comico 16, grey → black on hover. The 12px padding is a larger hit area; the offsets cancel it so the TEXT sits on the grid. */
 .fe-3d {
-  position: absolute; z-index: 6; left: calc(var(--edge-l) - 12px); bottom: calc((var(--gap) - 24px) / 2 - 12px);
+  position: absolute; z-index: 6; left: calc(var(--edge-l) - 12px); bottom: calc((var(--band-bottom) - 24px) / 2 - 12px);
   margin: 0; padding: 12px; border: 0; background: none; cursor: pointer; border-radius: 2px;
   font-family: "Comico", "Familjen Grotesk", ui-sans-serif, system-ui, sans-serif;
   font-size: 16px; line-height: 24px; font-weight: 400; font-synthesis: none; letter-spacing: .02em;
@@ -488,7 +490,7 @@ const CSS = `
 }
 
 @media (max-width: 820px) {
-  .fe { --gap: 48px; --band-top: calc(128px + var(--gap)); --u: min(2.6vw, calc(var(--band-h) / 34)); --edge-l: 16px; --edge-r: 16px; }
+  .fe { --gap: 48px; --lift: 16px; --band-top: calc(128px + var(--gap) - var(--lift)); --band-bottom: calc(var(--gap) + var(--lift)); --u: min(2.6vw, calc(var(--band-h) / 34)); --edge-l: 16px; --edge-r: 16px; }
   .fe-label { top: 104px; font-size: 16px; line-height: 24px; }
 }
 
