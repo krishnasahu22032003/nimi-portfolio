@@ -25,6 +25,10 @@ type Project = { slug: string; title: string; orientation: "v" | "h"; img: strin
 const seedImg = (seed: string, o: "v" | "h") =>
   `https://picsum.photos/seed/${seed}/${o === "v" ? "1100/1600" : "1600/900"}`;
 
+const LOCAL_IMAGES: Record<string, string> = {
+  one: "/projects/project-one.jpg",
+};
+
 const PROJECTS: Project[] = [
   { slug: "one", title: "Project One", orientation: "v" },
   { slug: "two", title: "Project Two", orientation: "h" },
@@ -37,7 +41,7 @@ const PROJECTS: Project[] = [
 ].map((p) => ({
   ...p,
   orientation: p.orientation as "v" | "h",
-  img: seedImg(`nimi-${p.slug}`, p.orientation as "v" | "h"),
+  img: LOCAL_IMAGES[p.slug] ?? seedImg(`nimi-${p.slug}`, p.orientation as "v" | "h"),
   href: `/projects/${p.slug}`,
 }));
 
