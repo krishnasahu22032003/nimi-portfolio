@@ -11,6 +11,10 @@
  *             DOTS are the same hand-drawn dots as CONCEPT (white ring → small solid black dot when open),
  *             joined by a thin grey line that shows the timeline.
  *             Every dot is the SAME distance from the next one (DOT_PITCH), in both groups.
+ *   SPACING   (as marked by the designer)
+ *             · "METAL FRAME" → first dot  =  last metal dot → "WOOD SEAT"  =  "WOOD SEAT" → first wood dot   (one value: gap)
+ *             · page edge → "METAL FRAME"  =  last dot → page edge                (the row is centred on the page)
+ *             The gap is calculated from the real width of the two names, so it stays exact in any font.
  *   ARROWS    ‹ › step to the previous / next stage (same as clicking the next dot). ← → keys work on the timeline too.
  *   FRAMES    ONE frame size for every photo = the frame of the first photo (301 × 379 on the 1440 × 900 artboard).
  *             The photo is cropped to fill the frame (object-fit: cover).
@@ -23,6 +27,7 @@
  */
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import type { FabGroup, FabImage, FabStage, FabricationData } from "../data/fabrication";
 
@@ -39,32 +44,34 @@ const CAP_GAP = 32;
 const ROW_3 = { x0: 198, gap: 61 };
 const ROW_4_GAP = 24;
 
-/** TIMELINE SPACING — one rhythm for the whole row (artboard px)
- *  DOT_PITCH      distance from one dot's centre to the next — IDENTICAL for every dot, in both groups.
- *                 98 is the smallest even step that keeps the longest name ("REINFORCEMENT", ≈106 wide)
- *                 clear of "JOINERY" and "FINISHING" with ≥ 14 px of air on each side.
- *  LABEL_TO_DOT   right edge of "METAL FRAME" / "WOOD SEAT" → centre of its first dot (same for both groups)
- *  GROUP_GAP      right edge of the last metal dot → left edge of "WOOD SEAT"
- *  *_LABEL_W      measured width of the two group names in Comico 20 px (change if the font changes)  */
-const DOT_PITCH = 98;
-const LABEL_TO_DOT = 22;
-const GROUP_GAP = 52;
-const METAL_LABEL_W = 139;
-const WOOD_LABEL_W = 119;
+/** TIMELINE SPACING (artboard px)
+ *  DOT_PITCH   centre of one dot → centre of the next. IDENTICAL for every dot, in both groups.
+ *              100 keeps the longest name ("REINFORCEMENT", ≈106 wide) ≥ 16 px away from "JOINERY" / "FINISHING".
+ *  gap         NOT a constant: it is solved so that the three marked distances are equal AND the whole row is centred
+ *              (left margin = right margin = METAL_X). See timelineLayout().
+ *  GROUP_W     width of "METAL FRAME" / "WOOD SEAT" at 14 px, used until the real width has been measured. */
+const DOT_PITCH = 100;
+const GROUP_W = { metal: 97.3, wood: 83.3 };
 const DOT_R = 7.5; //   radius of the ring (≈ 15 px across, as in CONCEPT)
 const DOT_Y = 243; //   centre of the dots
-const GROUP_Y = 244; // centre of "METAL FRAME" / "WOOD SEAT"
+const GROUP_Y = 243; // centre of "METAL FRAME" / "WOOD SEAT" = centre of the dots
 const METAL_X = 231; // left of "METAL FRAME" = the page's left line (same x as the section title)
+const GROUP_FS = 14; // font size of "METAL FRAME" / "WOOD SEAT"
 
-/** x of every dot's centre (in stage order) and of "WOOD SEAT", derived from the numbers above */
-function timelineLayout(stages: FabStage[]) {
-  const metalFirst = METAL_X + METAL_LABEL_W + LABEL_TO_DOT;
+type GroupW = { metal: number; wood: number };
+
+/** x of every dot's centre (in stage order), x of "WOOD SEAT", and the gap — all derived from the real label widths */
+function timelineLayout(stages: FabStage[], w: GroupW) {
   const nMetal = stages.filter((s: FabStage) => s.group === "metal").length;
-  const woodX = metalFirst + Math.max(nMetal - 1, 0) * DOT_PITCH + DOT_R + GROUP_GAP;
-  const woodFirst = woodX + WOOD_LABEL_W + LABEL_TO_DOT;
+  const nWood = stages.length - nMetal;
+  const span = 1440 - 2 * METAL_X; // METAL FRAME's left edge → the last dot's right edge (left margin = right margin)
+  const gap = Math.max(12, (span - w.metal - w.wood - 4 * DOT_R - (nMetal - 1 + nWood - 1) * DOT_PITCH) / 3);
+  const metalFirst = METAL_X + w.metal + gap + DOT_R;
+  const woodX = metalFirst + (nMetal - 1) * DOT_PITCH + DOT_R + gap;
+  const woodFirst = woodX + w.wood + gap + DOT_R;
   let m = 0;
-  let w = 0;
-  const dotX = stages.map((s: FabStage) => (s.group === "metal" ? metalFirst + m++ * DOT_PITCH : woodFirst + w++ * DOT_PITCH));
+  let k = 0;
+  const dotX = stages.map((s: FabStage) => (s.group === "metal" ? metalFirst + m++ * DOT_PITCH : woodFirst + k++ * DOT_PITCH));
   return { dotX, woodX };
 }
 
@@ -119,6 +126,10 @@ const paragraphs = (c: string | string[]): string[] => (Array.isArray(c) ? c : [
 /* =============================== COMPONENT =============================== */
 export default function ProjectFabrication({ data }: { data: FabricationData }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const metalRef = useRef<HTMLButtonElement>(null);
+  const woodRef = useRef<HTMLButtonElement>(null);
+  const [labelW, setLabelW] = useState<GroupW>(GROUP_W);
   const [index, setIndex] = useState(0);
   const last = data.stages.length - 1;
 
@@ -139,6 +150,26 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
     return () => io.disconnect();
   }, []);
 
+  /* measure "METAL FRAME" / "WOOD SEAT" in artboard px (once the font is in) so the spacing is exact in any font */
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const measure = () => {
+      if (window.matchMedia("(max-width: 820px)").matches) return; // phones use their own layout
+      const cu = (probeRef.current?.getBoundingClientRect().width ?? 0) / 100; // px per artboard px
+      const m = metalRef.current?.getBoundingClientRect().width ?? 0;
+      const w = woodRef.current?.getBoundingClientRect().width ?? 0;
+      if (!cu || !m || !w) return;
+      const next = { metal: Math.round((m / cu) * 100) / 100, wood: Math.round((w / cu) * 100) / 100 };
+      setLabelW((p: GroupW) => (Math.abs(p.metal - next.metal) < 0.05 && Math.abs(p.wood - next.wood) < 0.05 ? p : next));
+    };
+    measure();
+    document.fonts?.ready.then(measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(section);
+    return () => ro.disconnect();
+  }, []);
+
   const go = (i: number) => setIndex(Math.min(last, Math.max(0, i)));
 
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
@@ -153,11 +184,11 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
     }
   };
 
-  const { dotX, woodX } = timelineLayout(data.stages);
+  const { dotX, woodX } = timelineLayout(data.stages, labelW);
   const metal = data.stages.map((s: FabStage, i: number) => ({ s, i })).filter((x) => x.s.group === "metal");
   const wood = data.stages.map((s: FabStage, i: number) => ({ s, i })).filter((x) => x.s.group === "wood");
 
-  const renderGroup = (title: string, items: { s: FabStage; i: number }[], x: number) => {
+  const renderGroup = (title: string, items: { s: FabStage; i: number }[], x: number, labelRef: React.RefObject<HTMLButtonElement | null>) => {
     const first = items[0]?.i ?? 0;
     const lastI = items[items.length - 1]?.i ?? 0;
     const inGroup = index >= first && index <= lastI;
@@ -165,6 +196,7 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
       <div className="fb-tg">
         {/* the group name is a button too: it opens the first stage of its group */}
         <button
+          ref={labelRef}
           type="button"
           className="fb-gl fb-abs"
           aria-current={inGroup ? "true" : undefined}
@@ -208,6 +240,7 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
   return (
     <section ref={sectionRef} className="fb" aria-label={data.title}>
       <h2 className="fb-title">{data.title}</h2>
+      <span ref={probeRef} className="fb-probe" aria-hidden="true" />
       {/* screen readers: say which stage just opened */}
       <p className="fb-sr" role="status" aria-live="polite">
         {`Stage ${index + 1} of ${last + 1}: ${data.stages[index]?.label ?? ""}`}
@@ -219,8 +252,8 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
 
       {/* the timeline */}
       <nav className="fb-tl" aria-label="Fabrication stages" onKeyDown={onKey}>
-        {renderGroup("Metal frame", metal, METAL_X)}
-        {renderGroup("Wood seat", wood, woodX)}
+        {renderGroup("Metal frame", metal, METAL_X, metalRef)}
+        {renderGroup("Wood seat", wood, woodX, woodRef)}
       </nav>
 
       {/* every stage is in the page; only the open one is visible (so no photo ever has to load on click) */}
@@ -366,13 +399,16 @@ const CSS = `
   margin: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; white-space: nowrap; color: #000;
   -webkit-tap-highlight-color: transparent;
   font-family: "Comico", "Familjen Grotesk", ui-sans-serif, system-ui, sans-serif;
-  font-size: calc(20 * var(--cu)); line-height: calc(26 * var(--cu)); font-weight: 400; font-synthesis: none; letter-spacing: .02em;
+  font-size: calc(${GROUP_FS} * var(--cu)); line-height: calc(26 * var(--cu)); font-weight: 400; font-synthesis: none; letter-spacing: .02em;
   text-transform: uppercase;
 }
 .fb-gl::before { /* a comfortable hit area around the name */
   content: ""; position: absolute; inset: calc(-8 * var(--cu)) calc(-10 * var(--cu));
 }
 .fb-gl:focus-visible { outline: 2px solid #000; outline-offset: calc(4 * var(--cu)); }
+
+/* 100 artboard px, invisible — used to read the current scale (--cu) in JS */
+.fb-probe { position: absolute; left: 0; top: 0; width: calc(100 * var(--cu)); height: 0; visibility: hidden; pointer-events: none; }
 
 /* visually hidden, still read by screen readers */
 .fb-sr {
@@ -472,13 +508,14 @@ const CSS = `
 @media (max-width: 820px) {
   .fb { --edge-l: 16px; height: auto; min-height: 100svh; padding: 104px 16px 72px; }
   .fb-abs { position: static; }
+  .fb-probe { display: none; }
   .fb-title { position: static; font-size: 16px; line-height: 24px; }
   .fb-intro { width: auto; margin-top: 12px; font-size: 14px; line-height: 20px; }
   .fb-intro span:first-child { text-align: left; text-align-last: auto; }
 
   .fb-tl { display: block; margin-top: 24px; }
   .fb-tg { display: block; margin-bottom: 18px; }
-  .fb-gl { display: block; font-size: 16px; line-height: 24px; padding: 10px 0; margin-bottom: 0; }
+  .fb-gl { display: block; font-size: 14px; line-height: 24px; padding: 10px 0; margin-bottom: 0; }
   .fb-gl::before { display: none; }
   .fb-dots { display: flex; justify-content: space-between; }
   .fb-line { display: none; }
