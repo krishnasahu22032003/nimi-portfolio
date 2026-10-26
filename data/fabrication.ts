@@ -13,7 +13,8 @@
  *
  * Images live in  public/projects/seesaw/fabrication/
  * ---------------------------------------------------------------------- */
-export type FabImage = { src: string | null; alt: string };
+/* pos (optional) = CSS object-position for the crop, e.g. "50% 30%" keeps more of the top of a tall photo */
+export type FabImage = { src: string | null; alt: string; pos?: string };
 export type FabGroup = { images: FabImage[]; caption: string | string[] };
 export type FabStage = {
   id: string;
@@ -29,7 +30,8 @@ export type FabricationData = {
 
 const D = "/projects/seesaw/fabrication";
 const img = (name: string, alt: string): FabImage => ({ src: `${D}/${name}.jpg`, alt });
-const empty = (alt: string): FabImage => ({ src: null, alt });
+/* kept for any stage whose photo is still to come: src = null → an empty grey frame */
+export const empty = (alt: string): FabImage => ({ src: null, alt });
 
 export const SEESAW_FABRICATION: FabricationData = {
   title: "FABRICATION",
@@ -124,29 +126,21 @@ export const SEESAW_FABRICATION: FabricationData = {
         { images: [img("joinery-2", "Two finished timber pieces fitted together by hand")], caption: "The finished pieces were fitted together by hand, creating a clean, crafted connection." },
       ],
     },
+    /* "Assembly" was removed — there is no photo for it */
     {
-      /* NO photo and NO caption was supplied for this stage yet — add them here */
-      id: "assembly",
-      group: "wood",
-      label: "Assembly",
-      groups: [{ images: [empty("Assembly photo to come")], caption: "" }],
-    },
-    {
-      /* caption supplied, photo not in the zip yet → replace `empty(...)` with img("reinforcement-1", "...") */
       id: "reinforcement",
       group: "wood",
       label: "Reinforcement",
       groups: [
-        { images: [empty("Metal spacers reinforcing the wooden seat")], caption: "Four metal spacers were added on each side to reinforce the wooden seat, providing firm support and distributing the load across the structure." },
+        { images: [img("reinforcement-1", "Metal spacers reinforcing the wooden seat")], caption: "Four metal spacers were added on each side to reinforce the wooden seat, providing firm support and distributing the load across the structure." },
       ],
     },
     {
-      /* caption supplied, photo not in the zip yet → replace `empty(...)` with img("wood-finishing-1", "...") */
       id: "wood-finishing",
       group: "wood",
       label: "Finishing",
       groups: [
-        { images: [empty("Applying lacquer to the wooden seat")], caption: "Applying a semi-gloss automotive lacquer to seal and protect the wood surface, while giving it a durable finish suited for outdoor use." },
+        { images: [img("wood-finishing-1", "Applying lacquer to the wooden seat")], caption: "Applying a semi-gloss automotive lacquer to seal and protect the wood surface, while giving it a durable finish suited for outdoor use." },
       ],
     },
   ],
