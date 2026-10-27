@@ -18,10 +18,20 @@
  *
  *   Photos change instantly (no cross-fade, no slide). Dots / arrows / keys jump straight to the target.
  *
- * DOTS (changed)
- *   - STATIC: the dot rows are no longer inside the photo groups. They sit at one fixed spot on the
- *     artboard (see DOTS_Y / DOTS_LEFT_X / DOTS_RIGHT_X) — they never slide up/down when the photo
- *     switches portrait ↔ landscape, and they never travel with the photo when it goes off-screen.
+ * FIX (this version) — "the story must ALWAYS start with the LEFT sequence"
+ *   Before: coming back UP from FORM EXPLORATION (or reloading / restoring the scroll position inside the
+ *   section) could land on a middle step, so the viewer saw the END of the right sequence first.
+ *   Now the section keeps track of WHERE the page is relative to it (above · pinned · below):
+ *     - the moment the section is re-entered from BELOW, it is reset to step 0 (both photos in the
+ *       original layout — identical to step 10, so the reset is invisible) and the scroll position is held
+ *       there for a moment so trackpad momentum can't carry the page through the story backwards.
+ *     - a reload / scroll-restore that lands in the middle of the story is reset to step 0 too.
+ *   The reset depends only on the scroll geometry, never on the last step that was shown, so it can't be
+ *   missed by fast scrolling, snapping or momentum.
+ *
+ * DOTS
+ *   - STATIC: the dot rows sit at one fixed spot on the artboard (see DOTS_Y / DOTS_LEFT_X / DOTS_RIGHT_X) —
+ *     they never slide when the photo switches portrait ↔ landscape.
  *   - The active (black) dot is BIG — it fills the whole circle (same outline as the empty ones).
  *
  * UNITS  1u = 1 Canva px, scaled to fit the screen (identical to the artboard at 1440 × 900).
@@ -45,8 +55,14 @@ const DOTS_Y = 713;
 const DOTS_LEFT_X = 446; // centre of the left portrait frame  (231 + 430/2)
 const DOTS_RIGHT_X = 995; // centre of the right portrait frame (780 + 430/2)
 
+/* after the section is re-entered from below, the scroll position is held on the intro for this long (ms)
+ * so leftover trackpad momentum can't scroll the story forward / backward on its own */
+const SETTLE_MS = 450;
+
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+type Zone = "above" | "pinned" | "below";
 
 /* ---------------------------- small helpers ---------------------------- */
 /* "**bold**" → <strong> */
@@ -251,6 +267,13 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
   const stepRef = useRef(0);
   const liveRef = useRef(false);
 
+  /* where the page is relative to this section — decided from scroll geometry only */
+  const zoneRef = useRef<Zone | null>(null);
+  /* true once the page has been BELOW the section (FORM EXPLORATION on screen) → next time it is pinned, restart */
+  const needsResetRef = useRef(false);
+  /* while now < until, the scroll position is held on the intro (kills trackpad momentum after a reset) */
+  const settleUntilRef = useRef(0);
+
   /* jump to a step — instantly, no smooth scrolling, so the dot turns black exactly where you click */
   const jumpTo = useCallback(
     (target: number) => {
@@ -274,12 +297,46 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
     const track = trackRef.current;
     if (!track) return;
     let raf = 0;
+
     const update = () => {
       raf = 0;
       const r = track.getBoundingClientRect();
-      const stepH = track.offsetHeight / (LAST + 1);
-      const s = clamp(Math.round(-r.top / stepH), 0, LAST);
+      const stepH = track.offsetHeight / (LAST + 1); // = 100svh
+      const rawStep = clamp(Math.round(-r.top / stepH), 0, LAST);
+
+      /* ---- where is the page relative to the section? ----
+       *  above  : the section top is still below the top of the screen (intro / previous section on screen)
+       *  below  : the section has been scrolled past (FORM EXPLORATION on screen)
+       *  pinned : the stage is sticking to the screen — the story is playing */
+      const zone: Zone = r.top > 2 ? "above" : r.bottom < stepH - 2 ? "below" : "pinned";
+      const prevZone = zoneRef.current;
+      zoneRef.current = zone;
       liveRef.current = r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.5;
+
+      if (zone === "below") needsResetRef.current = true; //  came from the end → must restart
+      if (zone === "above") needsResetRef.current = false; // came from the intro → natural order
+
+      /* momentum guard: right after a reset, never let the page drift above the intro */
+      if (performance.now() < settleUntilRef.current && zone === "above") {
+        window.scrollTo({ top: r.top + window.scrollY, behavior: "instant" as ScrollBehavior });
+        return;
+      }
+
+      if (zone === "pinned") {
+        /* RE-ENTERED FROM BELOW, or the page was loaded / restored in the middle of the story:
+         * always begin with the LEFT sequence. Step 0 looks exactly like the end state (both photos in the
+         * original layout), so this teleport is invisible. */
+        const restoredMidStory = prevZone === null && rawStep > 0 && rawStep < LAST;
+        if (needsResetRef.current || restoredMidStory) {
+          needsResetRef.current = false;
+          settleUntilRef.current = performance.now() + SETTLE_MS;
+          jumpTo(0);
+          setSeen(true);
+          return;
+        }
+      }
+
+      const s = rawStep;
       if (s === stepRef.current) {
         if (r.top < window.innerHeight * 0.7) setSeen(true);
         return;
@@ -310,16 +367,20 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
       const y = e.changedTouches[0]?.clientY ?? touchY;
       if (touchY - y > 50 && stepRef.current === LAST && liveRef.current && atBottom()) jumpTo(1);
     };
+    /* coming back with the browser's back button (page restored from cache) → measure again */
+    const onPageShow = () => onScroll();
 
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener("pageshow", onPageShow);
     window.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
@@ -462,6 +523,7 @@ function MobileSeries({ slides, name }: { slides: ConceptSlide[]; name: string }
 }
 
 function MobileConcept({ concept }: { concept: ConceptData }): ReactNode {
+  /* left sequence first, right sequence second — the order of the narration */
   return (
     <section className="pc-m" aria-label="Concept">
       <h2 className="pc-m-label">{concept.label}</h2>

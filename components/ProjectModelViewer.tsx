@@ -4,21 +4,27 @@
  *
  * The 3D MODEL viewer — opens from the "3D MODEL" text in FORM EXPLORATION.
  *
- *   LOOK     White page, the bench standing on a soft contact shadow. Pine seat, black satin steel base.
+ *   LOOK     White page, the bench standing on a soft contact shadow. Oak seat, satin metal base.
  *   MOVE     Press and drag → orbit around it, like turning a real object. Scroll / pinch → zoom (limited).
  *            It turns slowly by itself until you touch it, then it is yours. Damped, so it glides.
  *   CLOSE    "CLOSE" (top right) · Esc. Focus returns to the "3D MODEL" text.
  *   GRID     The title and CLOSE sit on the same grid as the CONCEPT / FORM EXPLORATION titles.
  *
- * NEW — the model is now a .glb (Seesaw_F.glb). It carries its own materials from Fusion — "Chestnut" wood
- * (with its grain texture), "Burnished Platinum" and "Satin Silver".
- *   LOOK     Light + colours are tuned to match her Rhino "Rendered" view: warm mid-brown oak (≈ #A98A68 lit),
- *            light-grey satin base (≈ #D2D3D3), soft overhead light, tight shadow under the bench.
- *            Everything you may want to touch is in LIGHT and MATERIAL_LOOK below.
- *   OLD LOOK Set USE_MODEL_MATERIALS = false → flat pine seat + black steel (WOOD_BODIES / WOOD / STEEL).
+ * THIS VERSION — only the METAL changed (the wood is untouched, it was already right).
+ *   Why the metal looked white: the .glb stores the two metals ("Burnished Platinum", "Satin Silver") with the
+ *   glTF default metallicFactor = 1 (fully metal). MATERIAL_LOOK was forcing metalness 0 and a very light colour,
+ *   so they rendered as flat white plastic. A metal has almost no diffuse colour of its own — what you see is the
+ *   REFLECTION of the studio light — so they now get:
+ *     • metalness 1 + a satin roughness (soft, brushed highlights, not a mirror)
+ *     • a light-silver base colour (so it still matches the pale-grey base in her Rhino "Rendered" view)
+ *     • their own reflection strength (`env`), stronger than the wood's, so the reflections are visible
+ *       while the wood keeps exactly the same light as before.
+ *   Everything you may want to touch is in LIGHT and MATERIAL_LOOK below.
  *
- * glTF is already Y-up, so the old Z-up rotation is gone. The model is centred, put on the floor and
- * scaled to a fixed size (its real size in the file is tiny, ~16 cm → MODEL_SIZE units).
+ * OLD LOOK Set USE_MODEL_MATERIALS = false → flat seat + black steel (WOOD_BODIES / WOOD / STEEL).
+ *
+ * glTF is already Y-up. The model is centred, put on the floor and scaled to a fixed size
+ * (its real size in the file is tiny, ~16 cm → MODEL_SIZE units).
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -33,20 +39,23 @@ const WOOD_BODIES = ["Body5"]; //                                    (override m
 const WOOD = { color: "#9b6a43", roughness: 0.52, metalness: 0 }; //  (override mode only) pine
 const STEEL = { color: "#1d1d1f", roughness: 0.42, metalness: 0.85 }; // (override mode only) black satin steel
 
-/* ---- LIGHT — gentle and mostly overhead (it used to be too strong and low, which bleached the wood to pale yellow) ---- */
+/* ---- LIGHT — gentle and mostly overhead (unchanged: the wood is perfect) ---- */
 const LIGHT = {
   key: 0.7, //   the one directional "sun" — raise for more contrast, lower for flatter
   hemi: 0.3, //  soft sky/ground fill
-  env: 0.55, //  studio reflections (1 = what it was; this is the one that bleached the wood). Needs three r163+, see below
+  env: 0.55, //  studio reflections on everything that is NOT in MATERIAL_LOOK with its own `env`. Needs three r163+
   shadow: 0.12, // darkness of the contact shadow on the white floor (0–1)
 };
 const KEY_POS = new THREE.Vector3(1, 10, 2); // where the sun sits: x right, y up, z towards you. Nearly overhead → shadow stays under the bench
 
-/* ---- MATERIAL_LOOK — applied by material name from the .glb. "color" is MULTIPLIED with the wood-grain texture. ---- */
-const MATERIAL_LOOK: Record<string, { color?: string; roughness?: number; metalness?: number }> = {
-  Chestnut: { color: "#b9bbc0" }, //                                       the seat — grain stays, tone = her Rhino oak
-  "Satin Silver": { color: "#e4e4e4", metalness: 0, roughness: 0.6 }, //   the rocker band — light grey satin
-  "Burnished Platinum": { color: "#c6c8c7", metalness: 0.15, roughness: 0.35 }, // the two rim loops — a touch darker
+/* ---- MATERIAL_LOOK — applied by material name from the .glb. "color" is MULTIPLIED with the base colour / texture.
+ *      env = how strongly THIS material reflects the studio light (metals need more than wood).
+ *      Want it more chrome-like → lower roughness / raise env.  Want it more matte → raise roughness / lower env.
+ *      Want it lighter / darker → change color. */
+const MATERIAL_LOOK: Record<string, { color?: string; roughness?: number; metalness?: number; env?: number }> = {
+  Chestnut: { color: "#b9bbc0" }, //                                                          the seat — UNCHANGED
+  "Satin Silver": { color: "#d6d7d8", metalness: 1, roughness: 0.4, env: 1.15 }, //             the rocker band — satin brushed silver
+  "Burnished Platinum": { color: "#b3b7b6", metalness: 1, roughness: 0.3, env: 1.25 }, //       the two rim loops — a touch darker + glossier
 };
 
 const MODEL_SIZE = 4; //            longest side of the bench in scene units (camera is fitted to this)
@@ -151,7 +160,7 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
 
     const scene = new THREE.Scene();
 
-    /* image-based light: soft studio reflections on the steel */
+    /* image-based light: soft studio reflections (this is what a metal actually "looks like") */
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
     scene.environment = envRT.texture;
@@ -258,6 +267,12 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
                 if (look.color) sm.color.set(look.color);
                 if (look.roughness !== undefined) sm.roughness = look.roughness;
                 if (look.metalness !== undefined) sm.metalness = look.metalness;
+                if (look.env !== undefined) {
+                  /* a material's own envMap is the only way to give ONE material a different reflection strength
+                     (scene.environmentIntensity is global) — so the metals get their own, the wood keeps the scene's */
+                  sm.envMap = envRT.texture;
+                  sm.envMapIntensity = look.env;
+                }
               }
               m.needsUpdate = true;
             });
