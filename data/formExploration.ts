@@ -15,7 +15,7 @@
  *   model   NEW — the "3D MODEL" text at the bottom right. Click → the 3D viewer opens.
  *
  * Images live in  public/projects/seesaw/form/
- * 3D model lives in  public/projects/seesaw/model/seesaw.obj
+ * 3D model lives in  public/projects/seesaw/model/seesaw.glb      (CHANGED: was seesaw.obj)
  * ---------------------------------------------------------------------- */
 export type FrameSize = "large" | "medium" | "small";
 
@@ -34,7 +34,7 @@ export type FormTile = {
 export type FormModel = {
   /** the clickable text, Comico 16 */
   label: string;
-  /** .obj file inside /public */
+  /** .glb file inside /public */
   src: string;
   /** accessible description of the 3D scene */
   alt: string;
@@ -52,11 +52,11 @@ const D = "/projects/seesaw/form";
 
 export const SEESAW_FORM_EXPLORATION: FormExplorationData = {
   label: "FORM EXPLORATION",
-  /* NEW */
+  /* CHANGED: now the .glb (Seesaw_F.glb, renamed) — src + alt text */
   model: {
     label: "3D MODEL",
-    src: "/projects/seesaw/model/seesaw.obj",
-    alt: "Interactive 3D model of the Seesaw bench: a pine seat on a black steel rocker base with a loop handle at each end",
+    src: "/projects/seesaw/model/seesaw.glb",
+    alt: "Interactive 3D model of the Seesaw bench: a thin chestnut seat with upturned ends resting on a lens-shaped metal rocker",
   },
   tiles: [
     /* lane 1 */

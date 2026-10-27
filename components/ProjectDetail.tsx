@@ -13,6 +13,12 @@
  *   GREEN LINE : distance between the video frame and the text block       → TEXT_GAP
  *   PAGE 2     : body text is justified (her line breaks are kept; every line except the
  *                last of each paragraph is stretched to the block width)
+ *
+ * NEW — project cover: beige #E0D5C0 rectangle sitting UNDER the photo (same on every project, because
+ *   every project renders through this component). Measured from her marked Canva screenshot
+ *   (1440 × 900 page, photo 694 × 852):  25px of beige above, below and to the left of the photo  →  BEIGE_PAD,
+ *   and the beige STOPS at her green marks, 71.4% of the way across the photo (the rest is hidden behind
+ *   the photo, so the top/bottom strips end there)  →  BEIGE_REACH.
  */
 import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef } from "react";
@@ -27,6 +33,17 @@ const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], d
 const HEADER_H = 96; // px — height of your site header. The video starts BELOW it.
 const COLOR_INK = "#000";
 const COLOR_GREY = "#404040";
+const COLOR_BEIGE = "#E0D5C0"; // NEW — the rectangle under the photo (her colour code)
+
+/* NEW — how far the beige rectangle reaches past the photo on the TOP, LEFT and BOTTOM (right edge is flush).
+   Canva: ~25px on a 1440-wide page → 25 / 1440 = 1.74cqw (the same token as the page-1 bottom margin below).
+   On phones (≤820px) it switches to a fixed 16px so the panel meets the screen edge. */
+const BEIGE_PAD = 1.74;
+
+/* NEW — where the beige ENDS on the right, as a share of the photo's width, counted from the photo's left edge.
+   Her green marks sit at 282px of the 395px-wide photo in the screenshot → 0.714.
+   0.714 = ends at her marks · 1 = flush with the photo's right edge · 0.5 = ends at the middle. */
+const BEIGE_REACH = 0.714;
 
 /* BLACK LINE — video left edge = logo left edge.
    Measured: logo left x=137 on a 1600-wide screenshot → 8.56cqw.
@@ -147,6 +164,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
         "--header-h": `${HEADER_H}px`,
         "--ink": COLOR_INK,
         "--grey": COLOR_GREY,
+        "--beige": COLOR_BEIGE,
+        "--beige-pad": `${BEIGE_PAD}cqw`,
+        "--beige-reach": BEIGE_REACH,
         "--video-left": `${VIDEO_LEFT}cqw`,
         "--text-gap": `${TEXT_GAP}cqw`,
         "--intro-align": INTRO_V === "center" ? "center" : "end",
@@ -156,25 +176,29 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     >
       {/* ============================ PAGE 1 — video + intro ============================ */}
       <section className="pd-page pd-hero" aria-label={`${project.title} — overview`}>
-        <div className="pd-video">
-          <video
-            ref={videoRef}
-            className="pd-video-el"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            tabIndex={-1}
-            aria-label={video.label}
-            disablePictureInPicture
-            disableRemotePlayback
-            style={{ objectPosition: video.position ?? "50% 50%" }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {video.webm && <source src={video.webm} type="video/webm" />}
-            <source src={video.mp4} type="video/mp4" />
-          </video>
+        {/* NEW — .pd-cover wraps the photo and carries the beige rectangle behind it */}
+        <div className="pd-cover">
+          <div className="pd-cover-bg" aria-hidden="true" />
+          <div className="pd-video">
+            <video
+              ref={videoRef}
+              className="pd-video-el"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              tabIndex={-1}
+              aria-label={video.label}
+              disablePictureInPicture
+              disableRemotePlayback
+              style={{ objectPosition: video.position ?? "50% 50%" }}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              {video.webm && <source src={video.webm} type="video/webm" />}
+              <source src={video.mp4} type="video/mp4" />
+            </video>
+          </div>
         </div>
 
         <div className="pd-intro">
@@ -270,9 +294,23 @@ html.pd-snap { scroll-snap-type: y mandatory; }
   align-content: start;
 }
 
-.pd-video {
-  position: relative; overflow: hidden; background: #efefef;
+/* NEW — the cover = photo + beige rectangle. It takes over the photo's old size and grid cell. */
+.pd-cover {
+  position: relative;
   width: var(--vid-w); height: var(--vid-h);
+}
+/* beige rectangle: reaches --beige-pad past the photo on top / left / bottom and ends at --beige-reach of the photo's width */
+.pd-cover-bg {
+  position: absolute; z-index: 0;
+  top: calc(-1 * var(--beige-pad)); bottom: calc(-1 * var(--beige-pad));
+  left: calc(-1 * var(--beige-pad)); right: calc((1 - var(--beige-reach)) * 100%);
+  background: var(--beige);
+  pointer-events: none;
+}
+
+.pd-video {
+  position: relative; z-index: 1; overflow: hidden; background: #efefef;
+  width: 100%; height: 100%;
   clip-path: inset(100% 0 0 0);
   transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1);
 }
@@ -363,7 +401,9 @@ html.pd-snap { scroll-snap-type: y mandatory; }
     grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
     row-gap: 32px; align-content: start;
   }
-  .pd-video { width: var(--vid-w); height: auto; aspect-ratio: 694 / 852; }
+  .pd-hero { --beige-pad: 16px; } /* NEW — meets the screen edge, same as the hero's 16px side padding */
+  .pd-cover { width: var(--vid-w); height: auto; }
+  .pd-video { width: 100%; height: auto; aspect-ratio: 694 / 852; }
   .pd-intro { align-self: start; justify-self: start; padding: 0; width: 100%; }
   .pd-story { min-height: 0; place-items: start center; padding: 56px 16px 96px; }
   .pd-read  { width: 100%; max-width: 34rem; }

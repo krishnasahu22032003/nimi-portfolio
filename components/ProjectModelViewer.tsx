@@ -10,23 +10,26 @@
  *   CLOSE    "CLOSE" (top right) · Esc. Focus returns to the "3D MODEL" text.
  *   GRID     The title and CLOSE sit on the same grid as the CONCEPT / FORM EXPLORATION titles.
  *
- * The .obj has NO materials file (Fusion only wrote the names), so the two materials are rebuilt here:
- *   WOOD_BODIES  = the bodies that are the pine seat (everything else = black satin steel).
- *   Tune the colours / roughness in WOOD and STEEL below.
+ * NEW — the model is now a .glb (Seesaw_F.glb). It carries its own materials from Fusion — "Chestnut" wood
+ * (with its grain texture), "Burnished Platinum" and "Satin Silver" — and those are used as they are.
+ *   Want the old look back (flat pine seat + black steel)?  Set USE_MODEL_MATERIALS = false below;
+ *   WOOD_BODIES / WOOD / STEEL then take over again.
  *
- * The file is Z-up (Fusion 360) → rotated to Y-up, centred, put on the floor and scaled to a fixed size.
+ * glTF is already Y-up, so the old Z-up rotation is gone. The model is centred, put on the floor and
+ * scaled to a fixed size (its real size in the file is tiny, ~16 cm → MODEL_SIZE units).
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as THREE from "three";
-import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /* ------------------------------ TUNING ------------------------------ */
-const WOOD_BODIES = ["Body5"]; //                                    group names (from the .obj) that are the seat
-const WOOD = { color: "#9b6a43", roughness: 0.52, metalness: 0 }; //  "3D Pine – Stained light semigloss"
-const STEEL = { color: "#1d1d1f", roughness: 0.42, metalness: 0.85 }; // "Steel – Satin", shown black
+const USE_MODEL_MATERIALS: boolean = true; // true = the materials stored in the .glb · false = the two overrides below
+const WOOD_BODIES = ["Body5"]; //                                    (override mode only) object names that are the seat
+const WOOD = { color: "#9b6a43", roughness: 0.52, metalness: 0 }; //  (override mode only) pine
+const STEEL = { color: "#1d1d1f", roughness: 0.42, metalness: 0.85 }; // (override mode only) black satin steel
 
 const MODEL_SIZE = 4; //            longest side of the bench in scene units (camera is fitted to this)
 const FOV = 30;
@@ -37,13 +40,21 @@ const ZOOM_MAX = 1.5;
 
 const HEADER_H = 96; // px — same as the other sections
 
+/* frees a material AND the textures it holds (the .glb's wood grain is a texture) */
+function disposeMaterial(m: THREE.Material) {
+  Object.values(m).forEach((v: unknown) => {
+    if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose();
+  });
+  m.dispose();
+}
+
 function disposeObject(root: THREE.Object3D) {
   root.traverse((o: THREE.Object3D) => {
     const m = o as THREE.Mesh;
     if (m.geometry) m.geometry.dispose();
     const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-    if (Array.isArray(mat)) mat.forEach((x: THREE.Material) => x.dispose());
-    else mat?.dispose();
+    if (Array.isArray(mat)) mat.forEach(disposeMaterial);
+    else if (mat) disposeMaterial(mat);
   });
 }
 
@@ -197,13 +208,15 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
     ro.observe(stage);
     resize();
 
-    /* load the .obj */
+    /* load the .glb */
     let model: THREE.Group | null = null;
     const woodMat = new THREE.MeshStandardMaterial({ ...WOOD, side: THREE.DoubleSide });
     const steelMat = new THREE.MeshStandardMaterial({ ...STEEL, side: THREE.DoubleSide });
-    new OBJLoader().load(
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+    new GLTFLoader().load(
       src,
-      (obj: THREE.Group) => {
+      (gltf) => {
+        const obj = gltf.scene;
         if (disposed) {
           disposeObject(obj);
           return;
@@ -211,18 +224,29 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
         obj.traverse((o: THREE.Object3D) => {
           const mesh = o as THREE.Mesh;
           if (!mesh.isMesh) return;
-          const names = [mesh.name, mesh.parent?.name ?? ""];
-          const isWood = WOOD_BODIES.some((n: string) => names.includes(n));
           const old = mesh.material as THREE.Material | THREE.Material[];
-          (Array.isArray(old) ? old : [old]).forEach((m: THREE.Material) => m.dispose());
-          mesh.material = isWood ? woodMat : steelMat;
+          const olds: THREE.Material[] = Array.isArray(old) ? old : [old];
+
+          if (USE_MODEL_MATERIALS) {
+            /* keep the .glb's own materials; thin shells show from both sides, wood grain stays sharp at grazing angles */
+            olds.forEach((m: THREE.Material) => {
+              m.side = THREE.DoubleSide;
+              const map = (m as THREE.MeshStandardMaterial).map;
+              if (map) map.anisotropy = maxAniso;
+              m.needsUpdate = true;
+            });
+          } else {
+            const names = [mesh.name, mesh.parent?.name ?? ""];
+            const isWood = WOOD_BODIES.some((n: string) => names.includes(n));
+            olds.forEach(disposeMaterial);
+            mesh.material = isWood ? woodMat : steelMat;
+          }
           mesh.castShadow = true;
           mesh.receiveShadow = true;
         });
 
-        /* Z-up → Y-up, centre it, stand it on the floor, scale to MODEL_SIZE */
+        /* centre it, stand it on the floor, scale to MODEL_SIZE (glTF is already Y-up — no rotation needed) */
         const pivot = new THREE.Group();
-        obj.rotation.x = -Math.PI / 2;
         pivot.add(obj);
         pivot.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(pivot);
