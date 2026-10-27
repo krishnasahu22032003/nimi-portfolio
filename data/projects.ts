@@ -3,7 +3,9 @@
  *
  * One entry per project (key = slug, must match the slug in the slider).
  * Optional `concept`          → the CONCEPT section           (content lives in data/concept.ts).
- * NEW: optional `formExploration` → the FORM EXPLORATION section (content lives in data/formExploration.ts).
+ * Optional `formExploration`  → the FORM EXPLORATION section  (content lives in data/formExploration.ts).
+ * Optional `fabrication`      → the FABRICATION section       (content lives in data/fabrication.ts).
+ * NEW: optional `ending`      → the closing landscape clip    (content lives in data/ending.ts).
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines simply reflow.
@@ -14,6 +16,8 @@ import type { FormExplorationData } from "./formExploration";
 import { SEESAW_FORM_EXPLORATION } from "./formExploration";
 import type { FabricationData } from "./fabrication";
 import { SEESAW_FABRICATION } from "./fabrication";
+import type { EndingData } from "./ending"; // NEW
+import { SEESAW_ENDING } from "./ending"; // NEW
 
 export type ProjectDetailData = {
   slug: string;
@@ -36,8 +40,11 @@ export type ProjectDetailData = {
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
-    formExploration?: FormExplorationData;
-  fabrication?: FabricationData;   // ← add this
+  formExploration?: FormExplorationData;
+  /** optional FABRICATION section (clickable timeline) */
+  fabrication?: FabricationData;
+  /** NEW — optional ENDING: the closing landscape clip, centred, after fabrication */
+  ending?: EndingData;
 };
 
 export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
@@ -80,7 +87,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     },
     concept: SEESAW_CONCEPT,
     formExploration: SEESAW_FORM_EXPLORATION,
-      fabrication: SEESAW_FABRICATION, 
+    fabrication: SEESAW_FABRICATION,
+    ending: SEESAW_ENDING, // NEW
   },
 };
 

@@ -11,9 +11,11 @@
  *   GRID     The title and CLOSE sit on the same grid as the CONCEPT / FORM EXPLORATION titles.
  *
  * NEW — the model is now a .glb (Seesaw_F.glb). It carries its own materials from Fusion — "Chestnut" wood
- * (with its grain texture), "Burnished Platinum" and "Satin Silver" — and those are used as they are.
- *   Want the old look back (flat pine seat + black steel)?  Set USE_MODEL_MATERIALS = false below;
- *   WOOD_BODIES / WOOD / STEEL then take over again.
+ * (with its grain texture), "Burnished Platinum" and "Satin Silver".
+ *   LOOK     Light + colours are tuned to match her Rhino "Rendered" view: warm mid-brown oak (≈ #A98A68 lit),
+ *            light-grey satin base (≈ #D2D3D3), soft overhead light, tight shadow under the bench.
+ *            Everything you may want to touch is in LIGHT and MATERIAL_LOOK below.
+ *   OLD LOOK Set USE_MODEL_MATERIALS = false → flat pine seat + black steel (WOOD_BODIES / WOOD / STEEL).
  *
  * glTF is already Y-up, so the old Z-up rotation is gone. The model is centred, put on the floor and
  * scaled to a fixed size (its real size in the file is tiny, ~16 cm → MODEL_SIZE units).
@@ -30,6 +32,22 @@ const USE_MODEL_MATERIALS: boolean = true; // true = the materials stored in the
 const WOOD_BODIES = ["Body5"]; //                                    (override mode only) object names that are the seat
 const WOOD = { color: "#9b6a43", roughness: 0.52, metalness: 0 }; //  (override mode only) pine
 const STEEL = { color: "#1d1d1f", roughness: 0.42, metalness: 0.85 }; // (override mode only) black satin steel
+
+/* ---- LIGHT — gentle and mostly overhead (it used to be too strong and low, which bleached the wood to pale yellow) ---- */
+const LIGHT = {
+  key: 0.7, //   the one directional "sun" — raise for more contrast, lower for flatter
+  hemi: 0.3, //  soft sky/ground fill
+  env: 0.55, //  studio reflections (1 = what it was; this is the one that bleached the wood). Needs three r163+, see below
+  shadow: 0.12, // darkness of the contact shadow on the white floor (0–1)
+};
+const KEY_POS = new THREE.Vector3(1, 10, 2); // where the sun sits: x right, y up, z towards you. Nearly overhead → shadow stays under the bench
+
+/* ---- MATERIAL_LOOK — applied by material name from the .glb. "color" is MULTIPLIED with the wood-grain texture. ---- */
+const MATERIAL_LOOK: Record<string, { color?: string; roughness?: number; metalness?: number }> = {
+  Chestnut: { color: "#b9bbc0" }, //                                       the seat — grain stays, tone = her Rhino oak
+  "Satin Silver": { color: "#e4e4e4", metalness: 0, roughness: 0.6 }, //   the rocker band — light grey satin
+  "Burnished Platinum": { color: "#c6c8c7", metalness: 0.15, roughness: 0.35 }, // the two rim loops — a touch darker
+};
 
 const MODEL_SIZE = 4; //            longest side of the bench in scene units (camera is fitted to this)
 const FOV = 30;
@@ -137,12 +155,13 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
     scene.environment = envRT.texture;
+    (scene as THREE.Scene & { environmentIntensity?: number }).environmentIntensity = LIGHT.env; // three r163+
 
     const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
 
     /* key light, casts the contact shadow */
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(3.5, 6, 4);
+    const key = new THREE.DirectionalLight(0xffffff, LIGHT.key);
+    key.position.copy(KEY_POS);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.camera.left = -4;
@@ -155,10 +174,10 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
     key.shadow.bias = -0.0004;
     key.shadow.normalBias = 0.02;
     scene.add(key);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xdddddd, 0.35));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xdddddd, LIGHT.hemi));
 
     /* the floor only shows the shadow — the page stays pure white */
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: LIGHT.shadow }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
@@ -230,9 +249,16 @@ export default function ProjectModelViewer({ src, label, alt, onClose }: Props) 
           if (USE_MODEL_MATERIALS) {
             /* keep the .glb's own materials; thin shells show from both sides, wood grain stays sharp at grazing angles */
             olds.forEach((m: THREE.Material) => {
+              const sm = m as THREE.MeshStandardMaterial;
               m.side = THREE.DoubleSide;
-              const map = (m as THREE.MeshStandardMaterial).map;
-              if (map) map.anisotropy = maxAniso;
+              if (sm.map) sm.map.anisotropy = maxAniso;
+              sm.envMapIntensity = LIGHT.env; // older three versions read the reflection strength from here
+              const look = MATERIAL_LOOK[m.name];
+              if (look) {
+                if (look.color) sm.color.set(look.color);
+                if (look.roughness !== undefined) sm.roughness = look.roughness;
+                if (look.metalness !== undefined) sm.metalness = look.metalness;
+              }
               m.needsUpdate = true;
             });
           } else {
