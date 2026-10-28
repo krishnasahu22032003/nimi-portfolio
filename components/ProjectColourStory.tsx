@@ -23,10 +23,10 @@ import { useEffect, useRef, useState } from "react";
 import { ColourStoryData } from "@/data/Colourstory ";
 
 /* ------------------------------ TUNING ------------------------------ */
-const FIRST_DELAY_MS = 8000; // section on screen → first change (unchanged)
-const GAP_MIN_MS = 2500; //     shortest pause between two changes  (keep > FADE_MS so fades never overlap)
-const GAP_MAX_MS = 4000; //     longest pause between two changes
-const FADE_MS = 1400; //        length of the colour cross-fade (unchanged)
+const FIRST_DELAY_MS = 6000; // section on screen → first change (unchanged)
+const GAP_MIN_MS = 1500; //     shortest pause between two changes  (keep > FADE_MS so fades never overlap)
+const GAP_MAX_MS = 2000; //     longest pause between two changes
+const FADE_MS = 1000; //        length of the colour cross-fade (unchanged)
 
 /* Canva geometry (px on the 1440 × 900 artboard) */
 const GRID_X = 90, GRID_Y = 128, TILE = 322; // 2 × 2 tiles of 322 → 644 × 644
