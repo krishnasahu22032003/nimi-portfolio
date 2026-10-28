@@ -61,9 +61,9 @@ const DOTS_RIGHT_X = 995; // centre of the right portrait frame (780 + 430/2)
 
 /* after the section is re-entered from below, the scroll position is held on the intro for this long (ms)
  * so leftover trackpad momentum can't scroll the story forward / backward on its own */
-const SETTLE_MS = 450;
+const SETTLE_MS = 160;
 /* scroll-snap stays OFF this long after every teleport (ms) so the browser can't snap back to the end step */
-const SNAP_HOLD_MS = 180;
+const SNAP_HOLD_MS = 120;
 /* how many times a failed reset teleport is retried before giving up */
 const RESET_TRIES = 6;
 
@@ -188,7 +188,7 @@ function Media({ slide, priority }: { slide: ConceptSlide; priority?: boolean })
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="auto"
         poster={slide.poster}
         tabIndex={-1}
         aria-label={slide.alt}
@@ -210,6 +210,7 @@ function Media({ slide, priority }: { slide: ConceptSlide; priority?: boolean })
       sizes="(max-width: 820px) 100vw, 45vw"
       quality={90}
       priority={priority}
+      loading={priority ? undefined : "eager"}
       style={{ objectFit: "cover", objectPosition: pos }}
     />
   );
@@ -616,6 +617,7 @@ const CSS = `
 
 .pc-stage {
   position: sticky; top: 0; height: 100svh; overflow: hidden; z-index: 0;
+  contain: layout paint;
 }
 .pc-canvas {
   position: absolute; left: 50%; top: var(--header-h);
@@ -638,6 +640,8 @@ const CSS = `
   position: absolute;
   /* only the slide-on / slide-off of the whole photo animates — never the size/position swap between images */
   transition: transform 1.1s var(--ease-io), opacity .7s ease;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 /* portrait frame 430 × 644 — left at (231, 139), right at (780, 139) */
 .pc-left  { left: calc(231 * var(--u)); top: calc(43 * var(--u)); width: calc(${FRAME_W} * var(--u)); height: calc(${FRAME_H} * var(--u)); }
