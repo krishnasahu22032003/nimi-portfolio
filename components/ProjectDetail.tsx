@@ -32,7 +32,8 @@ import ProjectConcept from "./ProjectConcept";
 import ProjectFormExploration from "./ProjectFormExploration";
 import ProjectFabrication from "./ProjectFabrication";
 import ProjectEnding from "./ProjectEnding";
-import ProjectColourStory from "./ProjectColourStory";
+import ProjectColourStory from "./ProjectColourStory"; // NEW
+import ProjectCollage from "./ProjectCollage"; // NEW
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
@@ -160,7 +161,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, colourStory } = project;
+  const { video, image, story, colourStory, collage } = project;
 
   return (
     <main
@@ -261,6 +262,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
       {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
       {colourStory ? <ProjectColourStory data={colourStory} /> : null}
+
+      {/* ============================ PAGE 3 (project two) — collage: chair cutouts + sketch + statement ============================ */}
+      {collage ? <ProjectCollage data={collage} /> : null}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}

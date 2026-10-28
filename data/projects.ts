@@ -20,6 +20,8 @@ import type { EndingData } from "./ending";
 import { SEESAW_ENDING } from "./ending";
 import { ColourStoryData } from "./Colourstory ";
 import { CHAIR_COLOUR_STORY } from "./Colourstory ";
+import { CollageData } from "./Collage ";
+import { CHAIR_COLLAGE } from "./Collage ";
 
 export type ProjectDetailData = {
   slug: string;
@@ -49,6 +51,8 @@ export type ProjectDetailData = {
   };
   /** NEW — tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
+  /** NEW — collage page: chair cutouts, sketch, statement text (data/collage.ts) */
+  collage?: CollageData;
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
@@ -116,6 +120,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
       position: "50% 50%",
     },
     colourStory: CHAIR_COLOUR_STORY,
+    collage: CHAIR_COLLAGE, // NEW
     /* concept / formExploration / fabrication / ending → add later, same way as project one */
   },
 };
