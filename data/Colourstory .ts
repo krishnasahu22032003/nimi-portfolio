@@ -8,18 +8,14 @@
  *   Tile positions: 1 top-left · 2 top-right · 3 bottom-left · 4 bottom-right
  *   Same chair, SAME position in each pair — only the colour differs.
  *
- * WHAT THE PAGE DOES (her reference page: left grid = "after", right grid = "before")
- *   The page opens on the "before" set (11 · 22 · 33 · 44). Then, one tile at a time and in this order
- *   (timings are in ProjectColourStory.tsx):
- *        8 s  → the 2nd tile changes   (22 → 2)
- *        +3 s → the 3rd tile changes   (33 → 3)
- *        +3 s → the 4th tile changes   (44 → 4)
- *        +3 s → the 1st tile changes   (11 → 1)
- *   until the page shows the "after" set (1 · 2 · 3 · 4).
+ * WHAT THE PAGE DOES
+ *   It opens on the SHOW_FIRST set. After 8 s the tiles start flipping between their two colours —
+ *   1 ↔ 11 · 2 ↔ 22 · 3 ↔ 33 · 4 ↔ 44 — one tile at a time, in a random order, at random moments, forever
+ *   (speed / timings: top of ProjectColourStory.tsx).
  *
  * ONE-WORD SWITCH: her reference page contradicts itself — its labels say before = 11-44 / after = 1-4,
- * but its sentences say "1 will be replaced by 11". If she wants the OTHER direction, change SHOW_FIRST below
- * to "after" (opens on 1·2·3·4 and changes into 11·22·33·44). Nothing else needs to change.
+ * but its sentences say "1 will be replaced by 11". SHOW_FIRST only decides which set is on screen when the page
+ * opens ("before" = 11·22·33·44, "after" = 1·2·3·4); the endless flipping is the same either way.
  */
 const D = "/projects/chandigarh";
 const EXT = "jpg"; // ← file type of the 8 chair images: "jpg" · "jpeg" · "png" · "webp"

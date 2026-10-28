@@ -4,17 +4,17 @@
  *
  * Page 2 of project "two" — 2 × 2 tiles + text (Canva 1440 × 900 artboard).
  *
- * BEHAVIOUR  (clock starts when the section is ~40 % on screen)
- *     +8 s  tile 2 → 22
- *     +3 s  tile 3 → 33
- *     +3 s  tile 4 → 44
- *     +3 s  tile 1 → 11
- *   Each swap is a soft cross-fade in the SAME spot — same chair, same placement, only the colour changes.
- *   Change ORDER / the timings below; RANDOM_ORDER = true shuffles the order on every visit.
+ * BEHAVIOUR — endless, random
+ *   Once the section is on screen (≥ 40 %), the first change happens after FIRST_DELAY_MS (8 s, as before).
+ *   From then on, ONE tile at a time flips between its two colours (1 ↔ 11, 2 ↔ 22, 3 ↔ 33, 4 ↔ 44),
+ *   forever, at random moments (GAP_MIN_MS … GAP_MAX_MS between changes, ≈ 3 s on average like before).
+ *   The ORDER is random too: every round all four tiles change once in a shuffled order, then the order is
+ *   shuffled again — so no tile is ever left behind and the same tile never changes twice in a row.
+ *   Speed of each colour change is unchanged: a soft 1.4 s cross-fade in the SAME spot.
+ *   The loop pauses while the section is off screen or the browser tab is hidden (saves battery / CPU).
  *
  * Font: inherited from ProjectDetail's <main> (Familjen Grotesk) — so it is automatically the site font.
- * Text size 18.6px: measured — her longest lines are 477–490 px wide on the 1440 artboard, which is exactly
- * what Familjen Grotesk Regular gives at 18.6px.
+ * Text size 18.6px: measured against her Canva lines (477–490 px wide on the 1440 artboard).
  *
  * UNITS  1u = 1 Canva px, scaled to fit the screen (exact at 1440 × 900).
  */
@@ -23,51 +23,71 @@ import { useEffect, useRef, useState } from "react";
 import { ColourStoryData } from "@/data/Colourstory ";
 
 /* ------------------------------ TUNING ------------------------------ */
-const FIRST_DELAY_MS = 8000; // section on screen → first change
-const GAP_MS = 3000; //         between the following changes
-const FADE_MS = 1400; //        length of the colour cross-fade
-const ORDER = [1, 2, 3, 0]; //  tile indexes → 2nd, 3rd, 4th, then 1st
-const RANDOM_ORDER = false;
+const FIRST_DELAY_MS = 8000; // section on screen → first change (unchanged)
+const GAP_MIN_MS = 2500; //     shortest pause between two changes  (keep > FADE_MS so fades never overlap)
+const GAP_MAX_MS = 4000; //     longest pause between two changes
+const FADE_MS = 1400; //        length of the colour cross-fade (unchanged)
 
 /* Canva geometry (px on the 1440 × 900 artboard) */
 const GRID_X = 90, GRID_Y = 128, TILE = 322; // 2 × 2 tiles of 322 → 644 × 644
 const TEXT_X = 833, TEXT_Y = 484; //            top of the first line's box (its centre sits at y = 497)
 const TEXT_PX = 18.6, TEXT_LH = 26; //          font-size / line-height (also the blank line between paragraphs)
 
+const randomGap = () => GAP_MIN_MS + Math.random() * (GAP_MAX_MS - GAP_MIN_MS);
+
 export default function ProjectColourStory({ data }: { data: ColourStoryData }) {
   const { tiles, text } = data;
   const ref = useRef<HTMLElement>(null);
-  const [started, setStarted] = useState(false);
-  const [swapped, setSwapped] = useState<boolean[]>(() => tiles.map(() => false));
+  const [inView, setInView] = useState(false);
+  const [flipped, setFlipped] = useState<boolean[]>(() => tiles.map(() => false));
+  const firstRef = useRef(true); // the 8 s wait only happens once
+  const bagRef = useRef<number[]>([]); // tiles still to change in the current round
+  const lastRef = useRef(-1); // the tile that changed last
 
+  /* on / off screen */
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setStarted(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.4 }
-    );
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.4 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
+  /* the endless random schedule */
   useEffect(() => {
-    if (!started) return;
-    const order = ORDER.filter((i) => i < tiles.length);
-    if (RANDOM_ORDER) order.sort(() => Math.random() - 0.5);
-    const timers = order.map((tileIdx, n) =>
-      window.setTimeout(
-        () => setSwapped((prev) => prev.map((v, i) => (i === tileIdx ? true : v))),
-        FIRST_DELAY_MS + n * GAP_MS
-      )
-    );
-    return () => timers.forEach(window.clearTimeout);
-  }, [started, tiles.length]);
+    if (!inView) return;
+    let timer = 0;
+
+    /* shuffled rounds: every tile once per round, never the same tile twice in a row */
+    const nextTile = () => {
+      if (bagRef.current.length === 0) {
+        const bag = tiles.map((_, i) => i);
+        for (let i = bag.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+        if (bag.length > 1 && bag[0] === lastRef.current) [bag[0], bag[1]] = [bag[1], bag[0]];
+        bagRef.current = bag;
+      }
+      const t = bagRef.current.shift() as number;
+      lastRef.current = t;
+      return t;
+    };
+
+    const schedule = (delay: number) => {
+      timer = window.setTimeout(() => {
+        firstRef.current = false;
+        if (!document.hidden) {
+          const t = nextTile();
+          setFlipped((prev) => prev.map((v, i) => (i === t ? !v : v)));
+        }
+        schedule(randomGap());
+      }, delay);
+    };
+
+    schedule(firstRef.current ? FIRST_DELAY_MS : randomGap());
+    return () => window.clearTimeout(timer);
+  }, [inView, tiles]);
 
   return (
     /* "pd-page" → same 100svh snap behaviour as the other pages of the project */
@@ -75,7 +95,7 @@ export default function ProjectColourStory({ data }: { data: ColourStoryData }) 
       <div className="cs-canvas">
         <div className="cs-grid">
           {tiles.map((t, i) => (
-            <div key={t.from} className={`cs-tile${swapped[i] ? " is-swapped" : ""}`}>
+            <div key={t.from} className={`cs-tile${flipped[i] ? " is-swapped" : ""}`}>
               <Image className="cs-img" src={t.from} alt={t.alt} fill sizes="(max-width: 820px) 50vw, 25vw" quality={90} loading="eager" />
               <Image className="cs-img cs-to" src={t.to} alt="" aria-hidden="true" fill sizes="(max-width: 820px) 50vw, 25vw" quality={90} loading="eager" />
             </div>
