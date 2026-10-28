@@ -1,7 +1,6 @@
 /* -------------------------------------------------------------------------
  * app/projects/[slug]/page.tsx        (or src/app/projects/[slug]/page.tsx)
- * Relative imports → works without any "@/" alias. Path assumes NO src folder
- * and the files at  components/ProjectDetail.tsx  and  data/projects.ts
+ * Only change: the metadata description no longer assumes `note` exists.
  * ---------------------------------------------------------------------- */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -18,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const p = PROJECT_DETAILS[slug];
   if (!p) return {};
-  return { title: `${p.title} — ${p.tagline}`, description: p.note.join(" ") };
+  return { title: `${p.title} — ${p.tagline}`, description: p.note ? p.note.join(" ") : p.tags };
 }
 
 export default async function ProjectPage({ params }: Props) {

@@ -2,10 +2,10 @@
  * data/projects.ts        (or src/data/projects.ts if you use a src folder)
  *
  * One entry per project (key = slug, must match the slug in the slider).
- * Optional `concept`          → the CONCEPT section           (content lives in data/concept.ts).
- * Optional `formExploration`  → the FORM EXPLORATION section  (content lives in data/formExploration.ts).
- * Optional `fabrication`      → the FABRICATION section       (content lives in data/fabrication.ts).
- * NEW: optional `ending`      → the closing landscape clip    (content lives in data/ending.ts).
+ * Hero media: EITHER `video` (project one) OR `image` (project two).
+ * Optional `story`            → page 2 heading + paragraphs (project one).
+ * NEW optional `colourStory`  → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
+ * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines simply reflow.
@@ -16,34 +16,46 @@ import type { FormExplorationData } from "./formExploration";
 import { SEESAW_FORM_EXPLORATION } from "./formExploration";
 import type { FabricationData } from "./fabrication";
 import { SEESAW_FABRICATION } from "./fabrication";
-import type { EndingData } from "./ending"; // NEW
-import { SEESAW_ENDING } from "./ending"; // NEW
+import type { EndingData } from "./ending";
+import { SEESAW_ENDING } from "./ending";
+import { ColourStoryData } from "./Colourstory ";
+import { CHAIR_COLOUR_STORY } from "./Colourstory ";
 
 export type ProjectDetailData = {
   slug: string;
   title: string; // 18 · Medium · #000
   tagline: string; // 18 · Medium · #000
   tags: string; // 14 · Regular · #404040
-  meta: string; // 14 · Regular · #404040
-  note: string[]; // 14 · Regular · #404040 — one string per line
-  video: {
+  meta?: string; // 14 · Regular · #404040   (CHANGED: optional)
+  note?: string[]; // 14 · Regular · #404040 — one string per line   (CHANGED: optional)
+  /** hero VIDEO (project one) */
+  video?: {
     mp4: string;
     webm?: string;
     label: string; // accessible description (silent, no controls)
     /** which part of the clip stays visible when it is cropped into the portrait frame */
     position?: string; // CSS object-position, default "50% 50%"
   };
-  story: {
+  /** NEW — hero PHOTO (project two). Same frame, same beige panel, same reveal as the video. */
+  image?: {
+    src: string;
+    alt: string;
+    position?: string; // CSS object-position, default "50% 50%"
+  };
+  /** CHANGED: optional — project two has no heading + paragraphs page */
+  story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
   };
+  /** NEW — tiles that change colour one after another + text */
+  colourStory?: ColourStoryData;
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
   formExploration?: FormExplorationData;
   /** optional FABRICATION section (clickable timeline) */
   fabrication?: FabricationData;
-  /** NEW — optional ENDING: the closing landscape clip, centred, after fabrication */
+  /** optional ENDING: the closing landscape clip, centred, after fabrication */
   ending?: EndingData;
 };
 
@@ -88,7 +100,23 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     concept: SEESAW_CONCEPT,
     formExploration: SEESAW_FORM_EXPLORATION,
     fabrication: SEESAW_FABRICATION,
-    ending: SEESAW_ENDING, // NEW
+    ending: SEESAW_ENDING,
+  },
+
+  /* ============================ NEW — project two ============================ */
+  two: {
+    slug: "two",
+    title: "Beso. “to sit”",
+    tagline: "Chandigarh Chair",
+    tags: "Skill-based project · Furniture making",
+    /* page 1 on her Canva has only these three lines → no `meta`, no `note` */
+    image: {
+      src: "/projects/chandigarh/hero.jpg", // 2000 × 2455 px (see notes)
+      alt: "A woman sitting in the Chandigarh chair against a warm grey backdrop",
+      position: "50% 50%",
+    },
+    colourStory: CHAIR_COLOUR_STORY,
+    /* concept / formExploration / fabrication / ending → add later, same way as project one */
   },
 };
 

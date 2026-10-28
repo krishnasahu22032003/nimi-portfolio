@@ -14,12 +14,16 @@
  *   PAGE 2     : body text is justified (her line breaks are kept; every line except the
  *                last of each paragraph is stretched to the block width)
  *
- * NEW — project cover: beige #E0D5C0 rectangle sitting UNDER the photo (same on every project, because
- *   every project renders through this component). Measured from her marked Canva screenshot
- *   (1440 × 900 page, photo 694 × 852):  25px of beige above, below and to the left of the photo  →  BEIGE_PAD,
- *   and the beige STOPS at her green marks, 71.4% of the way across the photo (the rest is hidden behind
- *   the photo, so the top/bottom strips end there)  →  BEIGE_REACH.
+ * Project cover: beige #E0D5C0 rectangle sitting UNDER the photo (same on every project, because
+ *   every project renders through this component). 25px of beige above, below and to the left of the photo
+ *   → BEIGE_PAD, and the beige STOPS at 71.4% of the way across the photo → BEIGE_REACH.
+ *
+ * NEW (project two) — what changed in this file:
+ *   1. the hero media can be a PHOTO (`project.image`) instead of a video — same frame, same beige panel, same reveal
+ *   2. `meta`, `note` and `story` are optional (project two's page 1 has no meta / note line, and no heading page)
+ *   3. `project.colourStory` renders page 2 as the colour-changing tiles (ProjectColourStory)
  */
+import Image from "next/image"; // NEW
 import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
@@ -27,22 +31,22 @@ import type { ProjectDetailData } from "../data/projects";
 import ProjectConcept from "./ProjectConcept";
 import ProjectFormExploration from "./ProjectFormExploration";
 import ProjectFabrication from "./ProjectFabrication";
-import ProjectEnding from "./ProjectEnding"; // NEW
+import ProjectEnding from "./ProjectEnding";
+import ProjectColourStory from "./ProjectColourStory";
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
 const HEADER_H = 96; // px — height of your site header. The video starts BELOW it.
 const COLOR_INK = "#000";
 const COLOR_GREY = "#404040";
-const COLOR_BEIGE = "#E0D5C0"; // NEW — the rectangle under the photo (her colour code)
+const COLOR_BEIGE = "#E0D5C0"; // the rectangle under the photo (her colour code)
 
-/* NEW — how far the beige rectangle reaches past the photo on the TOP, LEFT and BOTTOM (right edge is flush).
+/* how far the beige rectangle reaches past the photo on the TOP, LEFT and BOTTOM (right edge is flush).
    Canva: ~25px on a 1440-wide page → 25 / 1440 = 1.74cqw (the same token as the page-1 bottom margin below).
    On phones (≤820px) it switches to a fixed 16px so the panel meets the screen edge. */
 const BEIGE_PAD = 1.74;
 
-/* NEW — where the beige ENDS on the right, as a share of the photo's width, counted from the photo's left edge.
-   Her green marks sit at 282px of the 395px-wide photo in the screenshot → 0.714.
+/* where the beige ENDS on the right, as a share of the photo's width, counted from the photo's left edge.
    0.714 = ends at her marks · 1 = flush with the photo's right edge · 0.5 = ends at the middle. */
 const BEIGE_REACH = 0.714;
 
@@ -118,7 +122,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  /* video: silent endless loop, fades in once the first frame is ready, pauses off-screen */
+  /* video: silent endless loop, fades in once the first frame is ready, pauses off-screen.
+     (project two has a photo instead → videoRef is null → nothing to do) */
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -155,7 +160,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, story } = project;
+  const { video, image, story, colourStory } = project;
 
   return (
     <main
@@ -175,30 +180,44 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
         "--intro-pb": INTRO_V === "end" ? "calc(var(--vid-h) * 0.074)" : "0px",
       })}
     >
-      {/* ============================ PAGE 1 — video + intro ============================ */}
+      {/* ============================ PAGE 1 — video / photo + intro ============================ */}
       <section className="pd-page pd-hero" aria-label={`${project.title} — overview`}>
-        {/* NEW — .pd-cover wraps the photo and carries the beige rectangle behind it */}
+        {/* .pd-cover wraps the media and carries the beige rectangle behind it */}
         <div className="pd-cover">
           <div className="pd-cover-bg" aria-hidden="true" />
           <div className="pd-video">
-            <video
-              ref={videoRef}
-              className="pd-video-el"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              tabIndex={-1}
-              aria-label={video.label}
-              disablePictureInPicture
-              disableRemotePlayback
-              style={{ objectPosition: video.position ?? "50% 50%" }}
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              {video.webm && <source src={video.webm} type="video/webm" />}
-              <source src={video.mp4} type="video/mp4" />
-            </video>
+            {image ? (
+              /* NEW — photo instead of video: same frame, same reveal (clip-path + slow zoom-out) */
+              <Image
+                className="pd-video-el ready"
+                src={image.src}
+                alt={image.alt}
+                fill
+                priority
+                sizes="(max-width: 820px) 100vw, 50vw"
+                quality={90}
+                style={{ objectFit: "cover", objectPosition: image.position ?? "50% 50%" }}
+              />
+            ) : video ? (
+              <video
+                ref={videoRef}
+                className="pd-video-el"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                tabIndex={-1}
+                aria-label={video.label}
+                disablePictureInPicture
+                disableRemotePlayback
+                style={{ objectPosition: video.position ?? "50% 50%" }}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                {video.webm && <source src={video.webm} type="video/webm" />}
+                <source src={video.mp4} type="video/mp4" />
+              </video>
+            ) : null}
           </div>
         </div>
 
@@ -210,31 +229,38 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
           <p className="pd-meta pd-tags pd-reveal" style={cssVars({ "--d": 1 })}>
             <span className="pd-block">{project.tags}</span>
-            <span className="pd-block">{project.meta}</span>
+            {project.meta ? <span className="pd-block">{project.meta}</span> : null}
           </p>
 
-          <p className="pd-meta pd-note pd-reveal" style={cssVars({ "--d": 2 })}>
-            <Lines lines={project.note} />
-          </p>
+          {project.note ? (
+            <p className="pd-meta pd-note pd-reveal" style={cssVars({ "--d": 2 })}>
+              <Lines lines={project.note} />
+            </p>
+          ) : null}
         </div>
       </section>
 
-      {/* ============================ PAGE 2 — story ============================ */}
-      <section className="pd-page pd-story" aria-label={`${project.title} — story`}>
-        <div className="pd-read">
-          <h2 className="pd-heading pd-reveal" style={cssVars({ "--d": 0 })}>
-            <Lines lines={story.heading} />
-          </h2>
+      {/* ============================ PAGE 2 — story (heading + paragraphs) ============================ */}
+      {story ? (
+        <section className="pd-page pd-story" aria-label={`${project.title} — story`}>
+          <div className="pd-read">
+            <h2 className="pd-heading pd-reveal" style={cssVars({ "--d": 0 })}>
+              <Lines lines={story.heading} />
+            </h2>
 
-          <div className="pd-body">
-            {story.paragraphs.map((lines: string[], i: number) => (
-              <p key={i} className="pd-reveal" style={cssVars({ "--d": i + 1 })}>
-                <Lines lines={lines} />
-              </p>
-            ))}
+            <div className="pd-body">
+              {story.paragraphs.map((lines: string[], i: number) => (
+                <p key={i} className="pd-reveal" style={cssVars({ "--d": i + 1 })}>
+                  <Lines lines={lines} />
+                </p>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
+
+      {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
+      {colourStory ? <ProjectColourStory data={colourStory} /> : null}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}
@@ -298,7 +324,7 @@ html.pd-snap { scroll-snap-type: y mandatory; }
   align-content: start;
 }
 
-/* NEW — the cover = photo + beige rectangle. It takes over the photo's old size and grid cell. */
+/* the cover = photo + beige rectangle. It takes over the photo's old size and grid cell. */
 .pd-cover {
   position: relative;
   width: var(--vid-w); height: var(--vid-h);
@@ -405,7 +431,7 @@ html.pd-snap { scroll-snap-type: y mandatory; }
     grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
     row-gap: 32px; align-content: start;
   }
-  .pd-hero { --beige-pad: 16px; } /* NEW — meets the screen edge, same as the hero's 16px side padding */
+  .pd-hero { --beige-pad: 16px; } /* meets the screen edge, same as the hero's 16px side padding */
   .pd-cover { width: var(--vid-w); height: auto; }
   .pd-video { width: 100%; height: auto; aspect-ratio: 694 / 852; }
   .pd-intro { align-self: start; justify-self: start; padding: 0; width: 100%; }
