@@ -18,16 +18,20 @@
  *
  *   Photos change instantly (no cross-fade, no slide). Dots / arrows / keys jump straight to the target.
  *
- * FIX (this version) — "the story must ALWAYS start with the LEFT sequence"
- *   Before: coming back UP from FORM EXPLORATION (or reloading / restoring the scroll position inside the
- *   section) could land on a middle step, so the viewer saw the END of the right sequence first.
- *   Now the section keeps track of WHERE the page is relative to it (above · pinned · below):
- *     - the moment the section is re-entered from BELOW, it is reset to step 0 (both photos in the
- *       original layout — identical to step 10, so the reset is invisible) and the scroll position is held
- *       there for a moment so trackpad momentum can't carry the page through the story backwards.
- *     - a reload / scroll-restore that lands in the middle of the story is reset to step 0 too.
- *   The reset depends only on the scroll geometry, never on the last step that was shown, so it can't be
- *   missed by fast scrolling, snapping or momentum.
+ * FIX v3 — "the story must ALWAYS start with the LEFT sequence" (scrolling up from FORM EXPLORATION)
+ *   What was going wrong: on re-entry from below, the page sat on the END step (10), so the next bit of
+ *   upward scroll played step 9 → 8 → 7 … = the RIGHT sequence backwards, then the left one.
+ *   The previous fix did ONE teleport to step 0 and never checked that it worked. A single scrollTo can be
+ *   ignored / overridden (trackpad momentum, scroll-snap re-snapping, browser scroll restoration).
+ *   Now:
+ *     1. While the section is BELOW the screen (FORM EXPLORATION on screen) the stage is forced to the
+ *        both-photos layout and a "pending reset" flag is raised.
+ *     2. The moment the stage is pinned again with the flag raised, we teleport to step 0 and VERIFY it on the
+ *        next scroll sample. If it didn't land (still on a later step), we retry (max RESET_TRIES).
+ *     3. Scroll-snap is switched off for SNAP_HOLD_MS after every teleport (was 2 frames — too short, the
+ *        browser could snap straight back to the end step).
+ *     4. The flag is only cleared when the reset is confirmed, or the user is back above the section.
+ *   Step 0 looks identical to step 10 (both photos in original layout) so the teleport is invisible.
  *
  * DOTS
  *   - STATIC: the dot rows sit at one fixed spot on the artboard (see DOTS_Y / DOTS_LEFT_X / DOTS_RIGHT_X) —
@@ -58,6 +62,10 @@ const DOTS_RIGHT_X = 995; // centre of the right portrait frame (780 + 430/2)
 /* after the section is re-entered from below, the scroll position is held on the intro for this long (ms)
  * so leftover trackpad momentum can't scroll the story forward / backward on its own */
 const SETTLE_MS = 450;
+/* scroll-snap stays OFF this long after every teleport (ms) so the browser can't snap back to the end step */
+const SNAP_HOLD_MS = 180;
+/* how many times a failed reset teleport is retried before giving up */
+const RESET_TRIES = 6;
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -269,10 +277,17 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
 
   /* where the page is relative to this section — decided from scroll geometry only */
   const zoneRef = useRef<Zone | null>(null);
-  /* true once the page has been BELOW the section (FORM EXPLORATION on screen) → next time it is pinned, restart */
+  /* RESET PENDING: raised while the section is below the screen (FORM EXPLORATION on screen).
+   * Cleared only when the teleport to step 0 is CONFIRMED, or the page is back above the section. */
   const needsResetRef = useRef(false);
+  /* how many teleport retries are left for the current reset */
+  const triesRef = useRef(RESET_TRIES);
   /* while now < until, the scroll position is held on the intro (kills trackpad momentum after a reset) */
   const settleUntilRef = useRef(0);
+  /* last scrollY, for direction */
+  const lastYRef = useRef(0);
+  /* timer that switches scroll-snap back on */
+  const snapTimerRef = useRef<number | undefined>(undefined);
 
   /* jump to a step — instantly, no smooth scrolling, so the dot turns black exactly where you click */
   const jumpTo = useCallback(
@@ -287,9 +302,22 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
       setStep(t);
       html.style.scrollSnapType = "none"; // no snapping fight while we teleport
       window.scrollTo({ top, behavior: "instant" as ScrollBehavior });
-      requestAnimationFrame(() => requestAnimationFrame(() => (html.style.scrollSnapType = "")));
+      lastYRef.current = window.scrollY;
+      window.clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = window.setTimeout(() => {
+        html.style.scrollSnapType = "";
+      }, SNAP_HOLD_MS);
     },
     [LAST]
+  );
+
+  /* never leave scroll-snap switched off if we unmount mid-teleport */
+  useEffect(
+    () => () => {
+      window.clearTimeout(snapTimerRef.current);
+      document.documentElement.style.scrollSnapType = "";
+    },
+    []
   );
 
   /* scroll position → step */
@@ -297,12 +325,14 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
     const track = trackRef.current;
     if (!track) return;
     let raf = 0;
+    lastYRef.current = window.scrollY;
 
     const update = () => {
       raf = 0;
       const r = track.getBoundingClientRect();
       const stepH = track.offsetHeight / (LAST + 1); // = 100svh
       const rawStep = clamp(Math.round(-r.top / stepH), 0, LAST);
+      lastYRef.current = window.scrollY;
 
       /* ---- where is the page relative to the section? ----
        *  above  : the section top is still below the top of the screen (intro / previous section on screen)
@@ -313,8 +343,21 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
       zoneRef.current = zone;
       liveRef.current = r.top < window.innerHeight * 0.5 && r.bottom > window.innerHeight * 0.5;
 
-      if (zone === "below") needsResetRef.current = true; //  came from the end → must restart
-      if (zone === "above") needsResetRef.current = false; // came from the intro → natural order
+      if (zone === "above") {
+        needsResetRef.current = false; // came from the intro → natural order
+        triesRef.current = RESET_TRIES;
+      }
+
+      /* BELOW the section: whatever is sliding past shows the both-photos layout, and a reset is pending */
+      if (zone === "below") {
+        if (!needsResetRef.current) triesRef.current = RESET_TRIES;
+        needsResetRef.current = true;
+        if (stepRef.current !== LAST) {
+          stepRef.current = LAST;
+          setStep(LAST);
+        }
+        return;
+      }
 
       /* momentum guard: right after a reset, never let the page drift above the intro */
       if (performance.now() < settleUntilRef.current && zone === "above") {
@@ -327,12 +370,31 @@ function DesktopConcept({ concept }: { concept: ConceptData }) {
          * always begin with the LEFT sequence. Step 0 looks exactly like the end state (both photos in the
          * original layout), so this teleport is invisible. */
         const restoredMidStory = prevZone === null && rawStep > 0 && rawStep < LAST;
-        if (needsResetRef.current || restoredMidStory) {
-          needsResetRef.current = false;
-          settleUntilRef.current = performance.now() + SETTLE_MS;
-          jumpTo(0);
-          setSeen(true);
-          return;
+        if (restoredMidStory) {
+          needsResetRef.current = true;
+          triesRef.current = RESET_TRIES;
+        }
+        if (needsResetRef.current) {
+          if (rawStep === 0) {
+            /* teleport landed → confirmed. */
+            needsResetRef.current = false;
+            triesRef.current = RESET_TRIES;
+            if (stepRef.current !== 0) {
+              stepRef.current = 0;
+              setStep(0);
+            }
+            setSeen(true);
+            return;
+          }
+          /* not on step 0 yet (first attempt, or the browser ignored / undid the teleport) → (re)try */
+          if (triesRef.current > 0) {
+            triesRef.current -= 1;
+            settleUntilRef.current = performance.now() + SETTLE_MS;
+            jumpTo(0);
+            setSeen(true);
+            return;
+          }
+          needsResetRef.current = false; // gave up — fall through to the normal logic below
         }
       }
 
