@@ -18,13 +18,14 @@
  *   every project renders through this component). 25px of beige above, below and to the left of the photo
  *   → BEIGE_PAD, and the beige STOPS at 71.4% of the way across the photo → BEIGE_REACH.
  *
- * NEW (project two) — what changed in this file:
+ * Project two — what changed in this file:
  *   1. the hero media can be a PHOTO (`project.image`) instead of a video — same frame, same beige panel, same reveal
  *   2. `meta`, `note` and `story` are optional (project two's page 1 has no meta / note line, and no heading page)
  *   3. `project.colourStory` renders page 2 as the colour-changing tiles (ProjectColourStory)
  *   4. `project.collage` renders page 3 (ProjectCollage)
- *   5. `project.knotStory` renders page 4 — knot photo + text (ProjectKnotStory)            // NEW
- *   6. font weight 600 is loaded (the knot page's first paragraph is semibold)             // NEW
+ *   5. `project.knotStory` renders page 4 — knot photo + text (ProjectKnotStory)
+ *   6. `project.behindScene` renders page 5 — video + sketch + text (ProjectBehindScene)     // NEW
+ *   7. font weight 600 is loaded (the knot page's first paragraph is semibold)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -37,9 +38,10 @@ import ProjectFabrication from "./ProjectFabrication";
 import ProjectEnding from "./ProjectEnding";
 import ProjectColourStory from "./ProjectColourStory";
 import ProjectCollage from "./ProjectCollage";
-import ProjectKnotStory from "./ProjectKnotStory"; // NEW
+import ProjectKnotStory from "./ProjectKnotStory";
+import ProjectBehindScene from "./ProjectBehindScene"; // NEW
 
-/* CHANGED: added "600" — the knot page's first paragraph is semibold. Without it the browser
+/* "600" is loaded because the knot page's first paragraph is semibold. Without it the browser
    falls back to 500 (font-synthesis is off below), and the text would not match her reference. */
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
 
@@ -168,7 +170,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, colourStory, collage, knotStory } = project; // CHANGED: + knotStory
+  const { video, image, story, colourStory, collage, knotStory, behindScene } = project; // CHANGED: + behindScene
 
   return (
     <main
@@ -274,7 +276,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {collage ? <ProjectCollage data={collage} /> : null}
 
       {/* ============================ PAGE 4 (project two) — knot photo + two paragraphs ============================ */}
-      {knotStory ? <ProjectKnotStory data={knotStory} /> : null} {/* NEW */}
+      {knotStory ? <ProjectKnotStory data={knotStory} /> : null}
+
+      {/* ============================ PAGE 5 (project two) — behind the scene: video + sketch + text ============================ */}
+      {behindScene ? <ProjectBehindScene data={behindScene} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}
