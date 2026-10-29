@@ -22,8 +22,11 @@
  *   1. the hero media can be a PHOTO (`project.image`) instead of a video — same frame, same beige panel, same reveal
  *   2. `meta`, `note` and `story` are optional (project two's page 1 has no meta / note line, and no heading page)
  *   3. `project.colourStory` renders page 2 as the colour-changing tiles (ProjectColourStory)
+ *   4. `project.collage` renders page 3 (ProjectCollage)
+ *   5. `project.knotStory` renders page 4 — knot photo + text (ProjectKnotStory)            // NEW
+ *   6. font weight 600 is loaded (the knot page's first paragraph is semibold)             // NEW
  */
-import Image from "next/image"; // NEW
+import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
@@ -32,9 +35,13 @@ import ProjectConcept from "./ProjectConcept";
 import ProjectFormExploration from "./ProjectFormExploration";
 import ProjectFabrication from "./ProjectFabrication";
 import ProjectEnding from "./ProjectEnding";
-import ProjectColourStory from "./ProjectColourStory"; // NEW
-import ProjectCollage from "./ProjectCollage"; // NEW
-const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500"], display: "swap" });
+import ProjectColourStory from "./ProjectColourStory";
+import ProjectCollage from "./ProjectCollage";
+import ProjectKnotStory from "./ProjectKnotStory"; // NEW
+
+/* CHANGED: added "600" — the knot page's first paragraph is semibold. Without it the browser
+   falls back to 500 (font-synthesis is off below), and the text would not match her reference. */
+const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
 const HEADER_H = 96; // px — height of your site header. The video starts BELOW it.
@@ -161,7 +168,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, colourStory, collage } = project;
+  const { video, image, story, colourStory, collage, knotStory } = project; // CHANGED: + knotStory
 
   return (
     <main
@@ -188,7 +195,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
           <div className="pd-cover-bg" aria-hidden="true" />
           <div className="pd-video">
             {image ? (
-              /* NEW — photo instead of video: same frame, same reveal (clip-path + slow zoom-out) */
+              /* photo instead of video: same frame, same reveal (clip-path + slow zoom-out) */
               <Image
                 className="pd-video-el ready"
                 src={image.src}
@@ -265,6 +272,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
       {/* ============================ PAGE 3 (project two) — collage: chair cutouts + sketch + statement ============================ */}
       {collage ? <ProjectCollage data={collage} /> : null}
+
+      {/* ============================ PAGE 4 (project two) — knot photo + two paragraphs ============================ */}
+      {knotStory ? <ProjectKnotStory data={knotStory} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}

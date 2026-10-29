@@ -4,11 +4,13 @@
  * One entry per project (key = slug, must match the slug in the slider).
  * Hero media: EITHER `video` (project one) OR `image` (project two).
  * Optional `story`            → page 2 heading + paragraphs (project one).
- * NEW optional `colourStory`  → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
+ * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
+ * Optional `collage`          → page 3 collage (project two, data/collage.ts).
+ * NEW optional `knotStory`    → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
- * exactly as she broke it in Canva. Below 1280px the lines simply reflow.
+ * exactly as she broke it in Canva. Below 1280px the lines reflow.
  * ---------------------------------------------------------------------- */
 import type { ConceptData } from "./concept";
 import { SEESAW_CONCEPT } from "./concept";
@@ -22,14 +24,16 @@ import { ColourStoryData } from "./Colourstory ";
 import { CHAIR_COLOUR_STORY } from "./Colourstory ";
 import { CollageData } from "./Collage ";
 import { CHAIR_COLLAGE } from "./Collage ";
+import type { KnotStoryData } from "./knotStory"; // NEW
+import { CHAIR_KNOT_STORY } from "./knotStory"; // NEW
 
 export type ProjectDetailData = {
   slug: string;
   title: string; // 18 · Medium · #000
   tagline: string; // 18 · Medium · #000
   tags: string; // 14 · Regular · #404040
-  meta?: string; // 14 · Regular · #404040   (CHANGED: optional)
-  note?: string[]; // 14 · Regular · #404040 — one string per line   (CHANGED: optional)
+  meta?: string; // 14 · Regular · #404040
+  note?: string[]; // 14 · Regular · #404040 — one string per line
   /** hero VIDEO (project one) */
   video?: {
     mp4: string;
@@ -38,21 +42,22 @@ export type ProjectDetailData = {
     /** which part of the clip stays visible when it is cropped into the portrait frame */
     position?: string; // CSS object-position, default "50% 50%"
   };
-  /** NEW — hero PHOTO (project two). Same frame, same beige panel, same reveal as the video. */
+  /** hero PHOTO (project two). Same frame, same beige panel, same reveal as the video. */
   image?: {
     src: string;
     alt: string;
     position?: string; // CSS object-position, default "50% 50%"
   };
-  /** CHANGED: optional — project two has no heading + paragraphs page */
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
   };
-  /** NEW — tiles that change colour one after another + text */
+  /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
-  /** NEW — collage page: chair cutouts, sketch, statement text (data/collage.ts) */
+  /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
   collage?: CollageData;
+  /** NEW — knot page: full-bleed photo + two paragraphs (data/knotStory.ts) */
+  knotStory?: KnotStoryData;
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
@@ -107,7 +112,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     ending: SEESAW_ENDING,
   },
 
-  /* ============================ NEW — project two ============================ */
+  /* ============================ project two ============================ */
   two: {
     slug: "two",
     title: "Beso. “to sit”",
@@ -120,7 +125,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
       position: "50% 50%",
     },
     colourStory: CHAIR_COLOUR_STORY,
-    collage: CHAIR_COLLAGE, // NEW
+    collage: CHAIR_COLLAGE,
+    knotStory: CHAIR_KNOT_STORY, // NEW — page 4
     /* concept / formExploration / fabrication / ending → add later, same way as project one */
   },
 };
