@@ -23,7 +23,7 @@ export const CHAIR_BEHIND_SCENE: BehindSceneData = {
     label: "A time-lapse of the Chandigarh chair being made in the workshop",
   },
   caption: "Wait till you see me covered in sawdust…",
-  heading: "Behind the scene",
+  heading: "Construction",
   paragraphs: [
     [
       "Making my first chair turned out to be a puzzle of parts,",
