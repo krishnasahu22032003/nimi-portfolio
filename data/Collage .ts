@@ -29,7 +29,7 @@ export type CollageData = {
 export const CHAIR_COLLAGE: CollageData = {
   items: [
     { id: "sketch", src: `${D}/sketch.webp`, alt: "", x: 845, y: 47, w: 358.7, h: 434.8, opacity: 0.55 },
-    { id: "top", src: `${D}/top-upside.webp`, alt: "The chair turned upside down, showing the cane seat from below", x: 173.4, y: 10.3, w: 463.5, h: 426.8, shadow: true },
+    { id: "top", src: `${D}/top-upside.webp`, alt: "The chair turned upside down, showing the cane seat from below", x: 173.4, y: 10.3, w: 363.5, h: 326.8, shadow: true },
     { id: "backrest", src: `${D}/backrest.webp`, alt: "Close-up of the cane backrest and teak frame", x: 38.3, y: 488.7, w: 608.9, h: 411.3, shadow: true },
     { id: "side", src: `${D}/side.webp`, alt: "The chair in side view, showing the compass legs", x: 542.6, y: 255.6, w: 365.8, h: 367.8, rotate: -3, shadow: true },
     { id: "back", src: `${D}/back.webp`, alt: "The chair tipped over, seen from behind", x: 835.3, y: 464.7, w: 570.4, h: 435.7, shadow: true },
