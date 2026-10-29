@@ -24,8 +24,9 @@
  *   3. `project.colourStory` renders page 2 as the colour-changing tiles (ProjectColourStory)
  *   4. `project.collage` renders page 3 (ProjectCollage)
  *   5. `project.knotStory` renders page 4 — knot photo + text (ProjectKnotStory)
- *   6. `project.behindScene` renders page 5 — video + sketch + text (ProjectBehindScene)     // NEW
- *   7. font weight 600 is loaded (the knot page's first paragraph is semibold)
+ *   6. `project.behindScene` renders page 5 — video + sketch + text (ProjectBehindScene)
+ *   7. `project.joinery` renders page 6 — three detail photos + three notes (ProjectJoinery)     // NEW
+ *   8. font weight 600 is loaded (the knot page's first paragraph is semibold)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -39,7 +40,8 @@ import ProjectEnding from "./ProjectEnding";
 import ProjectColourStory from "./ProjectColourStory";
 import ProjectCollage from "./ProjectCollage";
 import ProjectKnotStory from "./ProjectKnotStory";
-import ProjectBehindScene from "./ProjectBehindScene"; // NEW
+import ProjectBehindScene from "./ProjectBehindScene";
+import ProjectJoinery from "./ProjectJoinery"; // NEW
 
 /* "600" is loaded because the knot page's first paragraph is semibold. Without it the browser
    falls back to 500 (font-synthesis is off below), and the text would not match her reference. */
@@ -170,7 +172,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, colourStory, collage, knotStory, behindScene } = project; // CHANGED: + behindScene
+  const { video, image, story, colourStory, collage, knotStory, behindScene, joinery } = project; // CHANGED: + joinery
 
   return (
     <main
@@ -279,7 +281,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {knotStory ? <ProjectKnotStory data={knotStory} /> : null}
 
       {/* ============================ PAGE 5 (project two) — behind the scene: video + sketch + text ============================ */}
-      {behindScene ? <ProjectBehindScene data={behindScene} /> : null} {/* NEW */}
+      {behindScene ? <ProjectBehindScene data={behindScene} /> : null}
+
+      {/* ============================ PAGE 6 (project two) — details: armrest · box joint · compass legs ============================ */}
+      {joinery ? <ProjectJoinery data={joinery} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}

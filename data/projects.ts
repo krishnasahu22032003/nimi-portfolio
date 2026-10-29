@@ -7,7 +7,8 @@
  * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
- * NEW optional `behindScene`  → page 5 video + caption + text + sketch (project two, data/behindScene.ts).
+ * Optional `behindScene`      → page 5 video + caption + text + sketch (project two, data/behindScene.ts).
+ * NEW optional `joinery`      → page 6 three detail photos + three notes (project two, data/joinery.ts).
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
@@ -27,8 +28,10 @@ import { CollageData } from "./Collage ";
 import { CHAIR_COLLAGE } from "./Collage ";
 import type { KnotStoryData } from "./knotStory";
 import { CHAIR_KNOT_STORY } from "./knotStory";
-import type { BehindSceneData } from "./behindScene"; // NEW
-import { CHAIR_BEHIND_SCENE } from "./behindScene"; // NEW
+import type { BehindSceneData } from "./behindScene";
+import { CHAIR_BEHIND_SCENE } from "./behindScene";
+import type { JoineryData } from "./joinery"; // NEW
+import { CHAIR_JOINERY } from "./joinery"; // NEW
 
 export type ProjectDetailData = {
   slug: string;
@@ -61,8 +64,10 @@ export type ProjectDetailData = {
   collage?: CollageData;
   /** knot page: full-bleed photo + two paragraphs (data/knotStory.ts) */
   knotStory?: KnotStoryData;
-  /** NEW — "Behind the scene" page: video + caption + text + sketch (data/behindScene.ts) */
+  /** "Behind the scene" page: video + caption + text + sketch (data/behindScene.ts) */
   behindScene?: BehindSceneData;
+  /** NEW — details page: three photos on beige / white / cream bands + three numbered notes (data/joinery.ts) */
+  joinery?: JoineryData;
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
   /** optional FORM EXPLORATION section (pinned sketch gallery) */
@@ -132,7 +137,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     colourStory: CHAIR_COLOUR_STORY,
     collage: CHAIR_COLLAGE,
     knotStory: CHAIR_KNOT_STORY,
-    behindScene: CHAIR_BEHIND_SCENE, // NEW — page 5
+    behindScene: CHAIR_BEHIND_SCENE,
+    joinery: CHAIR_JOINERY, // NEW — page 6
     /* concept / formExploration / fabrication / ending → add later, same way as project one */
   },
 };
