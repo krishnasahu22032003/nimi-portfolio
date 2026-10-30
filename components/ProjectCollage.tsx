@@ -107,7 +107,7 @@ export default function ProjectCollage({ data }: { data: CollageData }) {
             {data.items.map((it, i) => (
               <div
                 key={it.id}
-                className={`cl-item${it.shadow ? " cl-shadow" : ""}`}
+                className={`cl-item${it.shadow ? " cl-shadow" : ""}${it.clipRight ? " cl-clip" : ""}`}
                 style={cssVars({ "--x": it.x, "--y": it.y, "--w": it.w, "--h": it.h, "--o": it.opacity ?? 1, "--d": i })}
               >
                 <Photo it={it} sizes={`${Math.ceil((it.w / 1440) * 100)}vw`} />
@@ -143,6 +143,8 @@ export default function ProjectCollage({ data }: { data: CollageData }) {
           transition-delay: calc(var(--d) * 110ms + 100ms);
         }
         .cl-shadow { filter: ${FILTER}; }
+        /* backrest: image AND its shadow stop exactly at the right edge (the beige | white seam) */
+        .cl-clip { clip-path: inset(calc(-60 * var(--u)) 0 0 calc(-60 * var(--u))); }
         .is-in .cl-item { opacity: var(--o); transform: none; }
 
         .cl-text {

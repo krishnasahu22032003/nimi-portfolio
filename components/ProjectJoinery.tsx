@@ -11,6 +11,10 @@
  *           blocks at y = 87 · 373 · 659 → "01" line, blank line, paragraph(s)
  *   · her black boxes were only a guide for the empty space → NOT built
  *
+ * CHANGE (her feedback): the white gap above this page is gone on the LEFT — the beige band now runs
+ * continuously from the "Behind the scene" page down into this one (.jn-bridge). The middle and right
+ * of the gap stay white, so the sketch page keeps its white background.
+ *
  * Font: inherited from ProjectDetail's <main> (Familjen Grotesk, weights 400 / 500 / 600 are loaded there).
  * UNITS  1u = 1 Canva px, scaled to fit the screen (exact at 1440 × 900). The artboard sits on the BOTTOM edge,
  * same as the collage and "behind the scene" pages.
@@ -21,7 +25,7 @@ import type { CSSProperties } from "react";
 import type { JoineryData, JoineryItem, JoineryPhoto, Seg } from "@/data/joinery";
 
 /* ------------------------------ TUNING ------------------------------ */
-const SECTION_GAP = 96; //        px — white space between the previous page and this one (mobile uses half)
+const SECTION_GAP = 96; //        px — height of the gap above this page (beige on the left, white elsewhere); mobile uses half
 const BEIGE = "#E0D5C0"; //       her colour code (left band)
 const CREAM = "#F2ECE1"; //       her colour code (right band)
 const LEFT_W = 644; //            Canva px — where beige ends
@@ -87,23 +91,40 @@ export default function ProjectJoinery({ data }: { data: JoineryData }) {
   }, []);
 
   return (
-    /* "pd-page" → same snap behaviour as the other pages of the project */
-    <section ref={ref} className={`pd-page jn${seen ? " is-in" : ""}`} aria-label="The details: armrest, box joint and compass legs">
-      <div className="jn-stage">
-        <div className="jn-band jn-beige" aria-hidden="true" />
-        <div className="jn-band jn-cream" aria-hidden="true" />
+    /* the wrapper owns the gap, so the beige strip can sit INSIDE it (the section itself clips its overflow) */
+    <div className="jn-wrap">
+      <div className="jn-bridge" aria-hidden="true" />
 
-        <div className="jn-canvas">
-          {data.items.map((it: JoineryItem, i: number) => (
-            <Fragment3 key={it.n} it={it} i={i} />
-          ))}
+      {/* "pd-page" → same snap behaviour as the other pages of the project */}
+      <section ref={ref} className={`pd-page jn${seen ? " is-in" : ""}`} aria-label="The details: armrest, box joint and compass legs">
+        <div className="jn-stage">
+          <div className="jn-band jn-beige" aria-hidden="true" />
+          <div className="jn-band jn-cream" aria-hidden="true" />
+
+          <div className="jn-canvas">
+            {data.items.map((it: JoineryItem, i: number) => (
+              <Fragment3 key={it.n} it={it} i={i} />
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
       <style>{`
+        .jn-wrap {
+          container-type: inline-size; position: relative;
+          padding-top: ${SECTION_GAP}px;          /* the gap: white by default … */
+          background: #fff;
+        }
+        /* … but the left band is beige all the way up, so the colour runs through from the page above.
+           Same width formula as .jn-beige (the u unit is redefined here because this element is a child of the container). */
+        .jn-bridge {
+          --u: min(calc(100cqw / 1440), calc(max(100svh, 560px) / 900));
+          position: absolute; left: 0; top: 0; height: ${SECTION_GAP}px;
+          width: calc(50% - ${720 - LEFT_W} * var(--u)); background: ${BEIGE};
+        }
+
         .jn {
           container-type: inline-size; position: relative; height: max(100svh, 560px);
-          margin-top: ${SECTION_GAP}px;            /* white gap above (the page background is #fff) */
           background: #fff; overflow: hidden; color: #000;
         }
         .jn-stage { position: absolute; inset: 0; --u: min(calc(100cqw / 1440), calc(max(100svh, 560px) / 900)); }
@@ -136,7 +157,9 @@ export default function ProjectJoinery({ data }: { data: JoineryData }) {
 
         /* ------------------------------ ≤ 820px: stacked, each photo above its note ------------------------------ */
         @media (max-width: 820px) {
-          .jn { height: auto; margin-top: ${Math.round(SECTION_GAP / 2)}px; overflow: visible; background: ${CREAM}; }
+          .jn-wrap { padding-top: ${Math.round(SECTION_GAP / 2)}px; }
+          .jn-bridge { display: none; }
+          .jn { height: auto; overflow: visible; background: ${CREAM}; }
           .jn-stage { position: static; }
           .jn-band { display: none; }
           .jn-canvas {
@@ -151,7 +174,7 @@ export default function ProjectJoinery({ data }: { data: JoineryData }) {
         }
         @media (prefers-reduced-motion: reduce) { .jn-item { transition: none; opacity: 1; transform: none; } }
       `}</style>
-    </section>
+    </div>
   );
 }
 

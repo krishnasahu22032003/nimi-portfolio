@@ -21,6 +21,7 @@ export type CollageItem = {
   x: number; y: number; w: number; h: number; // Canva px
   rotate?: number; // degrees, negative = counter-clockwise (CSS)
   opacity?: number; // 0–1 (sketch = 0.55, her "transparency: 55")
+  clipRight?: boolean; // cut shadow + image exactly at the item's right edge (so nothing leaks over the beige | white seam)
   shadow?: boolean; // her note: "add shadows for all the 4 chair pngs" (the sketch has none)
 };
 
@@ -37,8 +38,9 @@ export const CHAIR_COLLAGE: CollageData = {
     { id: "sketch", src: `${D}/sketch.webp`, alt: "", x: 845, y: 46, w: 361, h: 437.5, opacity: 0.55 },
     // chair upside down (beige panel, top)
     { id: "top", src: `${D}/top-upside.webp`, alt: "The chair turned upside down, showing the cane seat from below", x: 175.8, y: 11.4, w: 360.9, h: 324.4, shadow: true },
-    // backrest close-up — bleeds off the bottom edge (y + h = 900)
-    { id: "backrest", src: `${D}/backrest.webp`, alt: "Close-up of the cane backrest and teak frame", x: 39.8, y: 490.3, w: 607.4, h: 409.7, shadow: true },
+    // backrest close-up — bleeds off the bottom edge (y + h = 900); its right edge now ends at x = 643.7,
+    // just inside the beige panel (644) so the armrest no longer pokes out over the seam
+    { id: "backrest", src: `${D}/backrest.webp`, alt: "Close-up of the cane backrest and teak frame", x: 39.8, y: 490.3, w: 603.9, h: 409.7, shadow: true, clipRight: true },
     // side view, straddles the beige / white seam
     { id: "side", src: `${D}/side.webp`, alt: "The chair in side view, showing the compass legs", x: 538.3, y: 259.4, w: 367.5, h: 369.3, rotate: -3.5, shadow: true },
     // chair tipped over, from behind — bleeds off the bottom AND right edge

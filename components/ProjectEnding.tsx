@@ -1,16 +1,20 @@
 "use client";
 
-/* components/ProjectEnding.tsx   (or src/components/ProjectEnding.tsx)          — NEW FILE
+/* components/ProjectEnding.tsx   (or src/components/ProjectEnding.tsx)
  *
  * The last thing on a project page: one silent, looping clip in a rectangular frame, centred on the screen.
+ * Shared by every project (SeeSaw, Chandigarh Chair, …) — only the data differs.
  *
- *   SHAPE   The frame has the clip's own shape (data.ratio = [1072, 932]) → the WHOLE video shows, nothing is cut.
+ *   SHAPE   The frame has the clip's own shape (data.ratio = [width, height]) → the WHOLE video shows, nothing is cut.
  *   SIZE    660 grid units tall (the same --cu unit as the other sections / the 3D viewer: 1cu = 1px on a 1440 × 900
  *           screen), never wider than the 979-unit content column of CONCEPT / FORM EXPLORATION.
  *   CENTRE  The section is one screen tall and keeps the header's height free above AND below the frame,
  *           so the frame sits in the true centre of the screen and can never slide under the header.
  *   MOTION  Rises in once when it scrolls into view. The clip plays only while visible (and not at all if the
  *           visitor prefers reduced motion — the poster stays).
+ *
+ * CHANGED: the section's aria-label now comes from the project's own video label
+ *          (it used to say "Seesaw — in use" on every project).
  */
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
@@ -86,7 +90,7 @@ export default function ProjectEnding({ data }: { data: EndingData }) {
     <section
       ref={rootRef}
       className="pe"
-      aria-label="Seesaw — in use"
+      aria-label={video.label} /* CHANGED: was the hard-coded "Seesaw — in use" */
       style={cssVars({
         "--header-h": `${HEADER_H}px`,
         "--frame-w": FRAME_W,
@@ -140,7 +144,7 @@ const CSS = `
   background: #fff;
 }
 /* desktop snap (set on <html> by ProjectDetail): the ending is a stop of its own.
-   If scrolling ever feels sticky around FABRICATION, delete this one rule. */
+   If scrolling ever feels sticky around the section above, delete this one rule. */
 html.pd-snap .pe { scroll-snap-align: start; }
 
 .pe-frame {

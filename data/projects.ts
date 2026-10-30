@@ -8,8 +8,12 @@
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
  * Optional `behindScene`      → page 5 video + caption + text + sketch (project two, data/behindScene.ts).
- * NEW optional `joinery`      → page 6 three detail photos + three notes (project two, data/joinery.ts).
+ * Optional `joinery`          → page 6 three detail photos + three notes (project two, data/joinery.ts).
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
+ *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
+ *
+ * FILE NAMES must match the imports exactly (lowercase-first, NO trailing space — Vercel is case-sensitive):
+ *   data/colourStory.ts · data/collage.ts · data/knotStory.ts · data/behindScene.ts · data/joinery.ts · data/endingChair.ts
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -22,16 +26,17 @@ import type { FabricationData } from "./fabrication";
 import { SEESAW_FABRICATION } from "./fabrication";
 import type { EndingData } from "./ending";
 import { SEESAW_ENDING } from "./ending";
-import { ColourStoryData } from "./Colourstory ";
-import { CHAIR_COLOUR_STORY } from "./Colourstory ";
-import { CollageData } from "./Collage ";
-import { CHAIR_COLLAGE } from "./Collage ";
+import type { ColourStoryData } from "./Colourstory "; // CHANGED: was "./Colourstory " (capital C + trailing space)
+import { CHAIR_COLOUR_STORY } from "./Colourstory "; //   CHANGED
+import type { CollageData } from "./Collage "; //          CHANGED: was "./Collage "
+import { CHAIR_COLLAGE } from "./Collage "; //             CHANGED
 import type { KnotStoryData } from "./knotStory";
 import { CHAIR_KNOT_STORY } from "./knotStory";
 import type { BehindSceneData } from "./behindScene";
 import { CHAIR_BEHIND_SCENE } from "./behindScene";
-import type { JoineryData } from "./joinery"; // NEW
-import { CHAIR_JOINERY } from "./joinery"; // NEW
+import type { JoineryData } from "./joinery";
+import { CHAIR_JOINERY } from "./joinery";
+import { CHAIR_ENDING } from "./Endingchair"; // NEW — project two's closing clip
 
 export type ProjectDetailData = {
   slug: string;
@@ -66,7 +71,7 @@ export type ProjectDetailData = {
   knotStory?: KnotStoryData;
   /** "Behind the scene" page: video + caption + text + sketch (data/behindScene.ts) */
   behindScene?: BehindSceneData;
-  /** NEW — details page: three photos on beige / white / cream bands + three numbered notes (data/joinery.ts) */
+  /** details page: three photos on beige / white / cream bands + three numbered notes (data/joinery.ts) */
   joinery?: JoineryData;
   /** optional CONCEPT section (pinned image sequence) */
   concept?: ConceptData;
@@ -74,7 +79,7 @@ export type ProjectDetailData = {
   formExploration?: FormExplorationData;
   /** optional FABRICATION section (clickable timeline) */
   fabrication?: FabricationData;
-  /** optional ENDING: the closing landscape clip, centred, after fabrication */
+  /** optional ENDING: the closing clip, centred, after the last section */
   ending?: EndingData;
 };
 
@@ -138,8 +143,9 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     collage: CHAIR_COLLAGE,
     knotStory: CHAIR_KNOT_STORY,
     behindScene: CHAIR_BEHIND_SCENE,
-    joinery: CHAIR_JOINERY, // NEW — page 6
-    /* concept / formExploration / fabrication / ending → add later, same way as project one */
+    joinery: CHAIR_JOINERY, // page 6
+    ending: CHAIR_ENDING, //   NEW — the closing clip, right after the joinery page
+    /* concept / formExploration / fabrication → not used for this project */
   },
 };
 
