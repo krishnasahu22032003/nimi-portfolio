@@ -2,12 +2,12 @@
 
 /* components/ProjectCollage.tsx   (or src/components/…)
  *
- * Page 3 of project "two" — the collage (Canva 1440 × 900 artboard), rebuilt from her clean design:
+ * Page 3 of project "two" — the collage (Canva 1440 × 900 artboard).
  *   · beige panel  x 0 → 644, full height (it also runs to the screen's left edge on wide screens)
- *   · 4 chair cutouts + the sketch (55 % opacity), exact positions in data/collage.ts
+ *   · 4 chair cutouts + the sketch (55 % opacity); exact positions live in data/collage.ts
  *   · statement text (21 px, Familjen Grotesk, "Every / every / every" in white, key words semibold)
  *   · spec text (18.6 px) bottom centre
- *   · SHADOWS on all 4 chair photos (her note) — soft, two-layer, falling downwards; tune SHADOW below.
+ *   · soft two-layer SHADOWS on the 4 chair photos (her note) — tune SHADOW_* below.
  *
  * Font: inherited from ProjectDetail's <main> (Familjen Grotesk).
  * UNITS  1u = 1 Canva px, scaled to fit the screen (exact at 1440 × 900). The artboard sits on the BOTTOM edge,
@@ -22,7 +22,7 @@ import type { CollageData, CollageItem, Seg } from "../data/Collage ";
 const BEIGE = "#E0D5C0"; //   same beige as the project cover
 const PANEL_W = 644; //        Canva px
 const INK = "#000";
-/* her "add shadows" note: a tight contact shadow + a wide soft one (Canva px, colour is a warm brown, not grey) */
+/* her "add shadows" note: a tight contact shadow + a wide soft one (Canva px, warm brown, not grey) */
 const SHADOW_TIGHT = "0 2 3 rgba(58, 36, 14, .26)"; //  x y blur colour
 const SHADOW_SOFT = "0 16 22 rgba(58, 36, 14, .22)";
 /* statement text */
@@ -160,13 +160,13 @@ export default function ProjectCollage({ data }: { data: CollageData }) {
         /* ------------------------------ mobile ------------------------------ */
         .cl-m { --u: 1px; }
         .cl-m-beige { background: ${BEIGE}; padding: 64px 16px 0; overflow: hidden; }
-        .cl-m-top { position: relative; width: 78%; aspect-ratio: 363.5 / 326.8; margin: 0 0 24px auto; filter: ${FILTER}; }
+        .cl-m-top { position: relative; width: 78%; margin: 0 0 24px auto; filter: ${FILTER}; }
         .cl-m-statement { font-size: 19px; line-height: 27px; margin: 0 0 40px; }
-        .cl-m-back { position: relative; width: 112%; margin-left: -6%; aspect-ratio: 608.9 / 411.3; filter: ${FILTER}; margin-bottom: -6%; }
+        .cl-m-back { position: relative; width: 112%; margin-left: -6%; filter: ${FILTER}; margin-bottom: -6%; }
         .cl-m-white { padding: 56px 16px 72px; display: grid; gap: 32px; background: #fff; }
-        .cl-m-sketch { position: relative; width: 78%; aspect-ratio: 358.7 / 434.8; margin-inline: auto; opacity: .55; }
-        .cl-m-side { position: relative; width: 74%; aspect-ratio: 365.8 / 367.8; margin-inline: auto; filter: ${FILTER}; }
-        .cl-m-bc { position: relative; width: 100%; aspect-ratio: 570.4 / 435.7; filter: ${FILTER}; }
+        .cl-m-sketch { position: relative; width: 78%; margin-inline: auto; opacity: .55; }
+        .cl-m-side { position: relative; width: 74%; margin-inline: auto; filter: ${FILTER}; }
+        .cl-m-bc { position: relative; width: 100%; filter: ${FILTER}; }
         .cl-m-spec { font-size: 16px; line-height: 23px; }
         .cl-m .cl-line { display: block; }
 
@@ -179,21 +179,23 @@ export default function ProjectCollage({ data }: { data: CollageData }) {
   );
 }
 
-/* ≤ 820px: the artboard is far too small to read, so the same pieces are stacked */
+/* ≤ 820px: the artboard is far too small to read, so the same pieces are stacked.
+   Aspect ratios come from the data (w / h), so they can never drift from the images. */
 function Mobile({ data }: { data: CollageData }) {
   const by = (id: string) => data.items.find((i) => i.id === id) as CollageItem;
+  const ar = (it: CollageItem): CSSProperties => ({ aspectRatio: `${it.w} / ${it.h}` });
   const top = by("top"), back = by("backrest"), sketch = by("sketch"), side = by("side"), bc = by("back");
   return (
     <div className="cl-m">
       <div className="cl-m-beige">
-        <div className="cl-m-top"><Photo it={top} sizes="80vw" /></div>
+        <div className="cl-m-top" style={ar(top)}><Photo it={top} sizes="80vw" /></div>
         <div className="cl-m-statement">{data.statement.map((l, i) => <Line key={i} segs={l} />)}</div>
-        <div className="cl-m-back"><Photo it={back} sizes="115vw" /></div>
+        <div className="cl-m-back" style={ar(back)}><Photo it={back} sizes="115vw" /></div>
       </div>
       <div className="cl-m-white">
-        <div className="cl-m-sketch"><Photo it={sketch} sizes="80vw" /></div>
-        <div className="cl-m-side"><Photo it={{ ...side, rotate: side.rotate }} sizes="75vw" /></div>
-        <div className="cl-m-bc"><Photo it={bc} sizes="100vw" /></div>
+        <div className="cl-m-sketch" style={ar(sketch)}><Photo it={sketch} sizes="80vw" /></div>
+        <div className="cl-m-side" style={ar(side)}><Photo it={side} sizes="75vw" /></div>
+        <div className="cl-m-bc" style={ar(bc)}><Photo it={bc} sizes="100vw" /></div>
         <div className="cl-m-spec">{data.spec.map((l, i) => <span key={i} className="cl-line">{l}</span>)}</div>
       </div>
     </div>
