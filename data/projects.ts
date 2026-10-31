@@ -2,8 +2,9 @@
  * data/projects.ts        (or src/data/projects.ts if you use a src folder)
  *
  * One entry per project (key = slug, must match the slug in the slider).
- * Hero media: EITHER `video` (project one) OR `image` (project two).
+ * Hero media: EITHER `video` (project one) OR `image` (project two, three).
  * Optional `story`            → page 2 heading + paragraphs (project one).
+ * Optional `statement`        → page 2 centred uppercase statement (project three).
  * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
@@ -12,8 +13,7 @@
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
  *
- * FILE NAMES must match the imports exactly (lowercase-first, NO trailing space — Vercel is case-sensitive):
- *   data/colourStory.ts · data/collage.ts · data/knotStory.ts · data/behindScene.ts · data/joinery.ts · data/endingChair.ts
+ * Project three (Echo Pan) currently has pages 1–2 — add its sections here when her next pages are ready.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -26,17 +26,18 @@ import type { FabricationData } from "./fabrication";
 import { SEESAW_FABRICATION } from "./fabrication";
 import type { EndingData } from "./ending";
 import { SEESAW_ENDING } from "./ending";
-import type { ColourStoryData } from "./Colourstory "; // CHANGED: was "./Colourstory " (capital C + trailing space)
-import { CHAIR_COLOUR_STORY } from "./Colourstory "; //   CHANGED
-import type { CollageData } from "./Collage "; //          CHANGED: was "./Collage "
-import { CHAIR_COLLAGE } from "./Collage "; //             CHANGED
+import type { ColourStoryData } from "./Colourstory ";
+import { CHAIR_COLOUR_STORY } from "./Colourstory ";
+import type { CollageData } from "./Collage ";
+import { CHAIR_COLLAGE } from "./Collage ";
 import type { KnotStoryData } from "./knotStory";
 import { CHAIR_KNOT_STORY } from "./knotStory";
 import type { BehindSceneData } from "./behindScene";
 import { CHAIR_BEHIND_SCENE } from "./behindScene";
 import type { JoineryData } from "./joinery";
 import { CHAIR_JOINERY } from "./joinery";
-import { CHAIR_ENDING } from "./Endingchair"; // NEW — project two's closing clip
+import { CHAIR_ENDING } from "./Endingchair";
+import { StatementData } from "../components/Projectstatement";
 
 export type ProjectDetailData = {
   slug: string;
@@ -53,16 +54,19 @@ export type ProjectDetailData = {
     /** which part of the clip stays visible when it is cropped into the portrait frame */
     position?: string; // CSS object-position, default "50% 50%"
   };
-  /** hero PHOTO (project two). Same frame, same beige panel, same reveal as the video. */
+  /** hero PHOTO (project two, three). Same frame, same beige panel, same reveal as the video. */
   image?: {
     src: string;
     alt: string;
     position?: string; // CSS object-position, default "50% 50%"
+    sizes?: string; // next/image `sizes`; override when a wide photo is cropped into the portrait frame
   };
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
   };
+  /** a single centred uppercase statement page (project three, page 2) */
+  statement?: StatementData; // NEW
   /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
@@ -135,7 +139,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     tags: "Skill-based project · Furniture making",
     /* page 1 on her Canva has only these three lines → no `meta`, no `note` */
     image: {
-      src: "/projects/chandigarh/hero.jpg", // 2000 × 2455 px (see notes)
+      src: "/projects/chandigarh/hero.jpg", // 2000 × 2455 px
       alt: "A woman sitting in the Chandigarh chair against a warm grey backdrop",
       position: "50% 50%",
     },
@@ -144,8 +148,30 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     knotStory: CHAIR_KNOT_STORY,
     behindScene: CHAIR_BEHIND_SCENE,
     joinery: CHAIR_JOINERY, // page 6
-    ending: CHAIR_ENDING, //   NEW — the closing clip, right after the joinery page
+    ending: CHAIR_ENDING, // the closing clip, right after the joinery page
     /* concept / formExploration / fabrication → not used for this project */
+  },
+
+  /* ============================ project three ============================ */
+  three: {
+    slug: "three",
+    title: "Echo Pan",
+    tagline: "A handcrafted hybrid flute",
+    tags: "Instrument Design · Sound Exploration · Material Studies",
+    /* page 1 has only these three lines → no `meta`, no `note` */
+    image: {
+      src: "/projects/echo-pan/hero.jpg", // 2576 × 1375 px landscape render
+      alt: "Echo Pan: a black flute joined to a row of five walnut and curly maple pan pipes on a soft peach backdrop",
+      /* The render is landscape but the frame is portrait (0.8146), so cover-cropping shows only ~43.5% of
+         the width. 63% slides the crop to the right: the flute enters from the left edge and the pipes
+         finish just before the right edge, as in her layout. Nudge ±2% to fine-tune. */
+      position: "63% 50%",
+      /* the image is drawn ~1.15× the viewport wide inside the frame, so next/image must pick a big source */
+      sizes: "(max-width: 820px) 230vw, 115vw",
+    },
+    /* page 2 — centred uppercase statement (components/ProjectStatement.tsx) */
+    statement: { text: "Can two instruments become one?" }, // NEW
+    /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
   },
 };
 

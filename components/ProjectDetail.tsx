@@ -1,5 +1,4 @@
 "use client";
-//update code 
 /* components/ProjectDetail.tsx   (or src/components/ProjectDetail.tsx)
  *
  * Type spec — straight from her Canva annotations, used as LITERAL CSS px (no fluid scaling):
@@ -18,15 +17,16 @@
  *   every project renders through this component). 25px of beige above, below and to the left of the photo
  *   → BEIGE_PAD, and the beige STOPS at 71.4% of the way across the photo → BEIGE_REACH.
  *
- * Project two — what changed in this file:
+ * Project two / three — what changed in this file:
  *   1. the hero media can be a PHOTO (`project.image`) instead of a video — same frame, same beige panel, same reveal
- *   2. `meta`, `note` and `story` are optional (project two's page 1 has no meta / note line, and no heading page)
+ *   2. `meta`, `note` and `story` are optional
  *   3. `project.colourStory` renders page 2 as the colour-changing tiles (ProjectColourStory)
  *   4. `project.collage` renders page 3 (ProjectCollage)
  *   5. `project.knotStory` renders page 4 — knot photo + text (ProjectKnotStory)
  *   6. `project.behindScene` renders page 5 — video + sketch + text (ProjectBehindScene)
- *   7. `project.joinery` renders page 6 — three detail photos + three notes (ProjectJoinery)     // NEW
+ *   7. `project.joinery` renders page 6 — three detail photos + three notes (ProjectJoinery)
  *   8. font weight 600 is loaded (the knot page's first paragraph is semibold)
+ *   9. `project.image.sizes` (NEW, project three) overrides next/image `sizes` for wide photos cropped into the portrait frame
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -41,7 +41,8 @@ import ProjectColourStory from "./ProjectColourStory";
 import ProjectCollage from "./ProjectCollage";
 import ProjectKnotStory from "./ProjectKnotStory";
 import ProjectBehindScene from "./ProjectBehindScene";
-import ProjectJoinery from "./ProjectJoinery"; // NEW
+import ProjectJoinery from "./ProjectJoinery";
+import ProjectStatement from "./Projectstatement";
 
 /* "600" is loaded because the knot page's first paragraph is semibold. Without it the browser
    falls back to 500 (font-synthesis is off below), and the text would not match her reference. */
@@ -135,7 +136,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
   }, []);
 
   /* video: silent endless loop, fades in once the first frame is ready, pauses off-screen.
-     (project two has a photo instead → videoRef is null → nothing to do) */
+     (projects two and three have a photo instead → videoRef is null → nothing to do) */
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -172,7 +173,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, colourStory, collage, knotStory, behindScene, joinery } = project; // CHANGED: + joinery
+  const { video, image, story, statement, colourStory, collage, knotStory, behindScene, joinery } = project;
 
   return (
     <main
@@ -206,7 +207,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
                 alt={image.alt}
                 fill
                 priority
-                sizes="(max-width: 820px) 100vw, 50vw"
+                sizes={image.sizes ?? "(max-width: 820px) 100vw, 50vw"}
                 quality={90}
                 style={{ objectFit: "cover", objectPosition: image.position ?? "50% 50%" }}
               />
@@ -271,6 +272,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
         </section>
       ) : null}
 
+      {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
+      {statement ? <ProjectStatement data={statement} /> : null} {/* NEW */}
+
       {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
       {colourStory ? <ProjectColourStory data={colourStory} /> : null}
 
@@ -284,7 +288,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {behindScene ? <ProjectBehindScene data={behindScene} /> : null}
 
       {/* ============================ PAGE 6 (project two) — details: armrest · box joint · compass legs ============================ */}
-      {joinery ? <ProjectJoinery data={joinery} /> : null} {/* NEW */}
+      {joinery ? <ProjectJoinery data={joinery} /> : null}
 
       {/* ============================ PAGE 3 — concept (pinned, scroll-driven) ============================ */}
       {project.concept ? <ProjectConcept concept={project.concept} /> : null}
