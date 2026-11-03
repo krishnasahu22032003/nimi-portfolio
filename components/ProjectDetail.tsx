@@ -28,7 +28,8 @@
  *   8. font weight 600 is loaded (the knot page's first paragraph is semibold)
  *   9. `project.image.sizes` overrides next/image `sizes` for wide photos cropped into the portrait frame
  *  10. `project.echoConcept` renders page 3 — CONCEPT (ProjectEchoConcept)
- *  11. `project.echoShapes` (NEW, project three) renders page 4 — scroll-drawn measurements (ProjectEchoShapes)
+ *  11. `project.echoShapes` renders page 4 — scroll-drawn measurements (ProjectEchoShapes)
+ *  12. `project.echoSound` (NEW, project three) renders page 5 — dimensions + sound (ProjectEchoSound)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -46,7 +47,8 @@ import ProjectBehindScene from "./ProjectBehindScene";
 import ProjectJoinery from "./ProjectJoinery";
 import ProjectStatement from "./Projectstatement";
 import ProjectEchoConcept from "./ProjectEchoConcept";
-import ProjectEchoShapes from "./ProjectEchoShapes"; // NEW
+import ProjectEchoShapes from "./ProjectEchoShapes";
+import ProjectEchoSound from "./Projectechosound ";
 
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
@@ -178,7 +180,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, statement, echoConcept, echoShapes, colourStory, collage, knotStory, behindScene, joinery } = project;
+  const { video, image, story, statement, echoConcept, echoShapes, echoSound, colourStory, collage, knotStory, behindScene, joinery } = project;
 
   return (
     <main
@@ -284,7 +286,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {echoConcept ? <ProjectEchoConcept data={echoConcept} /> : null}
 
       {/* ============================ PAGE 4 (project three) — WHAT SHAPES A NOTE: render + scroll-drawn measurements ============================ */}
-      {echoShapes ? <ProjectEchoShapes data={echoShapes} /> : null} {/* NEW */}
+      {echoShapes ? <ProjectEchoShapes data={echoShapes} /> : null}
+
+      {/* ============================ PAGE 5 (project three) — HOW THE DIMENSIONS ARE CALCULATED | HOW IT AFFECTS THE SOUND ============================ */}
+      {echoSound ? <ProjectEchoSound data={echoSound} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
       {colourStory ? <ProjectColourStory data={colourStory} /> : null}

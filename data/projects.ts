@@ -7,6 +7,7 @@
  * Optional `statement`        → page 2 centred uppercase statement (project three).
  * Optional `echoConcept`      → page 3 CONCEPT (project three, data/echoConcept.ts).
  * Optional `echoShapes`       → page 4 "What shapes a note?" (project three, data/echoShapes.ts).
+ * Optional `echoSound`        → page 5 dimensions + sound (project three, data/echoSound.ts).
  * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
@@ -15,7 +16,7 @@
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
  *
- * Project three (Echo Pan) currently has pages 1–4 — add its sections here when her next pages are ready.
+ * Project three (Echo Pan) currently has pages 1–5 — add its sections here when her next pages are ready.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -47,6 +48,8 @@ import type { EchoConceptData } from "./Echoconcept ";
 import { ECHO_PAN_CONCEPT } from "./Echoconcept ";
 import type { EchoShapesData } from "./echoShapes";
 import { ECHO_PAN_SHAPES } from "./echoShapes";
+import { EchoSoundData } from "./Echosound ";
+import { ECHO_PAN_SOUND } from "./Echosound ";
 
 export type ProjectDetailData = {
   slug: string;
@@ -79,7 +82,9 @@ export type ProjectDetailData = {
   /** CONCEPT page: ? + eye icons, two paragraphs, pan flute + bansuri sketch, Echo Pan sketch (project three, page 3) */
   echoConcept?: EchoConceptData;
   /** "What shapes a note?" page: render + measurements drawn in by scroll (project three, page 4) */
-  echoShapes?: EchoShapesData; // NEW
+  echoShapes?: EchoShapesData;
+  /** "How the dimensions are calculated ? | How it affects the sound ?" page (project three, page 5) */
+  echoSound?: EchoSoundData; // NEW
   /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
@@ -187,7 +192,9 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* page 3 — CONCEPT (components/ProjectEchoConcept.tsx + data/echoConcept.ts) */
     echoConcept: ECHO_PAN_CONCEPT,
     /* page 4 — "What shapes a note?" (components/ProjectEchoShapes.tsx + data/echoShapes.ts) */
-    echoShapes: ECHO_PAN_SHAPES, // NEW
+    echoShapes: ECHO_PAN_SHAPES,
+    /* page 5 — dimensions + sound (components/ProjectEchoSound.tsx + data/echoSound.ts) */
+    echoSound: ECHO_PAN_SOUND, // NEW
     /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
   },
 };
