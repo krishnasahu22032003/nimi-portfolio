@@ -5,6 +5,8 @@
  * Hero media: EITHER `video` (project one) OR `image` (project two, three).
  * Optional `story`            → page 2 heading + paragraphs (project one).
  * Optional `statement`        → page 2 centred uppercase statement (project three).
+ * Optional `echoConcept`      → page 3 CONCEPT (project three, data/echoConcept.ts).
+ * Optional `echoShapes`       → page 4 "What shapes a note?" (project three, data/echoShapes.ts).
  * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
@@ -13,7 +15,7 @@
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
  *
- * Project three (Echo Pan) currently has pages 1–2 — add its sections here when her next pages are ready.
+ * Project three (Echo Pan) currently has pages 1–4 — add its sections here when her next pages are ready.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -37,7 +39,14 @@ import { CHAIR_BEHIND_SCENE } from "./behindScene";
 import type { JoineryData } from "./joinery";
 import { CHAIR_JOINERY } from "./joinery";
 import { CHAIR_ENDING } from "./Endingchair";
-import { StatementData } from "../components/Projectstatement";
+import type { StatementData } from "../components/Projectstatement";
+/* NOTE: the path below matches the file name exactly as it is on your disk (it has a trailing space,
+   like "Colourstory " and "Collage " above). If you rename the file to  echoConcept.ts  (recommended),
+   change both paths to "./echoConcept". */
+import type { EchoConceptData } from "./Echoconcept ";
+import { ECHO_PAN_CONCEPT } from "./Echoconcept ";
+import type { EchoShapesData } from "./echoShapes";
+import { ECHO_PAN_SHAPES } from "./echoShapes";
 
 export type ProjectDetailData = {
   slug: string;
@@ -66,7 +75,11 @@ export type ProjectDetailData = {
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
   };
   /** a single centred uppercase statement page (project three, page 2) */
-  statement?: StatementData; // NEW
+  statement?: StatementData;
+  /** CONCEPT page: ? + eye icons, two paragraphs, pan flute + bansuri sketch, Echo Pan sketch (project three, page 3) */
+  echoConcept?: EchoConceptData;
+  /** "What shapes a note?" page: render + measurements drawn in by scroll (project three, page 4) */
+  echoShapes?: EchoShapesData; // NEW
   /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
@@ -170,7 +183,11 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
       sizes: "(max-width: 820px) 230vw, 115vw",
     },
     /* page 2 — centred uppercase statement (components/ProjectStatement.tsx) */
-    statement: { text: "Can two instruments become one?" }, // NEW
+    statement: { text: "Can two instruments become one?" },
+    /* page 3 — CONCEPT (components/ProjectEchoConcept.tsx + data/echoConcept.ts) */
+    echoConcept: ECHO_PAN_CONCEPT,
+    /* page 4 — "What shapes a note?" (components/ProjectEchoShapes.tsx + data/echoShapes.ts) */
+    echoShapes: ECHO_PAN_SHAPES, // NEW
     /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
   },
 };

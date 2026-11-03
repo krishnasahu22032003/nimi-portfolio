@@ -26,7 +26,9 @@
  *   6. `project.behindScene` renders page 5 — video + sketch + text (ProjectBehindScene)
  *   7. `project.joinery` renders page 6 — three detail photos + three notes (ProjectJoinery)
  *   8. font weight 600 is loaded (the knot page's first paragraph is semibold)
- *   9. `project.image.sizes` (NEW, project three) overrides next/image `sizes` for wide photos cropped into the portrait frame
+ *   9. `project.image.sizes` overrides next/image `sizes` for wide photos cropped into the portrait frame
+ *  10. `project.echoConcept` renders page 3 — CONCEPT (ProjectEchoConcept)
+ *  11. `project.echoShapes` (NEW, project three) renders page 4 — scroll-drawn measurements (ProjectEchoShapes)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -43,9 +45,12 @@ import ProjectKnotStory from "./ProjectKnotStory";
 import ProjectBehindScene from "./ProjectBehindScene";
 import ProjectJoinery from "./ProjectJoinery";
 import ProjectStatement from "./Projectstatement";
+import ProjectEchoConcept from "./ProjectEchoConcept";
+import ProjectEchoShapes from "./ProjectEchoShapes"; // NEW
 
-/* "600" is loaded because the knot page's first paragraph is semibold. Without it the browser
-   falls back to 500 (font-synthesis is off below), and the text would not match her reference. */
+/* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
+   page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
+   and the text would not match her reference. */
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
@@ -173,7 +178,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, statement, colourStory, collage, knotStory, behindScene, joinery } = project;
+  const { video, image, story, statement, echoConcept, echoShapes, colourStory, collage, knotStory, behindScene, joinery } = project;
 
   return (
     <main
@@ -273,7 +278,13 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       ) : null}
 
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
-      {statement ? <ProjectStatement data={statement} /> : null} {/* NEW */}
+      {statement ? <ProjectStatement data={statement} /> : null}
+
+      {/* ============================ PAGE 3 (project three) — CONCEPT: icons + text + sketches ============================ */}
+      {echoConcept ? <ProjectEchoConcept data={echoConcept} /> : null}
+
+      {/* ============================ PAGE 4 (project three) — WHAT SHAPES A NOTE: render + scroll-drawn measurements ============================ */}
+      {echoShapes ? <ProjectEchoShapes data={echoShapes} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
       {colourStory ? <ProjectColourStory data={colourStory} /> : null}
