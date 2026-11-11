@@ -53,7 +53,8 @@ export const ECHO_PAN_CONCEPT: EchoConceptData = {
   pair: {
     src: "/projects/echo-pan/concept-pan-plus-bansuri.png",
     alt: "Pencil sketch of a pan flute, a plus sign and a bansuri",
-    captions: ["Pan Flute", "Pan Flute Bansuri (Indian Flute)"],
+    /* her note: delete the pink words → the second caption is just "Bansuri (Indian Flute)" */
+    captions: ["Pan Flute", "Bansuri (Indian Flute)"],
   },
   hybrid: {
     src: "/projects/echo-pan/concept-hybrid-sketch.png",

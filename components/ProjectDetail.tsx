@@ -29,7 +29,8 @@
  *   9. `project.image.sizes` overrides next/image `sizes` for wide photos cropped into the portrait frame
  *  10. `project.echoConcept` renders page 3 — CONCEPT (ProjectEchoConcept)
  *  11. `project.echoShapes` renders page 4 — scroll-drawn measurements (ProjectEchoShapes)
- *  12. `project.echoSound` (NEW, project three) renders page 5 — dimensions + sound (ProjectEchoSound)
+ *  12. `project.echoSound` renders page 5 — dimensions + sound (ProjectEchoSound)
+ *  13. `project.materialExploration` (NEW, project three) renders page 6 — hover-to-explore materials (ProjectMaterialExploration)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -49,6 +50,8 @@ import ProjectStatement from "./Projectstatement";
 import ProjectEchoConcept from "./ProjectEchoConcept";
 import ProjectEchoShapes from "./ProjectEchoShapes";
 import ProjectEchoSound from "./Projectechosound ";
+import ProjectMaterialExploration from "./ProjectMaterialExploration"; // NEW
+import ProjectConstruction from "./ProjectConstruction";
 
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
@@ -180,7 +183,22 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     };
   }, []);
 
-  const { video, image, story, statement, echoConcept, echoShapes, echoSound, colourStory, collage, knotStory, behindScene, joinery } = project;
+  const {
+    video,
+    image,
+    story,
+    statement,
+    echoConcept,
+    echoShapes,
+    echoSound,
+    materialExploration, // NEW
+    construction,
+    colourStory,
+    collage,
+    knotStory,
+    behindScene,
+    joinery,
+  } = project;
 
   return (
     <main
@@ -289,7 +307,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {echoShapes ? <ProjectEchoShapes data={echoShapes} /> : null}
 
       {/* ============================ PAGE 5 (project three) — HOW THE DIMENSIONS ARE CALCULATED | HOW IT AFFECTS THE SOUND ============================ */}
-      {echoSound ? <ProjectEchoSound data={echoSound} /> : null} {/* NEW */}
+      {echoSound ? <ProjectEchoSound data={echoSound} /> : null}
+
+      {/* ============================ PAGE 6 (project three) — MATERIAL EXPLORATION: hover a material to learn more ============================ */}
+      {materialExploration ? <ProjectMaterialExploration data={materialExploration} /> : null} {/* NEW */}
 
       {/* ============================ PAGE 2 (project two) — colour-changing tiles + text ============================ */}
       {colourStory ? <ProjectColourStory data={colourStory} /> : null}
@@ -317,6 +338,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
       {/* ============================ PAGE 6 — ending (landscape clip, centred; the project ends here) ============================ */}
       {project.ending ? <ProjectEnding data={project.ending} /> : null}
+
+            {/* ============================ PAGE 7 (project three) — CONSTRUCTION: workshop photos / clips ============================ */}
+      {construction ? <ProjectConstruction data={construction} /> : null}
 
       <noscript>
         <style>{`.pd-reveal{opacity:1!important;transform:none!important}.pd-video{clip-path:none!important}.pd-video-el{opacity:1!important;transform:none!important}`}</style>

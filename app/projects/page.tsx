@@ -27,6 +27,7 @@ const seedImg = (seed: string, o: "v" | "h") =>
 
 const LOCAL_IMAGES: Record<string, string> = {
   one: "/projects/project-one.jpg",
+  three: "/projects/project-three.jpg",
 };
 
 const PROJECTS: Project[] = [
@@ -59,7 +60,7 @@ const H_W = 48; // horizontal frame width (unchanged)
 const H_H = 27; // horizontal frame height (unchanged)
 const EASE = 0.085; // slider smoothing (lower = floatier)
 const WHEEL_SPEED = 1.15; // wheel px -> slider px
-const PARALLAX = 0.12; // image drifts inside its frame
+const PARALLAX = 0; // image drifts inside its frame
 const LABEL = "OPEN PROJECT";
 
 /* flower / diamond */
@@ -421,17 +422,22 @@ export default function ProjectsSection() {
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                ref={(el) => {
-                  imgRefs.current[i] = el;
-                }}
-                src={p.img}
-                alt={isMain ? p.title : ""}
-                draggable={false}
-                loading="eager"
-                className="pointer-events-none absolute top-0 h-full max-w-none select-none object-cover"
-                style={{ width: "120%", left: "-10%", willChange: "transform" }}
-              />
+        
+<img
+  ref={(el) => {
+    imgRefs.current[i] = el;
+  }}
+  src={p.img}
+  alt={isMain ? p.title : ""}
+  draggable={false}
+  loading="eager"
+  className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+  style={{
+    objectPosition: "center center",
+    willChange: "transform",
+  }}
+/>
+
 
               {/* flower + label: anchored to the exact centre of the frame */}
               <div className="ps-hover" aria-hidden="true">

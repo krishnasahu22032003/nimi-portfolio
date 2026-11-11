@@ -17,6 +17,10 @@
  *   paragraphs (justified) ................ 14 Regular #000, 22 line, bold = 600
  *   captions .............................. 14 Regular #000
  *
+ * CAPTIONS: each caption is centred under its sketch (GEO.captions → cx = centre x, y = top).
+ *   So when the words change (e.g. "Bansuri (Indian Flute)") the text stays centred under the drawing.
+ *   If she wants the bansuri caption nudged, change only its `cx` (±2 is a visible nudge).
+ *
  * Her annotations ("transparency- 23", the arrows, "#F2ECE1 background") are NOT drawn —
  * they became: icon opacity 0.23 and the beige half-page colour.
  *
@@ -45,6 +49,9 @@ const EYE_IMG_W = 100 / EYE_INK.w;
 const EYE_IMG_L = (-EYE_INK.l * 100) / EYE_INK.w;
 const EYE_IMG_T = -EYE_INK.t * (1 / EYE_INK.w) * EYE_INK.ar * EYE_INK.inkAspect * 100;
 
+/* width of the invisible box each caption is centred in (wide enough for the longest caption) */
+const CAP_W = 240;
+
 /* Her Canva coordinates (px on the 1440 × 900 page). x/y = top-left, w = width. */
 const GEO = {
   heading: { x: 90, y: 89 },
@@ -61,9 +68,10 @@ const GEO = {
     },
   ],
   pair: { x: 836, y: 164, w: 456 },
+  /* cx = centre of the caption (under the middle of each sketch), y = top of the line */
   captions: [
-    { x: 906, y: 467 },
-    { x: 1128, y: 467 },
+    { cx: 935, y: 467 }, // under the pan flute
+    { cx: 1213, y: 467 }, // under the bansuri
   ],
   hybrid: { x: 182, y: 525, w: 1085 },
 } as const;
@@ -187,7 +195,11 @@ export default function ProjectEchoConcept({ data }: { data: EchoConceptData }) 
           />
           <div className="pc-caps">
             {data.pair.captions.map((c: string, i: number) => (
-              <p key={c} className="pc-cap pc-abs pc-r" style={at(GEO.captions[i].x, GEO.captions[i].y, undefined, 4)}>
+              <p
+                key={c}
+                className="pc-cap pc-abs pc-sized pc-r"
+                style={at(GEO.captions[i].cx - CAP_W / 2, GEO.captions[i].y, CAP_W, 4)}
+              >
                 {c}
               </p>
             ))}
@@ -268,7 +280,7 @@ const CSS = `
   .pc-icon--eye { width: 108px; }
 
   .pc-sketch, .pc-hybrid { width: 100%; }
-  .pc-caps { display: flex; justify-content: space-between; gap: 16px; margin-top: 8px; }
+  .pc-caps { display: flex; justify-content: space-around; gap: 16px; margin-top: 8px; }
 }
 
 /* ===================== DESKTOP: her 1440 × 900 composition, scaled to fit one screen ===================== */
@@ -293,7 +305,8 @@ const CSS = `
   .pc-heading { font-size: calc(var(--u) * 18); line-height: calc(var(--u) * 30); white-space: nowrap; }
   .pc-label   { font-size: calc(var(--u) * 18); line-height: calc(var(--u) * 29); white-space: nowrap; text-align: left; }
   .pc-text    { font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 22); }
-  .pc-cap     { font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 24); white-space: nowrap; }
+  /* captions are centred under their sketch */
+  .pc-cap     { font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 24); white-space: nowrap; text-align: center; }
 
   /* every string is exactly one line, as she broke it in Canva; justified to the block width */
   .pc-line { display: block; white-space: nowrap; }

@@ -8,6 +8,7 @@
  * Optional `echoConcept`      → page 3 CONCEPT (project three, data/echoConcept.ts).
  * Optional `echoShapes`       → page 4 "What shapes a note?" (project three, data/echoShapes.ts).
  * Optional `echoSound`        → page 5 dimensions + sound (project three, data/echoSound.ts).
+ * Optional `materialExploration` → page 6 material exploration (project three, data/materialExploration.ts).
  * Optional `colourStory`      → page 2 as colour-changing tiles + text (project two, data/colourStory.ts).
  * Optional `collage`          → page 3 collage (project two, data/collage.ts).
  * Optional `knotStory`        → page 4 knot photo + two paragraphs (project two, data/knotStory.ts).
@@ -16,7 +17,7 @@
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
  *
- * Project three (Echo Pan) currently has pages 1–5 — add its sections here when her next pages are ready.
+ * Project three (Echo Pan) currently has pages 1–6 — add its sections here when her next pages are ready.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -48,8 +49,13 @@ import type { EchoConceptData } from "./Echoconcept ";
 import { ECHO_PAN_CONCEPT } from "./Echoconcept ";
 import type { EchoShapesData } from "./echoShapes";
 import { ECHO_PAN_SHAPES } from "./echoShapes";
-import { EchoSoundData } from "./Echosound ";
+import type { EchoSoundData } from "./Echosound ";
 import { ECHO_PAN_SOUND } from "./Echosound ";
+/* NEW — page 6 (this file has a normal name, no trailing space) */
+import type { MaterialExplorationData } from "./materialExploration.";
+import { ECHO_PAN_MATERIALS } from "./materialExploration.";
+import type { ConstructionData } from "./construction";
+import { ECHO_PAN_CONSTRUCTION } from "./construction";
 
 export type ProjectDetailData = {
   slug: string;
@@ -84,7 +90,11 @@ export type ProjectDetailData = {
   /** "What shapes a note?" page: render + measurements drawn in by scroll (project three, page 4) */
   echoShapes?: EchoShapesData;
   /** "How the dimensions are calculated ? | How it affects the sound ?" page (project three, page 5) */
-  echoSound?: EchoSoundData; // NEW
+  echoSound?: EchoSoundData;
+  /** "Material exploration" page: hover a material → its acoustic / making / object details (project three, page 6) */
+  materialExploration?: MaterialExplorationData; // NEW
+    /** "Construction" page: six workshop photos / clips in a 3 × 2 grid (project three, page 7) */
+  construction?: ConstructionData;
   /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
@@ -194,8 +204,12 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* page 4 — "What shapes a note?" (components/ProjectEchoShapes.tsx + data/echoShapes.ts) */
     echoShapes: ECHO_PAN_SHAPES,
     /* page 5 — dimensions + sound (components/ProjectEchoSound.tsx + data/echoSound.ts) */
-    echoSound: ECHO_PAN_SOUND, // NEW
+    echoSound: ECHO_PAN_SOUND,
+    /* page 6 — material exploration (components/ProjectMaterialExploration.tsx + data/materialExploration.ts) */
+    materialExploration: ECHO_PAN_MATERIALS, // NEW
     /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
+      /* page 7 — construction (components/ProjectConstruction.tsx + data/construction.ts) */
+    construction: ECHO_PAN_CONSTRUCTION,
   },
 };
 
