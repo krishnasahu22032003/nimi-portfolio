@@ -66,7 +66,7 @@ export type EchoSoundData = {
 };
 
 export const ECHO_PAN_SOUND: EchoSoundData = {
-  headingLeft: "How the dimensions are calculated ?",
+  headingLeft: "What shapes a note ?",
   headingRight: "How it affects the sound ?",
   calc: {
     bansuri: {

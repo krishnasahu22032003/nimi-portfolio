@@ -36,7 +36,7 @@ export type EchoShapesData = {
 };
 
 export const ECHO_PAN_SHAPES: EchoShapesData = {
-  heading: "What shapes a note?",
+  heading: "How the dimensions are calculated ?",
   image: {
     src: "/projects/echo-pan/shapes-render.png",
     alt: "Render of Echo Pan: a black bansuri with six finger holes and a tuning hole, joined to five walnut and curly maple pan pipes",
