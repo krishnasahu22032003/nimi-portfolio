@@ -7,15 +7,18 @@
  *   · left arrow ......... 48px grey circle, centre x 208, y 450
  *   · right arrow ........ 48px grey circle, centre x 1232, y 450
  *   · TWO videos on the same page: the arrows (or ← → keys, or a swipe) switch between them.
- *     Only the visible video plays; the other pauses. Silent endless loops.
  *
- * Every position AND size is her Canva value × --u = min(1px, 100cqw / 1440, pageHeight / 900).
- * Below 1100px wide (or under 640px tall) the video fills the width and the arrows sit on its left / right edges.
+ * VIDEO BEHAVIOUR (components/VideoPlayer.tsx)
+ *   · the current video starts playing MUTED as soon as the page is on screen; the other one is paused
+ *   · one play / pause button in the centre of the frame
+ *   · mute / unmute button at the bottom right of the frame (the choice carries over when you switch videos)
  *
- * Do NOT put opacity / transform / filter on .pe-page or .pe-stage.
+ * CSS prefix is "ee-" (echo end). It must NOT be "pe-" — that belongs to ProjectEchoShapes and the two clash.
+ * Do NOT put opacity / transform / filter on .ee-page or .ee-stage.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import VideoPlayer from "./VideoPlayer";
 import type { EchoEndData } from "../data/echoEnding";
 
 /* ------------------------------ TUNING ------------------------------ */
@@ -54,11 +57,11 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
   const { videos } = data;
   const n = videos.length;
   const rootRef = useRef<HTMLElement>(null);
-  const vids = useRef<(HTMLVideoElement | null)[]>([]);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [active, setActive] = useState(0);
   const [visible, setVisible] = useState(false);
   const [seen, setSeen] = useState(false);
+  const [muted, setMuted] = useState(true); // starts muted; shared by both videos
 
   const go = useCallback((d: number) => setActive((p) => (p + d + n) % n), [n]);
 
@@ -78,18 +81,6 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-
-  /* only the active video plays, and only while the page is on screen */
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    vids.current.forEach((v, k) => {
-      if (!v) return;
-      v.muted = true;
-      v.defaultMuted = true;
-      if (visible && k === active && !reduce) v.play().catch(() => {});
-      else v.pause();
-    });
-  }, [active, visible]);
 
   /* ← / → keys while the page is on screen */
   useEffect(() => {
@@ -123,53 +114,45 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
   return (
     <section
       ref={rootRef}
-      className={`pd-page pe-page${seen ? " is-in" : ""}`}
+      className={`pd-page ee-page${seen ? " is-in" : ""}`}
       aria-label="Echo Pan — final videos"
       aria-roledescription="carousel"
-      style={cssVars({ "--pe-arrow": ARROW_BG, "--pe-arrow-h": ARROW_BG_HOVER, "--pe-fade": `${FADE_MS}ms` })}
+      style={cssVars({ "--ee-arrow": ARROW_BG, "--ee-arrow-h": ARROW_BG_HOVER, "--ee-fade": `${FADE_MS}ms` })}
     >
-      <p className="pe-sr" aria-live="polite">
+      <p className="ee-sr" aria-live="polite">
         {videos[active]?.label} ({active + 1} of {n})
       </p>
 
-      <div className="pe-stage">
+      <div className="ee-stage">
         {/* the video frame: both videos stacked, cross-faded */}
         <div
-          className="pe-frame pe-abs pe-r"
+          className="ee-frame ee-abs ee-r"
           style={at(GEO.frame.x, GEO.frame.y, { "--w": GEO.frame.w, "--h": GEO.frame.h, "--d": 0 })}
           onPointerDown={onDown}
           onPointerUp={onUp}
           onPointerCancel={() => (swipe.current = null)}
         >
           {videos.map((v, k) => (
-            <video
-              key={v.src}
-              ref={(el) => {
-                vids.current[k] = el;
-              }}
-              className={`pe-video${k === active ? " on" : ""}`}
-              src={v.src}
-              poster={v.poster}
-              loop
-              muted
-              playsInline
-              preload={k === 0 ? "auto" : "metadata"}
-              tabIndex={-1}
-              aria-hidden={k !== active}
-              aria-label={v.label}
-              disablePictureInPicture
-              disableRemotePlayback
-              onContextMenu={(e) => e.preventDefault()}
-            />
+            <div key={v.src} className={`ee-layer${k === active ? " on" : ""}`} aria-hidden={k !== active}>
+              <VideoPlayer
+                src={v.src}
+                poster={v.poster}
+                label={v.label}
+                play={visible && k === active}
+                muted={muted}
+                onToggleMute={() => setMuted((m) => !m)}
+                interactive={k === active}
+              />
+            </div>
           ))}
 
           {/* stacked layout only: arrows sit on the frame's edges */}
           {n > 1 && (
             <>
-              <button type="button" className="pe-arrow pe-arrow--in pe-arrow--l" aria-label="Previous video" onClick={() => go(-1)}>
+              <button type="button" className="ee-arrow ee-arrow--in ee-arrow--l" aria-label="Previous video" onClick={() => go(-1)}>
                 <Chevron dir="l" />
               </button>
-              <button type="button" className="pe-arrow pe-arrow--in pe-arrow--r" aria-label="Next video" onClick={() => go(1)}>
+              <button type="button" className="ee-arrow ee-arrow--in ee-arrow--r" aria-label="Next video" onClick={() => go(1)}>
                 <Chevron dir="r" />
               </button>
             </>
@@ -181,7 +164,7 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
           <>
             <button
               type="button"
-              className="pe-arrow pe-arrow--out pe-abs pe-r"
+              className="ee-arrow ee-arrow--out ee-abs ee-r"
               aria-label="Previous video"
               onClick={() => go(-1)}
               style={at(GEO.left.cx - a / 2, GEO.left.cy - a / 2, { "--w": a, "--d": 1 })}
@@ -190,7 +173,7 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
             </button>
             <button
               type="button"
-              className="pe-arrow pe-arrow--out pe-abs pe-r"
+              className="ee-arrow ee-arrow--out ee-abs ee-r"
               aria-label="Next video"
               onClick={() => go(1)}
               style={at(GEO.right.cx - a / 2, GEO.right.cy - a / 2, { "--w": a, "--d": 1 })}
@@ -202,7 +185,7 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
       </div>
 
       <noscript>
-        <style>{`.pe-r{opacity:1!important;transform:none!important}`}</style>
+        <style>{`.ee-r{opacity:1!important;transform:none!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -211,63 +194,65 @@ export default function ProjectEchoEnd({ data }: { data: EchoEndData }) {
 
 const CSS = `
 /* ===================== shared ===================== */
-.pe-page { --u: 1px; background: #fff; }
-.pe-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ee-page { --u: 1px; background: #fff; }
+.ee-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.pe-frame { position: relative; overflow: hidden; background: #2b2a22; touch-action: pan-y; }
-.pe-video {
-  position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover;
-  opacity: 0; transition: opacity var(--pe-fade, 600ms) ease; pointer-events: none; user-select: none;
+.ee-frame { position: relative; overflow: hidden; background: #2b2a22; touch-action: pan-y; }
+
+/* each video (with its own buttons) lives in a layer; the layers cross-fade */
+.ee-layer {
+  position: absolute; inset: 0; opacity: 0; pointer-events: none;
+  transition: opacity var(--ee-fade, 600ms) ease;
 }
-.pe-video.on { opacity: 1; }
+.ee-layer.on { opacity: 1; pointer-events: auto; }
 
-.pe-arrow {
+.ee-arrow {
   display: block; padding: 0; border: 0; margin: 0; cursor: pointer; border-radius: 50%;
-  background: var(--pe-arrow); color: #fff; -webkit-tap-highlight-color: transparent;
+  background: var(--ee-arrow); color: #fff; -webkit-tap-highlight-color: transparent;
   transition: background .25s ease, transform .25s ease;
 }
-.pe-arrow:hover { background: var(--pe-arrow-h); }
-.pe-arrow:active { transform: scale(.94); }
-.pe-arrow:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
-.pe-arrow svg { display: block; }
+.ee-arrow:hover { background: var(--ee-arrow-h); }
+.ee-arrow:active { transform: scale(.94); }
+.ee-arrow:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+.ee-arrow svg { display: block; }
 
 /* reveal */
-.pe-r {
+.ee-r {
   opacity: 0; transform: translate3d(0, 14px, 0);
   transition: opacity .9s cubic-bezier(.22, 1, .36, 1), transform 1.1s cubic-bezier(.22, 1, .36, 1);
   transition-delay: calc(var(--d, 0) * 110ms + 100ms);
 }
-.is-in .pe-r { opacity: 1; transform: none; }
+.is-in .ee-r { opacity: 1; transform: none; }
 
 /* ===================== STACKED (<1100px wide or <640px tall) ===================== */
 @media (max-width: 1099.98px), (max-height: 639.98px) {
-  .pe-page { scroll-snap-align: none; scroll-snap-stop: normal; padding: calc(var(--header-h) + 24px) 16px 72px; }
-  .pe-stage { width: 100%; max-width: 40rem; margin: 0 auto; }
-  .pe-frame { width: 100%; aspect-ratio: 922 / 615; }
-  .pe-arrow--out { display: none; }
-  .pe-arrow--in { position: absolute; top: 50%; width: 40px; height: 40px; margin-top: -20px; background: rgba(90, 90, 90, .72); z-index: 2; }
-  .pe-arrow--l { left: 10px; }
-  .pe-arrow--r { right: 10px; }
+  .ee-page { scroll-snap-align: none; scroll-snap-stop: normal; padding: calc(var(--header-h) + 24px) 16px 72px; }
+  .ee-stage { width: 100%; max-width: 40rem; margin: 0 auto; }
+  .ee-frame { width: 100%; aspect-ratio: 922 / 615; }
+  .ee-arrow--out { display: none; }
+  .ee-arrow--in { position: absolute; top: 50%; width: 40px; height: 40px; margin-top: -20px; background: rgba(90, 90, 90, .72); z-index: 5; }
+  .ee-arrow--l { left: 10px; }
+  .ee-arrow--r { right: 10px; }
 }
 
 /* ===================== DESKTOP: her 1440 × 900 composition, scaled to fit one screen ===================== */
 @media (min-width: 1100px) and (min-height: 640px) {
-  .pe-page {
+  .ee-page {
     --u: min(1px, calc(100cqw / 1440), calc(var(--page-h) / 900));
     height: var(--page-h);
     display: grid; place-items: center;
     scroll-snap-align: start; scroll-snap-stop: always;
   }
-  .pe-stage { position: relative; width: calc(var(--u) * 1440); height: calc(var(--u) * 900); }
+  .ee-stage { position: relative; width: calc(var(--u) * 1440); height: calc(var(--u) * 900); }
 
-  .pe-abs { position: absolute; left: calc(var(--u) * var(--x)); top: calc(var(--u) * var(--y)); margin: 0; }
-  .pe-frame { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h)); }
-  .pe-arrow--out { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--w)); padding: calc(var(--u) * 12); }
-  .pe-arrow--in { display: none; }
+  .ee-abs { position: absolute; left: calc(var(--u) * var(--x)); top: calc(var(--u) * var(--y)); margin: 0; }
+  .ee-frame { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h)); }
+  .ee-arrow--out { width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--w)); padding: calc(var(--u) * 12); }
+  .ee-arrow--in { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pe-r, .pe-video, .pe-arrow { transition: none !important; }
-  .pe-r { opacity: 1; transform: none; }
+  .ee-r, .ee-layer, .ee-arrow { transition: none !important; }
+  .ee-r { opacity: 1; transform: none; }
 }
 `;

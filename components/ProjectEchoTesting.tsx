@@ -4,18 +4,21 @@
  * Project three · page 8 — TESTING. Built from her 1440 × 900 Canva page.
  *
  *   · beige half ......... x 0 → 720 (always the left 50 % of the screen, runs to the screen edge)
- *   · heading ............ x 90, y 89, 18 Medium #000, uppercase (same spot as the other Echo Pan page headings)
+ *   · heading ............ x 90, y 89, 18 Medium #000, uppercase
  *   · left clip .......... x 90,  y 152, 408 × 596 (portrait, on the beige)
  *   · right clip ......... x 586, y 254, 697 × 392 (landscape, straddles the beige / white edge)
  *
- * Every position AND size is her Canva value × --u = min(1px, 100cqw / 1440, pageHeight / 900).
- * Below 1100px wide (or under 640px tall) the page becomes a stacked column.
- * Clips are silent endless loops that play only while the page is on screen.
+ * VIDEO BEHAVIOUR (components/VideoPlayer.tsx)
+ *   · both clips start playing MUTED as soon as the page is on screen, and pause when it leaves
+ *   · one play / pause button in the centre of each clip
+ *   · mute / unmute button at the bottom right of each clip
+ *   · only ONE clip can have sound at a time (unmuting one mutes the other)
  *
- * Do NOT put opacity / transform / filter on .pt-page or .pt-stage.
+ * CSS prefix is "pt-". Do NOT put opacity / transform / filter on .pt-page or .pt-stage.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import VideoPlayer from "./VideoPlayer";
 import type { EchoTestingData, TestingMedia } from "../data/echoTesting";
 
 /* ------------------------------ TUNING ------------------------------ */
@@ -29,10 +32,22 @@ const GEO = {
   right: { x: 586, y: 254, w: 697, h: 392 },
 };
 
+type Side = "left" | "right";
+
 const cssVars = (v: Record<string, string | number>): CSSProperties => v as unknown as CSSProperties;
 const at = (x: number, y: number, extra: Record<string, string | number> = {}) => cssVars({ "--x": x, "--y": y, ...extra });
 
-function Media({ m, refCb }: { m: TestingMedia; refCb?: (el: HTMLVideoElement | null) => void }) {
+function Media({
+  m,
+  play,
+  muted,
+  onToggleMute,
+}: {
+  m: TestingMedia;
+  play: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
+}) {
   if (m.kind === "image") {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -40,57 +55,45 @@ function Media({ m, refCb }: { m: TestingMedia; refCb?: (el: HTMLVideoElement | 
     );
   }
   return (
-    <video
-      ref={refCb}
-      className="pt-el"
-      src={m.src}
-      poster={m.poster}
-      loop
-      muted
-      playsInline
-      preload="metadata"
-      tabIndex={-1}
-      aria-label={m.label}
-      disablePictureInPicture
-      disableRemotePlayback
-      onContextMenu={(e) => e.preventDefault()}
-      style={{ objectPosition: m.position ?? "50% 50%" }}
-    />
+    <VideoPlayer src={m.src} poster={m.poster} label={m.label} position={m.position} play={play} muted={muted} onToggleMute={onToggleMute} />
   );
 }
 
 export default function ProjectEchoTesting({ data }: { data: EchoTestingData }) {
   const rootRef = useRef<HTMLElement>(null);
-  const vids = useRef<Set<HTMLVideoElement>>(new Set());
+  const [visible, setVisible] = useState(false); //          page is on screen
+  const [desktop, setDesktop] = useState<boolean | null>(null); // which of the two layouts is showing
+  const [sound, setSound] = useState<Side | null>(null); //   which clip has sound on (null = both muted)
 
-  const reg = (el: HTMLVideoElement | null) => {
-    if (el) {
-      el.muted = true; // React doesn't always render the muted attribute → force it, or autoplay is blocked
-      el.defaultMuted = true;
-      vids.current.add(el);
-    }
-  };
-
+  /* page on screen → reveal once + play; off screen → pause */
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const io = new IntersectionObserver(
       (entries: IntersectionObserverEntry[]) => {
         const e = entries[0];
         if (!e) return;
-        if (e.isIntersecting) {
-          el.classList.add("is-in");
-          if (!reduce) vids.current.forEach((v) => v.play().catch(() => {}));
-        } else {
-          vids.current.forEach((v) => v.pause());
-        }
+        setVisible(e.isIntersecting);
+        if (e.isIntersecting) el.classList.add("is-in");
       },
       { threshold: 0.3 }
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  /* the desktop and stacked layouts both exist in the DOM; only the visible one may play (and make sound) */
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1100px) and (min-height: 640px)");
+    const update = () => setDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const toggle = (side: Side) => () => setSound((s) => (s === side ? null : side));
+  const playDesktop = visible && desktop === true;
+  const playStacked = visible && desktop === false;
 
   return (
     <section
@@ -108,10 +111,10 @@ export default function ProjectEchoTesting({ data }: { data: EchoTestingData }) 
         </h2>
 
         <div className="pt-media pt-abs pt-r" style={at(GEO.left.x, GEO.left.y, { "--w": GEO.left.w, "--h": GEO.left.h, "--d": 1 })}>
-          <Media m={data.left} refCb={reg} />
+          <Media m={data.left} play={playDesktop} muted={sound !== "left"} onToggleMute={toggle("left")} />
         </div>
         <div className="pt-media pt-abs pt-r" style={at(GEO.right.x, GEO.right.y, { "--w": GEO.right.w, "--h": GEO.right.h, "--d": 2 })}>
-          <Media m={data.right} refCb={reg} />
+          <Media m={data.right} play={playDesktop} muted={sound !== "right"} onToggleMute={toggle("right")} />
         </div>
       </div>
 
@@ -120,12 +123,12 @@ export default function ProjectEchoTesting({ data }: { data: EchoTestingData }) 
         <div className="pt-m-beige">
           <h2 className="pt-title">{data.heading}</h2>
           <div className="pt-m-media pt-m-media--p">
-            <Media m={data.left} />
+            <Media m={data.left} play={playStacked} muted={sound !== "left"} onToggleMute={toggle("left")} />
           </div>
         </div>
         <div className="pt-m-white">
           <div className="pt-m-media pt-m-media--l">
-            <Media m={data.right} />
+            <Media m={data.right} play={playStacked} muted={sound !== "right"} onToggleMute={toggle("right")} />
           </div>
         </div>
       </div>
