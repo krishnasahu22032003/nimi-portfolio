@@ -56,6 +56,10 @@ import type { MaterialExplorationData } from "./materialExploration.";
 import { ECHO_PAN_MATERIALS } from "./materialExploration.";
 import type { ConstructionData } from "./construction";
 import { ECHO_PAN_CONSTRUCTION } from "./construction";
+import type { EchoTestingData } from "./echoTesting";
+import { ECHO_PAN_TESTING } from "./echoTesting";
+import type { EchoEndData } from "./echoEnding";
+import { ECHO_PAN_END } from "./echoEnding";
 
 export type ProjectDetailData = {
   slug: string;
@@ -96,6 +100,10 @@ export type ProjectDetailData = {
     /** "Construction" page: six workshop photos / clips in a 3 × 2 grid (project three, page 7) */
   construction?: ConstructionData;
   /** tiles that change colour one after another + text */
+    /** "Testing" page: two clips on a beige / white split (project three, page 8) */
+  echoTesting?: EchoTestingData;
+  /** "End" page: two videos with left / right arrows (project three, page 9) */
+  echoEnd?: EchoEndData;
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
   collage?: CollageData;
@@ -210,6 +218,10 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
       /* page 7 — construction (components/ProjectConstruction.tsx + data/construction.ts) */
     construction: ECHO_PAN_CONSTRUCTION,
+        /* page 8 — testing (components/ProjectEchoTesting.tsx + data/echoTesting.ts) */
+    echoTesting: ECHO_PAN_TESTING,
+    /* page 9 — end: two videos with arrows (components/ProjectEchoEnd.tsx + data/echoEnding.ts) */
+    echoEnd: ECHO_PAN_END,
   },
 };
 

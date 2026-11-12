@@ -52,7 +52,8 @@ import ProjectEchoShapes from "./ProjectEchoShapes";
 import ProjectEchoSound from "./Projectechosound ";
 import ProjectMaterialExploration from "./ProjectMaterialExploration"; // NEW
 import ProjectConstruction from "./ProjectConstruction";
-
+import ProjectEchoTesting from "./ProjectEchoTesting";
+import ProjectEchoEnd from "./ProjectEchoEnd";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -193,6 +194,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     echoSound,
     materialExploration, // NEW
     construction,
+    echoTesting,
+    echoEnd,
     colourStory,
     collage,
     knotStory,
@@ -341,6 +344,12 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
             {/* ============================ PAGE 7 (project three) — CONSTRUCTION: workshop photos / clips ============================ */}
       {construction ? <ProjectConstruction data={construction} /> : null}
+
+            {/* ============================ PAGE 8 (project three) — TESTING: two clips on a beige / white split ============================ */}
+      {echoTesting ? <ProjectEchoTesting data={echoTesting} /> : null}
+
+      {/* ============================ PAGE 9 (project three) — END: two videos, arrows to switch ============================ */}
+      {echoEnd ? <ProjectEchoEnd data={echoEnd} /> : null}
 
       <noscript>
         <style>{`.pd-reveal{opacity:1!important;transform:none!important}.pd-video{clip-path:none!important}.pd-video-el{opacity:1!important;transform:none!important}`}</style>
