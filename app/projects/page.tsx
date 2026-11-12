@@ -64,6 +64,12 @@ const WHEEL_SPEED = 1.15; // wheel px -> slider px
 const PARALLAX = 0; // image drifts inside its frame
 const LABEL = "OPEN PROJECT";
 
+/* AUTO-DRIFT — the carousel glides from RIGHT to LEFT on its own */
+const AUTO_DRIFT = true; // false = old behaviour (moves only when the visitor scrolls / drags)
+const DRIFT_SPEED = 60; // px per second (higher = faster). 40 = very calm · 60 = slow · 100 = brisk
+const DRIFT_EASE = 0.06; // how softly it speeds up / slows down (lower = softer)
+const DRIFT_RESUME_MS = 1400; // after the visitor stops scrolling / dragging, drift resumes after this long
+
 /* flower / diamond */
 const ICON_PX = 24; // size of the big flower (after interaction, unchanged)
 const SMALL_SCALE = 0.6; // resting size of the flower (fraction of ICON_PX)
@@ -153,7 +159,7 @@ export default function ProjectsSection() {
     goTo: (_i: number) => {},
   });
 
-  /* ---------- slider engine (unchanged) ---------- */
+  /* ---------- slider engine ---------- */
   useEffect(() => {
     const section = sectionRef.current;
     const track = trackRef.current;
@@ -161,9 +167,15 @@ export default function ProjectsSection() {
 
     const s = api.current;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const drift = AUTO_DRIFT && !reduce;
     let vw = window.innerWidth;
     let last = 0;
     let snapTimer: number | undefined;
+
+    // auto-drift state
+    let speed = 0; // current drift speed (px / s), eased towards DRIFT_SPEED or 0
+    let hover = false; // mouse is over the section → glide to a stop
+    let holdUntil = 0; // visitor just scrolled / dragged → stay paused until this time
 
     // drag state (declared up-front because wrap() shifts startF too)
     let down = false;
@@ -238,12 +250,23 @@ export default function ProjectsSection() {
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000 || 0.016, 0.05);
       last = now;
+
+      /* auto-drift: ease the speed up / down, then push the target to the LEFT-moving direction */
+      if (drift) {
+        const paused = hover || down || now < holdUntil;
+        const want = paused ? 0 : DRIFT_SPEED;
+        speed += (want - speed) * (1 - Math.pow(1 - DRIFT_EASE, dt * 60));
+        if (Math.abs(want - speed) < 0.05) speed = want;
+        s.target += speed * dt; // target grows → track slides right → left
+      }
+
       const k = reduce ? 1 : 1 - Math.pow(1 - EASE, dt * 60);
       s.f += (s.target - s.f) * k;
       if (Math.abs(s.target - s.f) < 0.1) s.f = s.target;
       wrap();
       render();
-      s.raf = s.f !== s.target ? requestAnimationFrame(tick) : 0;
+      /* with drift the loop never stops; without it, it stops once the slider has settled */
+      s.raf = drift || s.f !== s.target ? requestAnimationFrame(tick) : 0;
     };
 
     s.wake = () => {
@@ -255,6 +278,7 @@ export default function ProjectsSection() {
 
     s.goTo = (i: number) => {
       s.target = s.centers[clamp(i, 0, s.centers.length - 1)];
+      holdUntil = performance.now() + DRIFT_RESUME_MS;
       s.wake();
     };
 
@@ -269,6 +293,7 @@ export default function ProjectsSection() {
       e.preventDefault();
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       s.target += d * WHEEL_SPEED;
+      holdUntil = performance.now() + DRIFT_RESUME_MS;
       s.wake();
       window.clearTimeout(snapTimer);
       snapTimer = window.setTimeout(snap, 140);
@@ -299,11 +324,20 @@ export default function ProjectsSection() {
     const onUp = () => {
       if (!down) return;
       down = false;
+      holdUntil = performance.now() + DRIFT_RESUME_MS;
       if (s.dragged) {
         s.target = snapPx(s.target + vel * 280);
         s.wake();
         window.setTimeout(() => (s.dragged = false), 0);
       }
+    };
+
+    /* mouse over the section → the carousel glides to a stop; leaves → it glides back up to speed */
+    const onEnter = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") hover = true;
+    };
+    const onLeave = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") hover = false;
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -315,11 +349,14 @@ export default function ProjectsSection() {
     // start with the first horizontal frame of the middle copy centred: V · [H] · V
     s.active = N + 1;
     measure();
+    s.wake(); // starts the loop (needed for the auto-drift)
 
     const ro = new ResizeObserver(measure);
     ro.observe(section);
     section.addEventListener("wheel", onWheel, { passive: false });
     section.addEventListener("pointerdown", onDown);
+    section.addEventListener("pointerenter", onEnter);
+    section.addEventListener("pointerleave", onLeave);
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
@@ -332,6 +369,8 @@ export default function ProjectsSection() {
       ro.disconnect();
       section.removeEventListener("wheel", onWheel);
       section.removeEventListener("pointerdown", onDown);
+      section.removeEventListener("pointerenter", onEnter);
+      section.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("pointermove", onDragMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -342,7 +381,8 @@ export default function ProjectsSection() {
   const onFrameClick = (e: React.MouseEvent, i: number) => {
     const s = api.current;
     if (s.dragged) return e.preventDefault();
-    if (i !== s.active) {
+    /* with auto-drift every frame opens its project directly; without it, a side frame is centred first */
+    if (!AUTO_DRIFT && i !== s.active) {
       e.preventDefault();
       s.goTo(i);
     }
@@ -423,22 +463,20 @@ export default function ProjectsSection() {
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-        
-<img
-  ref={(el) => {
-    imgRefs.current[i] = el;
-  }}
-  src={p.img}
-  alt={isMain ? p.title : ""}
-  draggable={false}
-  loading="eager"
-  className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
-  style={{
-    objectPosition: "center center",
-    willChange: "transform",
-  }}
-/>
-
+              <img
+                ref={(el) => {
+                  imgRefs.current[i] = el;
+                }}
+                src={p.img}
+                alt={isMain ? p.title : ""}
+                draggable={false}
+                loading="eager"
+                className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+                style={{
+                  objectPosition: "center center",
+                  willChange: "transform",
+                }}
+              />
 
               {/* flower + label: anchored to the exact centre of the frame */}
               <div className="ps-hover" aria-hidden="true">
