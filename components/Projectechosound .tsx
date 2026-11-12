@@ -4,31 +4,17 @@
  * Project three · page 5 — "How the dimensions are calculated ?" | "How it affects the sound ?"
  * Built from her 1440 × 900 Canva page ("referance page").
  *
+ * CLIENT CHANGES IN THIS VERSION
+ *   · The blue wave in the three right-hand flutes now runs the WHOLE air column (open end → the ring / stopper,
+ *     where her red lines end), with exactly the same elongated wave size as the left-hand bansuri diagram
+ *     (6 half-waves, ≈ 40px each). Tune the end point with FLUTE_WAVE_END.
+ *   · Every blue wave is now ANIMATED as slow air flow: the standing wave swells, flattens through the middle line,
+ *     and swells the other way — i.e. air moving in and out of the tube. Tune speed with AIR_SECONDS.
+ *
  * PIXEL-PERFECT + ONE SCREEN (same system as the Concept page)
  *   Every position AND every size is her Canva value on a 1440 × 900 page, multiplied by
- *   --u = min(1px, 100cqw / 1440, pageHeight / 900). At 1440 × 900 or larger you get her exact pixels;
- *   on smaller screens the whole composition shrinks proportionally and still fits one screen.
- *   The beige half is always the left 50 % of the page. Below 1100px wide (or under 640px tall)
- *   the page becomes a stacked column.
+ *   --u = min(1px, 100cqw / 1440, pageHeight / 900).
  *
- * Design values (px):  both big questions + "Bansuri" / "Pan flute" .. 18 Medium #000
- *                      body copy ................................... 16 Regular #404040, 26 line
- *                      diagram labels .............................. 14 Regular #000
- *                      state captions .............................. 14 (black title / #404040 note)
- *                      scale labels ................................ 13 (black / #404040)
- *
- * BLUE STANDING WAVES (her note: "the blue lines throughout the flute image")
- *   The waves are now drawn as crisp vector lines in code (<Wave />) instead of cropped PNGs, so they
- *   always show, stay sharp at any size, and sit exactly inside every tube:
- *     · bansuri diagram ........ one wave along the whole closed tube
- *     · pan flute tube ......... the double-helix wave down the tube
- *     · the 3 flute states ..... same wave scale, cut at the FIRST OPEN HOLE → more holes closed = longer wave
- *   Tune: WAVE_ON_DARK / WAVE_ON_WOOD (colours), WAVE_SW (line weight), WAVE_N (number of loops).
- *
- * The formulas are typeset (not screenshots), so they stay sharp. Her screenshots had a pale box behind
- * them; set FORMULA_BG = "#EEF0E4" if she wants those boxes back.
- *
- * Images are drawn with mix-blend-mode: multiply, so their white backgrounds disappear on the beige half.
  * Do NOT put opacity / transform / filter / z-index on .pf-page or .pf-stage (that would stop the blend).
  */
 import { Familjen_Grotesk } from "next/font/google";
@@ -48,16 +34,16 @@ const FORMULA_INK = "#262626";
 /* blue standing waves */
 const WAVE_ON_DARK = "#52B4F2"; // on the black bansuri tubes
 const WAVE_ON_WOOD = "#2B86CC"; // on the light wooden pan tube
-const WAVE_SW = 1.3; // line weight (design px)
+const WAVE_SW = 1.3; // line weight (px)
+const AIR_SECONDS = 4.2; // one full in-and-out breath of the air flow (bigger = slower)
 const WAVE_N = {
-  bansuriDiagram: 6, // half-waves along the closed bansuri tube
+  bansuriDiagram: 6, // half-waves along the closed bansuri tube (left diagram)
   panTube: 5, // half-waves down the pan flute tube
-  states: [3, 5, 9], // half-waves in the three states (≈ the same loop size, cut at the first open hole)
+  states: [6, 6, 6], // half-waves in the three right-hand flutes → same wave length as the left bansuri (≈ 40px per half-wave)
 };
 
 /* Where the render / tube sits inside her PNG files, as FRACTIONS of the whole image
-   (l = left, t = top, w = width, h = height). They are cropped to her exact boxes with these.
-   If you export trimmed PNGs, use { l: 0, t: 0, w: 1, h: 1 }. */
+   (l = left, t = top, w = width, h = height). */
 const INK = {
   bansuriSide: { l: 0.0108, t: 0.0949, w: 0.9804, h: 0.7722 }, // sound-bansuri-side.png (2400 × 158)
   panTube: { l: 0.1091, t: 0.0148, w: 0.789, h: 0.9648 }, //    sound-pan-tube.png       (275 × 1419)
@@ -65,15 +51,14 @@ const INK = {
 };
 type Ink = { l: number; t: number; w: number; h: number };
 
-/* The three flute PNGs have different sizes, so each one is cropped to its tube.
-   `ink`   = the tube inside the PNG (fractions of the file)
-   `first` = where the FIRST OPEN hole is, as a share of the tube's length → the blue wave ends there.
-   (measured from the files: all open → hole 1, 2 closed → hole 3, 5 closed → hole 6) */
+/* The three flute PNGs have different sizes, so each one is cropped to its tube (`ink`).
+   The blue wave now ends at FLUTE_WAVE_END (the ring / stopper = where her red lines end) on ALL three. */
 const FLUTES = [
-  { ink: { l: 0.0101, t: 0.1099, w: 0.9831, h: 0.7582 }, first: 0.1426 }, // sound-flute-all-open.png      (2961 × 182)
-  { ink: { l: 0.0106, t: 0.1244, w: 0.9828, h: 0.7254 }, first: 0.2642 }, // sound-flute-some-closed.png   (3024 × 193)
-  { ink: { l: 0.013, t: 0.1907, w: 0.9821, h: 0.6465 }, first: 0.4818 }, //  sound-flute-more-closed.png   (3011 × 215)
+  { ink: { l: 0.0101, t: 0.1099, w: 0.9831, h: 0.7582 } }, // sound-flute-all-open.png      (2961 × 182)
+  { ink: { l: 0.0106, t: 0.1244, w: 0.9828, h: 0.7254 } }, // sound-flute-some-closed.png   (3024 × 193)
+  { ink: { l: 0.013, t: 0.1907, w: 0.9821, h: 0.6465 } }, //  sound-flute-more-closed.png   (3011 × 215)
 ];
+const FLUTE_WAVE_END = 0.82; // share of the tube's length where the wave stops (0.82 ≈ her red line; 0.84 = right at the ring)
 const TUBE_RATIO = 21.2; // every flute tube is 21.2 × as long as it is thick
 const WAVE_X0 = 0.012; // the wave starts just inside the open end
 
@@ -109,22 +94,21 @@ function Crop({ src, ink, className, style, alt }: { src: string; ink: Ink; clas
 }
 
 /* ---- the blue standing wave: two mirrored sine curves that cross at the nodes (n half-waves) ----
-   Desktop: w × h are design px (the SVG is scaled by --u together with its box, so the line weight scales too).
-   fluid  : used on the stacked layout, where the box is sized in % — the line stays a constant 1.3px. */
+   ANIMATED: the pair of curves swells, flattens onto the middle line and swells the other way (CSS .pf-air),
+   which reads as air flowing in and out of the tube. The stroke keeps a constant width while it animates. */
 function Wave({
   w,
   h,
   n,
   color,
   vertical = false,
-  fluid = false,
 }: {
   w: number;
   h: number;
   n: number;
   color: string;
   vertical?: boolean;
-  fluid?: boolean;
+  fluid?: boolean; // kept for the stacked layout calls (no longer needed, stroke is always non-scaling)
 }) {
   const sw = WAVE_SW;
   const across = vertical ? w : h; // thickness of the tube
@@ -150,12 +134,14 @@ function Wave({
     strokeWidth: sw,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    ...(fluid ? { vectorEffect: "non-scaling-stroke" as const } : {}),
+    vectorEffect: "non-scaling-stroke" as const,
   };
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <path d={d1} {...common} />
-      <path d={d2} {...common} />
+      <g className={vertical ? "pf-air pf-air--v" : "pf-air"}>
+        <path d={d1} {...common} />
+        <path d={d2} {...common} />
+      </g>
     </svg>
   );
 }
@@ -227,6 +213,7 @@ export default function ProjectEchoSound({ data }: { data: EchoSoundData }) {
   const FLUTE = { x: 787, w: 300 };
   const fluteH = FLUTE.w / TUBE_RATIO; // 14.2
   const WAVE_H = 11.5;
+  const stateWaveW = FLUTE.w * (FLUTE_WAVE_END - WAVE_X0); // ≈ 242px = same length as the left bansuri wave
 
   /* right column, pan flute: pipe centres (x) and the top of each dotted arrow (y); arrows end at y = 730 */
   const PIPES = [
@@ -242,7 +229,14 @@ export default function ProjectEchoSound({ data }: { data: EchoSoundData }) {
       ref={rootRef}
       className={`pd-page pf-page ${grotesk.className}`}
       aria-label="Echo Pan — dimensions and sound"
-      style={cssVars({ "--pf-ink": COLOR_INK, "--pf-grey": COLOR_GREY, "--pf-beige": COLOR_BEIGE, "--pf-fbg": FORMULA_BG, "--pf-fink": FORMULA_INK })}
+      style={cssVars({
+        "--pf-ink": COLOR_INK,
+        "--pf-grey": COLOR_GREY,
+        "--pf-beige": COLOR_BEIGE,
+        "--pf-fbg": FORMULA_BG,
+        "--pf-fink": FORMULA_INK,
+        "--pf-air": `${AIR_SECONDS}s`,
+      })}
     >
       <div className="pf-bg" aria-hidden="true" />
 
@@ -338,20 +332,20 @@ export default function ProjectEchoSound({ data }: { data: EchoSoundData }) {
           <Lines lines={sp.text} />
         </p>
 
-        {/* the three flutes, each with its blue wave running from the open end to the first open hole */}
+        {/* the three flutes — the blue wave now runs the whole air column (open end → ring), same wave length as the left bansuri */}
         {sb.states.map((s, i: number) => (
           <div key={s.label} style={{ display: "contents" }}>
             <Crop src={s.img} ink={FLUTES[i].ink} alt={s.alt} className="pf-abs pf-r" style={pos(FLUTE.x, STATE_Y[i].flute, { "--w": FLUTE.w, "--h": fluteH, "--d": 4 + i })} />
             <div
               className="pf-wave pf-abs pf-wipe"
               style={pos(FLUTE.x + FLUTE.w * WAVE_X0, STATE_Y[i].flute + (fluteH - WAVE_H) / 2, {
-                "--w": FLUTE.w * (FLUTES[i].first - WAVE_X0),
+                "--w": stateWaveW,
                 "--h": WAVE_H,
                 "--d": 6 + i,
               })}
               aria-hidden="true"
             >
-              <Wave w={FLUTE.w * (FLUTES[i].first - WAVE_X0)} h={WAVE_H} n={WAVE_N.states[i]} color={WAVE_ON_DARK} />
+              <Wave w={stateWaveW} h={WAVE_H} n={WAVE_N.states[i]} color={WAVE_ON_DARK} />
             </div>
             <p className="pf-cap pf-abs pf-r" style={pos(FLUTE.x, STATE_Y[i].cap, { "--d": 5 + i })}>
               <span className="pf-block pf-cap-t">{s.label}</span>
@@ -472,7 +466,7 @@ export default function ProjectEchoSound({ data }: { data: EchoSoundData }) {
                     className="pf-m-wave"
                     style={{
                       left: `${(FLUTES[i].ink.l + FLUTES[i].ink.w * WAVE_X0) * 100}%`,
-                      width: `${FLUTES[i].ink.w * (FLUTES[i].first - WAVE_X0) * 100}%`,
+                      width: `${FLUTES[i].ink.w * (FLUTE_WAVE_END - WAVE_X0) * 100}%`,
                       top: `${(FLUTES[i].ink.t + FLUTES[i].ink.h / 2) * 100}%`,
                       height: `${FLUTES[i].ink.h * 0.8 * 100}%`,
                       transform: "translateY(-50%)",
@@ -543,6 +537,25 @@ const CSS = `
 /* blue standing waves (vector) */
 .pf-wave, .pf-m-wave { pointer-events: none; }
 .pf-wave svg, .pf-m-wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* ---- AIR FLOW: the standing wave swells, flattens through the middle line, swells the other way (slow, calm) ---- */
+.pf-air {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: pf-air-h var(--pf-air, 4.2s) ease-in-out infinite;
+  will-change: transform;
+}
+.pf-air--v { animation-name: pf-air-v; }
+@keyframes pf-air-h {
+  0%   { transform: scaleY(1); }
+  50%  { transform: scaleY(-1); }
+  100% { transform: scaleY(1); }
+}
+@keyframes pf-air-v {
+  0%   { transform: scaleX(1); }
+  50%  { transform: scaleX(-1); }
+  100% { transform: scaleX(1); }
+}
 
 /* typeset formulas */
 .pf-formula { display: flex; align-items: center; justify-content: center; background: var(--pf-fbg); color: var(--pf-fink); }
@@ -648,5 +661,6 @@ const CSS = `
   .pf-r, .pf-wipe { transition: none !important; }
   .pf-r { opacity: 1; transform: none; }
   .pf-wipe { clip-path: none; }
+  .pf-air { animation: none !important; }
 }
 `;

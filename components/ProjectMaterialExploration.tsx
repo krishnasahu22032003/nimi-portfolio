@@ -8,20 +8,19 @@
  *   material (name, tagline and the three rows: acoustic, making & form, object experience) and every
  *   OTHER tile dims to 30 %. The active tile is always full colour. When the cursor leaves the grid the
  *   last material stays selected (the page never goes blank). Bamboo is active on load.
- *   The three row headings, the divider lines and the column structure never change.
- *   The hint ("Hover over a material…") and the numbers 1–6 belong to her Bamboo page only, so they show
- *   while Bamboo is active and fade out on the other five (exactly as on her Canva pages).
  *
- * PIXEL-PERFECT + ONE SCREEN
- *   Every position AND size is her Canva value on a 1440 × 900 page × --u = min(1px, 100cqw/1440, pageHeight/900).
- *   Each material carries its OWN drawing positions / sizes / crops (data/materialExploration.ts), because her
- *   six Canva pages are not identical. Below 1100px wide (or under 640px tall) the page becomes a stacked column.
+ * CLIENT CHANGES IN THIS VERSION
+ *   1. The numbers 1–6 around the tiles are removed.
+ *   2. Aluminium tile: image is zoomed slightly (object-fit: cover + small scale) so the gap at the top/bottom is gone.
+ *   3. "Hover over a material to learn more." now shows on ALL six materials (it is no longer Bamboo-only).
+ *   4. Carbon-fibre tile: the pipes are fitted inside the frame so the top pipe is no longer cut (like the PVC tile).
+ *   5. The hint has a gentle attention animation (soft copper sheen sweep + tiny nudge, every few seconds).
+ *      It calms down for good as soon as the visitor hovers / taps any material.
  *
  * Design values (px):  title + row headings ..... 18 Medium #000 (uppercase)
  *                      material name ............ 22 Medium #000 (uppercase)
  *                      hint, taglines, row subs . 16 Regular #404040, 26 line
  *                      captions ................. 16 Regular #000, 26 line
- *                      tile numbers ............. 28 Regular #000
  *                      tiles .................... 195 × 195, radius 18
  *
  * Do NOT put opacity / transform / filter on .pm-page or .pm-stage.
@@ -37,8 +36,17 @@ const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500", "6
 const COLOR_INK = "#000";
 const COLOR_GREY = "#404040";
 const COLOR_LINE = "#ECE6DA"; // the faint beige dividers on her page
+const COLOR_ACCENT = "#B5735A"; // copper — same family as her hand-drawn icons (used for the hint sheen)
 const TILE_DIM = 0.3; // opacity of the tiles that are NOT active
 const TILE_RADIUS = 18;
+
+/* tile image tweaks (per material id) */
+const ALUMINIUM_ZOOM = 1.06; // >1 zooms the aluminium photo in so it fills the frame (raise to 1.1 for a tighter crop)
+const CARBON_FIT = 0.86; // <1 shrinks the carbon-fibre pipes inside the frame so nothing is cut (1 = touching the edges)
+
+/* hint animation timing */
+const HINT_START = "1.6s"; // wait after the page appears before the first sheen
+const HINT_CYCLE = "4.2s"; // one sheen + nudge, then a rest, then repeat
 
 /* the five circles inside each of her dots PNGs: centres as fractions of the file; `size` = file width in design px.
    (all her dots files share the same circle positions) */
@@ -75,19 +83,15 @@ const GEO = {
     { x: 888, y: 615 },
     { x: 1117, y: 615 },
   ],
-  nums: [
-    { x: 857, y: 120 },
-    { x: 1137, y: 106 },
-    { x: 865, y: 388 },
-    { x: 1332, y: 388 },
-    { x: 889, y: 636 },
-    { x: 1346, y: 631 },
-  ],
 } as const;
 
 const cssVars = (v: Record<string, string | number>): CSSProperties => v as unknown as CSSProperties;
 const at = (x: number, y: number, extra: Record<string, string | number> = {}) => cssVars({ "--x": x, "--y": y, ...extra });
 const du = (n: number) => `calc(var(--u) * ${n.toFixed(3)})`;
+
+/* extra class for the tile photo of a given material */
+const tileImgClass = (id: string) => (id === "aluminium" ? "pm-img-zoom" : id === "carbon" ? "pm-img-fit" : "");
+const tileClass = (id: string, on: boolean) => `pm-tile${on ? " on" : ""}${id === "carbon" ? " pm-tile--fit" : ""}`;
 
 function Lines({ lines }: { lines: string[] }) {
   return (
@@ -150,6 +154,7 @@ function Dots({ spec, className = "", style }: { spec: DotsSpec; className?: str
 export default function ProjectMaterialExploration({ data }: { data: MaterialExplorationData }) {
   const rootRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
+  const [hinted, setHinted] = useState(false); // becomes true after the first hover / tap → the hint stops animating
 
   useEffect(() => {
     const el = rootRef.current;
@@ -171,17 +176,36 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
   const { materials, rows } = data;
   const cur = materials[active];
 
-  const pick = (i: number) => () => setActive(i);
-  const hover = (i: number) => (e: React.PointerEvent) => {
-    if (e.pointerType === "mouse") setActive(i);
+  const pick = (i: number) => () => {
+    setActive(i);
+    setHinted(true);
   };
+  const hover = (i: number) => (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse") {
+      setActive(i);
+      setHinted(true);
+    }
+  };
+
+  const hintCls = `pm-hint${hinted ? "" : " is-live"}`;
 
   return (
     <section
       ref={rootRef}
       className={`pd-page pm-page ${grotesk.className}`}
       aria-label="Echo Pan — material exploration"
-      style={cssVars({ "--pm-ink": COLOR_INK, "--pm-grey": COLOR_GREY, "--pm-line": COLOR_LINE, "--pm-dim": TILE_DIM, "--pm-r": TILE_RADIUS })}
+      style={cssVars({
+        "--pm-ink": COLOR_INK,
+        "--pm-grey": COLOR_GREY,
+        "--pm-line": COLOR_LINE,
+        "--pm-accent": COLOR_ACCENT,
+        "--pm-dim": TILE_DIM,
+        "--pm-r": TILE_RADIUS,
+        "--pm-al-zoom": ALUMINIUM_ZOOM,
+        "--pm-carbon-fit": CARBON_FIT,
+        "--pm-hint-start": HINT_START,
+        "--pm-hint-cycle": HINT_CYCLE,
+      })}
     >
       <p className="pm-sr" aria-live="polite">
         {cur.name}. {cur.tagline}. {[...cur.acoustic.caption, ...cur.form.caption, ...cur.object.caption].join(" ")}
@@ -192,6 +216,11 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
         <h2 className="pm-title pm-abs pm-r" style={at(GEO.title.x, GEO.title.y, { "--d": 0 })}>
           {data.heading}
         </h2>
+
+        {/* the hint: now visible for EVERY material, with a gentle attention animation until the first hover */}
+        <p className="pm-sub pm-abs pm-r" style={at(GEO.hint.x, GEO.hint.y, { "--d": 1 })}>
+          <span className={hintCls}>{data.hint}</span>
+        </p>
 
         {/* fixed structure: lines + the three row headings (never change) */}
         {GEO.rowLines.map((y: number) => (
@@ -208,18 +237,6 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
             </p>
           </div>
         ))}
-
-        {/* Bamboo-page-only legend: the hint + the numbers 1–6 (shown while Bamboo is active, as on her Canva pages) */}
-        <div className={`pm-layer${active === 0 ? " on" : ""}`} aria-hidden="true">
-          <p className="pm-sub pm-abs" style={at(GEO.hint.x, GEO.hint.y)}>
-            {data.hint}
-          </p>
-          {GEO.nums.map((n, i: number) => (
-            <span key={i} className="pm-num pm-abs" style={at(n.x, n.y)}>
-              {i + 1}
-            </span>
-          ))}
-        </div>
 
         {/* the part that changes: one layer per material, cross-faded */}
         {materials.map((m: MaterialItem, i: number) => (
@@ -248,13 +265,13 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
           </div>
         ))}
 
-        {/* tiles */}
+        {/* tiles (no numbers any more) */}
         <div role="group" aria-label="Materials" style={{ display: "contents" }}>
           {materials.map((m: MaterialItem, i: number) => (
             <div key={m.id} className="pm-slot pm-abs pm-r" style={at(GEO.tiles[i].x, GEO.tiles[i].y, { "--w": GEO.tile, "--h": GEO.tile, "--d": 3 + i * 0.5 })}>
               <button
                 type="button"
-                className={`pm-tile${i === active ? " on" : ""}`}
+                className={tileClass(m.id, i === active)}
                 aria-label={m.name}
                 aria-pressed={i === active}
                 onPointerEnter={hover(i)}
@@ -262,13 +279,7 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
                 onClick={pick(i)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-  src={m.img}
-  alt={m.alt}
-  draggable={false}
-  decoding="async"
-  className={m.id === "aluminium" ? "pm-aluminium-image" : ""}
-/>
+                <img src={m.img} alt={m.alt} draggable={false} decoding="async" className={tileImgClass(m.id)} />
               </button>
             </div>
           ))}
@@ -278,24 +289,17 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
       {/* =============================== STACKED (small screens) =============================== */}
       <div className="pm-m">
         <h2 className="pm-title">{data.heading}</h2>
-        <p className="pm-sub">{data.hint}</p>
+        <p className="pm-sub">
+          <span className={hintCls}>{data.hint}</span>
+        </p>
 
         <div className="pm-m-grid" role="group" aria-label="Materials">
           {materials.map((m: MaterialItem, i: number) => (
             <div key={m.id} className="pm-m-cell">
-              <button type="button" className={`pm-tile${i === active ? " on" : ""}`} aria-label={m.name} aria-pressed={i === active} onClick={pick(i)}>
+              <button type="button" className={tileClass(m.id, i === active)} aria-label={m.name} aria-pressed={i === active} onClick={pick(i)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img
-  src={m.img}
-  alt={m.alt}
-  draggable={false}
-  decoding="async"
-  className={m.id === "aluminium" ? "pm-aluminium-image" : ""}
-/>
+                <img src={m.img} alt={m.alt} draggable={false} decoding="async" className={tileImgClass(m.id)} />
               </button>
-              <span className="pm-num" aria-hidden="true">
-                {i + 1}
-              </span>
             </div>
           ))}
         </div>
@@ -341,12 +345,11 @@ const CSS = `
 .pm-block { display: block; white-space: nowrap; }
 .pm-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.pm-title, .pm-name, .pm-rowh, .pm-sub, .pm-cap, .pm-num { margin: 0; letter-spacing: 0; }
+.pm-title, .pm-name, .pm-rowh, .pm-sub, .pm-cap { margin: 0; letter-spacing: 0; }
 .pm-title, .pm-rowh { font-weight: 500; color: var(--pm-ink); text-transform: uppercase; }
 .pm-name { font-weight: 500; color: var(--pm-ink); text-transform: uppercase; }
 .pm-sub { font-weight: 400; color: var(--pm-grey); }
 .pm-cap { font-weight: 400; color: var(--pm-ink); }
-.pm-num { font-weight: 400; color: var(--pm-ink); }
 
 .pm-crop { position: relative; overflow: hidden; pointer-events: none; width: calc(var(--u) * var(--w)); height: calc(var(--u) * var(--h)); }
 .pm-crop img, .pm-dot img { position: absolute; display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
@@ -366,10 +369,21 @@ const CSS = `
 }
 .pm-tile.on { opacity: 1; }
 .pm-tile img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; }
-/* Aluminium only: show the complete image without cropping */
-.pm-tile img.pm-aluminium-image {
+
+/* Aluminium: fill the whole frame (no gap top / bottom) by zooming in slightly */
+.pm-tile img.pm-img-zoom {
+  object-fit: cover;
+  object-position: center;
+  transform: scale(var(--pm-al-zoom));
+  transform-origin: 50% 50%;
+}
+/* Carbon fibre: show every pipe fully inside the frame (nothing touches / is cut by the edge) */
+.pm-tile--fit { background: #fff; }
+.pm-tile img.pm-img-fit {
   object-fit: contain;
   object-position: center;
+  transform: scale(var(--pm-carbon-fit));
+  transform-origin: 50% 50%;
 }
 .pm-tile:focus-visible { outline: 2px solid var(--pm-ink); outline-offset: 3px; }
 
@@ -381,7 +395,7 @@ const CSS = `
 }
 .is-in .pm-r { opacity: 1; transform: none; }
 
-/* the changing content: one layer per material (and one for the Bamboo legend), cross-faded */
+/* the changing content: one layer per material, cross-faded */
 .pm-layer {
   position: absolute;
   inset: 0;
@@ -389,9 +403,33 @@ const CSS = `
   pointer-events: none;
   transition: none;
 }
+.is-in .pm-layer.on { opacity: 1; }
 
-.is-in .pm-layer.on {
-  opacity: 1;
+/* ---------- hint: soft copper sheen sweeps across the text + a tiny nudge, then rests, then repeats ---------- */
+.pm-hint { display: inline-block; }
+.pm-hint.is-live {
+  background-image: linear-gradient(100deg, var(--pm-grey) 0%, var(--pm-grey) 38%, var(--pm-accent) 50%, var(--pm-grey) 62%, var(--pm-grey) 100%);
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    pm-hint-sheen var(--pm-hint-cycle) ease-in-out var(--pm-hint-start) infinite,
+    pm-hint-nudge var(--pm-hint-cycle) ease-in-out var(--pm-hint-start) infinite;
+}
+@keyframes pm-hint-sheen {
+  0%   { background-position: 100% 0; }
+  45%  { background-position: 0% 0; }
+  100% { background-position: 0% 0; }
+}
+@keyframes pm-hint-nudge {
+  0%, 46%  { transform: translateX(0); }
+  52%      { transform: translateX(5px); }
+  58%      { transform: translateX(-4px); }
+  64%      { transform: translateX(3px); }
+  70%      { transform: translateX(-2px); }
+  76%, 100% { transform: translateX(0); }
 }
 
 /* ===================== STACKED (<1100px wide or <640px tall) ===================== */
@@ -404,11 +442,9 @@ const CSS = `
   .pm-name { font-size: 22px; line-height: 30px; }
   .pm-rowh { font-size: 18px; line-height: 30px; }
   .pm-sub, .pm-cap { font-size: 16px; line-height: 26px; }
-  .pm-num { font-size: 20px; line-height: 24px; }
 
   .pm-m-grid { margin: 24px 0 36px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .pm-m-cell { position: relative; aspect-ratio: 1; }
-  .pm-m-cell .pm-num { position: absolute; left: 10px; top: 6px; color: #fff; mix-blend-mode: difference; pointer-events: none; }
   .pm-m-panel { display: flex; flex-direction: column; gap: 28px; animation: pm-in .5s ease both; }
   .pm-m-row { display: flex; flex-direction: column; gap: 4px; padding-top: 20px; border-top: 1px solid var(--pm-line); }
   .pm-m-row .pm-crop, .pm-m-row .pm-dots { margin: 16px 0 8px; }
@@ -434,11 +470,11 @@ const CSS = `
   .pm-name  { font-size: calc(var(--u) * 22); line-height: calc(var(--u) * 30); white-space: nowrap; }
   .pm-sub   { font-size: calc(var(--u) * 16); line-height: calc(var(--u) * 26); white-space: nowrap; }
   .pm-cap   { font-size: calc(var(--u) * 16); line-height: calc(var(--u) * 26); white-space: nowrap; }
-  .pm-num   { font-size: calc(var(--u) * 28); line-height: calc(var(--u) * 34); pointer-events: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pm-r, .pm-layer, .pm-tile, .pm-m-panel { transition: none !important; animation: none !important; }
   .pm-r { opacity: 1; transform: none; }
+  .pm-hint.is-live { animation: none !important; background: none; -webkit-text-fill-color: currentColor; }
 }
 `;

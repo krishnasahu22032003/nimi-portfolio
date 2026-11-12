@@ -180,8 +180,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* concept / formExploration / fabrication → not used for this project */
   },
 
-  /* ============================ project three ============================ */
-  three: {
+  /* ============================ project four ============================ */
+  four: {
     slug: "three",
     title: "Echo Pan",
     tagline: "A handcrafted hybrid flute",
