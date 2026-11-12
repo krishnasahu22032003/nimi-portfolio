@@ -27,6 +27,7 @@ const seedImg = (seed: string, o: "v" | "h") =>
 
 const LOCAL_IMAGES: Record<string, string> = {
   one: "/projects/project-one.jpg",
+  two:"/projects/project-two.png",
   four: "/projects/project-four.png",
 };
 
