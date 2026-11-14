@@ -29,6 +29,7 @@ const LOCAL_IMAGES: Record<string, string> = {
   one: "/projects/project-one.jpg",
   two:"/projects/project-two.png",
   four: "/projects/project-four.png",
+  eight:"/projects/project-eight.png",
 };
 
 const PROJECTS: Project[] = [

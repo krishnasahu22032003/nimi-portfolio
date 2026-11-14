@@ -18,6 +18,8 @@
  *   ARROWS    ‹ › step to the previous / next stage (same as clicking the next dot). ← → keys work on the timeline too.
  *   FRAMES    ONE frame size for every photo = the frame of the first photo (301 × 379 on the 1440 × 900 artboard).
  *             The photo is cropped to fill the frame (object-fit: cover).
+ *   INTRO     The second intro line ("Click through the timeline to explore each stage.") has the hand-drawn orange
+ *             underline (/public/nav-underline.png, 800 × 28), ALWAYS visible, exactly the width of that text.
  *   NO SCROLL-DRIVEN MOTION — the section only changes when a dot or an arrow is clicked.
  *
  * UNITS  Everything is placed in "artboard px" taken from the design video (1440 × 900) and scaled with --cu,
@@ -43,6 +45,10 @@ const CAP_GAP = 32;
 /** photo rows: up to 3 photos use the design's spacing and start at x 198; 4 photos are tighter and centred */
 const ROW_3 = { x0: 198, gap: 61 };
 const ROW_4_GAP = 24;
+
+/** intro underline: distance (artboard px) from the bottom of the text line to the bottom of the underline.
+ *  Bigger negative number = the line sits lower. */
+const INTRO_UL_OFFSET = -10;
 
 /** TIMELINE SPACING (artboard px)
  *  DOT_PITCH   centre of one dot → centre of the next. IDENTICAL for every dot, in both groups.
@@ -247,7 +253,13 @@ export default function ProjectFabrication({ data }: { data: FabricationData }) 
       </p>
       <p className="fb-intro fb-abs" style={cssVars({ "--y": 134 })}>
         <span>{data.intro[0]}</span>
-        <span>{data.intro[1]}</span>
+        {/* second line: the text hugs its own box, so the orange underline is EXACTLY as wide as the text */}
+        <span>
+          <span className="fb-ul-text">
+            {data.intro[1]}
+            <span className="fb-ul" aria-hidden="true" />
+          </span>
+        </span>
       </p>
 
       {/* the timeline */}
@@ -389,8 +401,25 @@ const CSS = `
   left: var(--edge-l); width: calc(399 * var(--cu)); margin: 0;
   font-size: calc(18 * var(--cu)); line-height: calc(26 * var(--cu)); font-weight: 400; letter-spacing: 0; color: #000;
 }
-.fb-intro span { display: block; }
-.fb-intro span:first-child { text-align: justify; text-align-last: justify; }
+.fb-intro > span { display: block; }
+.fb-intro > span:first-child { text-align: justify; text-align-last: justify; }
+
+/* second line: the text hugs its own box (inline-block), so the underline is exactly as wide as the text */
+.fb-ul-text { display: inline-block; position: relative; white-space: nowrap; }
+
+/* hand-drawn orange underline (client artwork, /public/nav-underline.png, 800 x 28) — always visible, no hover */
+.fb-ul {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(${INTRO_UL_OFFSET} * var(--cu));
+  aspect-ratio: 800 / 28;
+  background-image: url('/nav-underline.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
 
 /* ---- timeline ---- */
 .fb-tl, .fb-tg, .fb-dots { display: contents; }
@@ -511,7 +540,9 @@ const CSS = `
   .fb-probe { display: none; }
   .fb-title { position: static; font-size: 16px; line-height: 24px; }
   .fb-intro { width: auto; margin-top: 12px; font-size: 14px; line-height: 20px; }
-  .fb-intro span:first-child { text-align: left; text-align-last: auto; }
+  .fb-intro > span:first-child { text-align: left; text-align-last: auto; }
+  .fb-ul-text { white-space: normal; }
+  .fb-ul { bottom: -7px; }
 
   .fb-tl { display: block; margin-top: 24px; }
   .fb-tg { display: block; margin-bottom: 18px; }

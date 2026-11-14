@@ -16,6 +16,8 @@
  *   4. Carbon-fibre tile: the pipes are fitted inside the frame so the top pipe is no longer cut (like the PVC tile).
  *   5. The hint has a gentle attention animation (soft copper sheen sweep + tiny nudge, every few seconds).
  *      It calms down for good as soon as the visitor hovers / taps any material.
+ *   6. The hint now has the hand-drawn orange underline (/public/nav-underline.png, 800 × 28) ALWAYS visible,
+ *      exactly the width of the text (it is attached to the text's own wrapper).
  *
  * Design values (px):  title + row headings ..... 18 Medium #000 (uppercase)
  *                      material name ............ 22 Medium #000 (uppercase)
@@ -47,6 +49,10 @@ const CARBON_FIT = 0.86; // <1 shrinks the carbon-fibre pipes inside the frame s
 /* hint animation timing */
 const HINT_START = "1.6s"; // wait after the page appears before the first sheen
 const HINT_CYCLE = "4.2s"; // one sheen + nudge, then a rest, then repeat
+
+/* hint underline: distance (design px) from the bottom of the text line to the bottom of the underline.
+   Bigger negative number = the line sits lower. */
+const HINT_UL_OFFSET = -6;
 
 /* the five circles inside each of her dots PNGs: centres as fractions of the file; `size` = file width in design px.
    (all her dots files share the same circle positions) */
@@ -205,6 +211,7 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
         "--pm-carbon-fit": CARBON_FIT,
         "--pm-hint-start": HINT_START,
         "--pm-hint-cycle": HINT_CYCLE,
+        "--pm-ul-offset": HINT_UL_OFFSET,
       })}
     >
       <p className="pm-sr" aria-live="polite">
@@ -217,9 +224,12 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
           {data.heading}
         </h2>
 
-        {/* the hint: now visible for EVERY material, with a gentle attention animation until the first hover */}
+        {/* the hint: visible for EVERY material, orange hand-drawn underline always on, gentle attention animation until the first hover */}
         <p className="pm-sub pm-abs pm-r" style={at(GEO.hint.x, GEO.hint.y, { "--d": 1 })}>
-          <span className={hintCls}>{data.hint}</span>
+          <span className={hintCls}>
+            {data.hint}
+            <span className="pm-ul" aria-hidden="true" />
+          </span>
         </p>
 
         {/* fixed structure: lines + the three row headings (never change) */}
@@ -290,7 +300,10 @@ export default function ProjectMaterialExploration({ data }: { data: MaterialExp
       <div className="pm-m">
         <h2 className="pm-title">{data.heading}</h2>
         <p className="pm-sub">
-          <span className={hintCls}>{data.hint}</span>
+          <span className={hintCls}>
+            {data.hint}
+            <span className="pm-ul" aria-hidden="true" />
+          </span>
         </p>
 
         <div className="pm-m-grid" role="group" aria-label="Materials">
@@ -405,8 +418,24 @@ const CSS = `
 }
 .is-in .pm-layer.on { opacity: 1; }
 
-/* ---------- hint: soft copper sheen sweeps across the text + a tiny nudge, then rests, then repeats ---------- */
-.pm-hint { display: inline-block; }
+/* ---------- hint: the text hugs its own box, so the underline below is EXACTLY as wide as the text ---------- */
+.pm-hint { display: inline-block; position: relative; }
+
+/* hand-drawn orange underline (client artwork, /public/nav-underline.png, 800 x 28) — always visible, no hover */
+.pm-ul {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--u) * var(--pm-ul-offset));
+  aspect-ratio: 800 / 28;
+  background-image: url('/nav-underline.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* soft copper sheen sweeps across the text + a tiny nudge, then rests, then repeats */
 .pm-hint.is-live {
   background-image: linear-gradient(100deg, var(--pm-grey) 0%, var(--pm-grey) 38%, var(--pm-accent) 50%, var(--pm-grey) 62%, var(--pm-grey) 100%);
   background-size: 260% 100%;

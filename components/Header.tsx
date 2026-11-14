@@ -38,8 +38,7 @@ const PAGE_FRAMES = [
 const getPageFrame = (pathname: string) =>
   (
     PAGE_FRAMES.find(
-      ({ href }) =>
-        pathname === href || pathname.startsWith(`${href}/`)
+      ({ href }) => pathname === href || pathname.startsWith(`${href}/`)
     ) ?? PAGE_FRAMES[0]
   ).src;
 
@@ -52,6 +51,22 @@ const EXPECTED_SECTIONS = 5;
 const SECTION_HEIGHT_VH = 1;
 
 const SMOOTHING_MS = 160;
+
+/*
+ * Hand-drawn orange underline (client supplied artwork).
+ * File lives at /public/nav-underline.png (800 x 28, transparent).
+ * The element keeps the artwork's 800:28 ratio, so it never distorts.
+ * Always drawn on every nav link.
+ */
+const UNDERLINE_BASE = cn(
+  "pointer-events-none absolute",
+  "aspect-[800/28]",
+  "bg-[url('/nav-underline.png')] bg-[length:100%_100%] bg-center bg-no-repeat",
+  "origin-left",
+  "transition-[transform,opacity] duration-[450ms]",
+  EASE,
+  "motion-reduce:transition-none"
+);
 
 const findHero = (): HTMLElement | null =>
   document.querySelector<HTMLElement>("[data-hero-section]") ??
@@ -119,21 +134,13 @@ export default function Header() {
                 return;
               }
 
-              image.addEventListener(
-                "load",
-                () => resolve(),
-                {
-                  once: true,
-                }
-              );
+              image.addEventListener("load", () => resolve(), {
+                once: true,
+              });
 
-              image.addEventListener(
-                "error",
-                () => resolve(),
-                {
-                  once: true,
-                }
-              );
+              image.addEventListener("error", () => resolve(), {
+                once: true,
+              });
             });
           }
         })
@@ -165,10 +172,7 @@ export default function Header() {
     const layout = () => {
       const vh = window.innerHeight;
 
-      pageScroll = Math.max(
-        document.documentElement.scrollHeight - vh,
-        0
-      );
+      pageScroll = Math.max(document.documentElement.scrollHeight - vh, 0);
 
       keyframes = [];
 
@@ -179,15 +183,10 @@ export default function Header() {
       if (marked.length >= 2) {
         const count = marked.length;
 
-        const total = Math.max(
-          count,
-          EXPECTED_SECTIONS
-        );
+        const total = Math.max(count, EXPECTED_SECTIONS);
 
         const tops = marked.map(
-          (element) =>
-            element.getBoundingClientRect().top +
-            window.scrollY
+          (element) => element.getBoundingClientRect().top + window.scrollY
         );
 
         keyframes.push({
@@ -197,10 +196,7 @@ export default function Header() {
 
         for (let index = 1; index < count; index++) {
           keyframes.push({
-            y: Math.min(
-              tops[index],
-              pageScroll
-            ),
+            y: Math.min(tops[index], pageScroll),
             level: index / total,
           });
         }
@@ -210,11 +206,7 @@ export default function Header() {
           level: count / total,
         });
 
-        keyframes.sort(
-          (a, b) =>
-            a.y - b.y ||
-            a.level - b.level
-        );
+        keyframes.sort((a, b) => a.y - b.y || a.level - b.level);
 
         return;
       }
@@ -225,20 +217,13 @@ export default function Header() {
         return;
       }
 
-      const heroBottom =
-        hero.getBoundingClientRect().bottom +
-        window.scrollY;
+      const heroBottom = hero.getBoundingClientRect().bottom + window.scrollY;
 
-      const start = Math.max(
-        heroBottom - vh,
-        0
-      );
+      const start = Math.max(heroBottom - vh, 0);
 
       const length = Math.max(
         pageScroll - start,
-        (EXPECTED_SECTIONS - 1) *
-          SECTION_HEIGHT_VH *
-          vh
+        (EXPECTED_SECTIONS - 1) * SECTION_HEIGHT_VH * vh
       );
 
       keyframes = [
@@ -255,60 +240,34 @@ export default function Header() {
 
     const levelAt = (y: number) => {
       if (!keyframes.length) {
-        return pageScroll > 0
-          ? Math.min(
-              Math.max(
-                y / pageScroll,
-                0
-              ),
-              1
-            )
-          : 0;
+        return pageScroll > 0 ? Math.min(Math.max(y / pageScroll, 0), 1) : 0;
       }
 
       if (y <= keyframes[0].y) {
         return keyframes[0].level;
       }
 
-      for (
-        let index = 1;
-        index < keyframes.length;
-        index++
-      ) {
-        const previous =
-          keyframes[index - 1];
+      for (let index = 1; index < keyframes.length; index++) {
+        const previous = keyframes[index - 1];
 
-        const next =
-          keyframes[index];
+        const next = keyframes[index];
 
         if (y <= next.y) {
           if (next.y === previous.y) {
             return next.level;
           }
 
-          const progress =
-            (y - previous.y) /
-            (next.y - previous.y);
+          const progress = (y - previous.y) / (next.y - previous.y);
 
-          return (
-            previous.level +
-            progress *
-              (next.level -
-                previous.level)
-          );
+          return previous.level + progress * (next.level - previous.level);
         }
       }
 
-      return keyframes[
-        keyframes.length - 1
-      ].level;
+      return keyframes[keyframes.length - 1].level;
     };
 
     const setFrame = (frameIndex: number) => {
-      const nextFrame = Math.min(
-        Math.max(frameIndex, 0),
-        LAST
-      );
+      const nextFrame = Math.min(Math.max(frameIndex, 0), LAST);
 
       if (nextFrame === shown) {
         return;
@@ -316,16 +275,11 @@ export default function Header() {
 
       shown = nextFrame;
 
-      frameRefs.current.forEach(
-        (image, index) => {
-          if (!image) return;
+      frameRefs.current.forEach((image, index) => {
+        if (!image) return;
 
-          image.style.display =
-            index === shown
-              ? "block"
-              : "none";
-        }
-      );
+        image.style.display = index === shown ? "block" : "none";
+      });
     };
 
     const paint = () => {
@@ -337,57 +291,30 @@ export default function Header() {
     };
 
     const measure = () => {
-      target = Math.min(
-        Math.max(
-          levelAt(window.scrollY),
-          0
-        ),
-        1
-      );
+      target = Math.min(Math.max(levelAt(window.scrollY), 0), 1);
 
-      header.dataset.scrolled =
-        window.scrollY > 8
-          ? "true"
-          : "false";
+      header.dataset.scrolled = window.scrollY > 8 ? "true" : "false";
     };
 
     const tick = (now: number) => {
-      const delta = lastTime
-        ? Math.min(
-            now - lastTime,
-            64
-          )
-        : 16;
+      const delta = lastTime ? Math.min(now - lastTime, 64) : 16;
 
       lastTime = now;
 
       if (reduceMotion) {
         current = target;
       } else {
-        current +=
-          (target - current) *
-          (1 -
-            Math.exp(
-              -delta /
-                SMOOTHING_MS
-            ));
+        current += (target - current) * (1 - Math.exp(-delta / SMOOTHING_MS));
       }
 
-      if (
-        Math.abs(
-          target - current
-        ) < 0.0004
-      ) {
+      if (Math.abs(target - current) < 0.0004) {
         current = target;
       }
 
       paint();
 
       if (current !== target) {
-        raf =
-          requestAnimationFrame(
-            tick
-          );
+        raf = requestAnimationFrame(tick);
       } else {
         raf = null;
         lastTime = 0;
@@ -398,10 +325,7 @@ export default function Header() {
       measure();
 
       if (raf === null) {
-        raf =
-          requestAnimationFrame(
-            tick
-          );
+        raf = requestAnimationFrame(tick);
       }
     };
 
@@ -420,60 +344,33 @@ export default function Header() {
 
       current = target;
 
-      shown = Math.round(
-        current * LAST
-      );
+      shown = Math.round(current * LAST);
 
-      frameRefs.current.forEach(
-        (image, index) => {
-          if (!image) return;
+      frameRefs.current.forEach((image, index) => {
+        if (!image) return;
 
-          image.style.display =
-            index === shown
-              ? "block"
-              : "none";
-        }
-      );
+        image.style.display = index === shown ? "block" : "none";
+      });
 
-      window.addEventListener(
-        "scroll",
-        onScroll,
-        {
-          passive: true,
-        }
-      );
+      window.addEventListener("scroll", onScroll, {
+        passive: true,
+      });
 
-      window.addEventListener(
-        "resize",
-        onLayout
-      );
+      window.addEventListener("resize", onLayout);
 
-      const resizeObserver =
-        new ResizeObserver(
-          onLayout
-        );
+      const resizeObserver = new ResizeObserver(onLayout);
 
-      resizeObserver.observe(
-        document.body
-      );
+      resizeObserver.observe(document.body);
 
       cleanupAnimation = () => {
-        window.removeEventListener(
-          "scroll",
-          onScroll
-        );
+        window.removeEventListener("scroll", onScroll);
 
-        window.removeEventListener(
-          "resize",
-          onLayout
-        );
+        window.removeEventListener("resize", onLayout);
 
         resizeObserver.disconnect();
 
         if (raf !== null) {
-          cancelAnimationFrame(
-            raf
-          );
+          cancelAnimationFrame(raf);
 
           raf = null;
         }
@@ -500,9 +397,7 @@ export default function Header() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const onKeyDown = (
-      event: KeyboardEvent
-    ) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         closeMenu();
       }
@@ -514,38 +409,22 @@ export default function Header() {
       }
     };
 
-    document.addEventListener(
-      "keydown",
-      onKeyDown
-    );
+    document.addEventListener("keydown", onKeyDown);
 
-    window.addEventListener(
-      "resize",
-      onResize
-    );
+    window.addEventListener("resize", onResize);
 
-    document.body.style.overflow =
-      "hidden";
+    document.body.style.overflow = "hidden";
 
     return () => {
-      document.removeEventListener(
-        "keydown",
-        onKeyDown
-      );
+      document.removeEventListener("keydown", onKeyDown);
 
-      window.removeEventListener(
-        "resize",
-        onResize
-      );
+      window.removeEventListener("resize", onResize);
 
-      document.body.style.overflow =
-        "";
+      document.body.style.overflow = "";
     };
   }, [menuOpen, closeMenu]);
 
-  const onLogoClick = (
-    event: MouseEvent<HTMLAnchorElement>
-  ) => {
+  const onLogoClick = (event: MouseEvent<HTMLAnchorElement>) => {
     closeMenu();
 
     if (pathname === "/") {
@@ -574,8 +453,7 @@ export default function Header() {
           "data-[scrolled=true]:bg-white/[.86]",
           "data-[scrolled=true]:backdrop-blur-[14px]",
           "data-[scrolled=true]:backdrop-saturate-[1.4]",
-          menuOpen &&
-            "bg-white/[.92] backdrop-blur-[14px]"
+          menuOpen && "bg-white/[.92] backdrop-blur-[14px]"
         )}
       >
         <div
@@ -604,41 +482,31 @@ export default function Header() {
               "motion-reduce:hover:transform-none"
             )}
           >
-            <span
-              aria-hidden="true"
-              className="relative block h-full w-full"
-            >
+            <span aria-hidden="true" className="relative block h-full w-full">
               {isHome ? (
-                FRAMES.map(
-                  (src, index) => (
-                    <img
-                      key={src}
-                      ref={(element) => {
-                        frameRefs.current[
-                          index
-                        ] = element;
-                      }}
-                      src={src}
-                      alt=""
-                      width={1024}
-                      height={1387}
-                      loading="eager"
-                      decoding="async"
-                      draggable={false}
-                      style={{
-                        display:
-                          index === 0
-                            ? "block"
-                            : "none",
-                      }}
-                      className={cn(
-                        "pointer-events-none absolute inset-0",
-                        "h-full w-full",
-                        "select-none object-contain"
-                      )}
-                    />
-                  )
-                )
+                FRAMES.map((src, index) => (
+                  <img
+                    key={src}
+                    ref={(element) => {
+                      frameRefs.current[index] = element;
+                    }}
+                    src={src}
+                    alt=""
+                    width={1024}
+                    height={1387}
+                    loading="eager"
+                    decoding="async"
+                    draggable={false}
+                    style={{
+                      display: index === 0 ? "block" : "none",
+                    }}
+                    className={cn(
+                      "pointer-events-none absolute inset-0",
+                      "h-full w-full",
+                      "select-none object-contain"
+                    )}
+                  />
+                ))
               ) : (
                 <img
                   src={getPageFrame(pathname)}
@@ -658,66 +526,62 @@ export default function Header() {
             </span>
           </Link>
 
-          <nav
-            aria-label="Primary navigation"
-            className="hidden md:block"
-          >
+          <nav aria-label="Primary navigation" className="hidden md:block">
             <ul
               className={cn(
                 "m-0 flex list-none items-center p-0",
                 "gap-7 lg:gap-9"
               )}
             >
-              {NAV_LINKS.map(
-                ({
-                  label,
-                  href,
-                }) => {
-                  const isActive =
-                    pathname === href ||
-                    pathname.startsWith(
-                      `${href}/`
-                    );
+              {NAV_LINKS.map(({ label, href }) => {
+                const isActive =
+                  pathname === href || pathname.startsWith(`${href}/`);
 
-                  return (
-                    <li key={href}>
-                      <Link
-                        href={href}
-                        aria-current={
-                          isActive
-                            ? "page"
-                            : undefined
-                        }
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "group/nav relative inline-flex items-center",
+                        "px-2 py-2",
+                        "text-[16px] leading-6 font-normal",
+                        "text-[#555252]",
+                        "no-underline",
+                        "outline-none",
+                        "transition-[color,transform]",
+                        "duration-300",
+                        EASE,
+                        "hover:-translate-y-[1px]",
+                        "hover:scale-[1.015]",
+                        "hover:text-black",
+                        "focus-visible:-translate-y-[1px]",
+                        "focus-visible:scale-[1.015]",
+                        "focus-visible:text-black",
+                        "aria-[current=page]:text-black",
+                        "motion-reduce:transition-none",
+                        "motion-reduce:hover:translate-y-0",
+                        "motion-reduce:hover:scale-100",
+                        "motion-reduce:focus-visible:translate-y-0",
+                        "motion-reduce:focus-visible:scale-100"
+                      )}
+                    >
+                      {label}
+
+                      {/* Hand-drawn orange underline.
+                          Always visible. Spans the text width plus 6px each side. */}
+                      <span
+                        aria-hidden="true"
                         className={cn(
-                          "group/nav relative inline-flex items-center",
-                          "px-2 py-2",
-                          "text-[16px] leading-6 font-normal",
-                          "text-[#555252]",
-                          "no-underline",
-                          "outline-none",
-                          "transition-[color,transform]",
-                          "duration-300",
-                          EASE,
-                          "hover:-translate-y-[1px]",
-                          "hover:scale-[1.015]",
-                          "hover:text-black",
-                          "focus-visible:-translate-y-[1px]",
-                          "focus-visible:scale-[1.015]",
-                          "focus-visible:text-black",
-                          "aria-[current=page]:text-black",
-                          "motion-reduce:transition-none",
-                          "motion-reduce:hover:translate-y-0",
-                          "motion-reduce:hover:scale-100",
-                          "motion-reduce:focus-visible:translate-y-0",
-                          "motion-reduce:focus-visible:scale-100"
+                          UNDERLINE_BASE,
+                          "left-[2px] right-[2px] bottom-[1px]",
+                          "scale-x-100 opacity-100"
                         )}
-                      >
-                        {label}
-                      </Link>
-                    </li>
-                  );
-                }
-              )}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
@@ -725,16 +589,8 @@ export default function Header() {
             type="button"
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            aria-label={
-              menuOpen
-                ? "Close menu"
-                : "Open menu"
-            }
-            onClick={() =>
-              setMenuOpen(
-                (value) => !value
-              )
-            }
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((value) => !value)}
             className={cn(
               "relative -mr-3 h-12 w-12",
               "cursor-pointer rounded-lg",
@@ -743,35 +599,25 @@ export default function Header() {
               "focus-visible:outline-2",
               "focus-visible:outline-black",
               "md:hidden",
-              menuOpen
-                ? "text-black"
-                : "text-[#555252]"
+              menuOpen ? "text-black" : "text-[#555252]"
             )}
           >
-            {[
-              "top-[19px]",
-              "top-[28px]",
-            ].map(
-              (
-                position,
-                index
-              ) => (
-                <span
-                  key={position}
-                  className={cn(
-                    "absolute inset-x-3 h-[1.5px]",
-                    "bg-current",
-                    "transition-transform duration-500",
-                    EASE,
-                    position,
-                    menuOpen &&
-                      (index === 0
-                        ? "translate-y-[4.25px] rotate-45"
-                        : "-translate-y-[4.25px] -rotate-45")
-                  )}
-                />
-              )
-            )}
+            {["top-[19px]", "top-[28px]"].map((position, index) => (
+              <span
+                key={position}
+                className={cn(
+                  "absolute inset-x-3 h-[1.5px]",
+                  "bg-current",
+                  "transition-transform duration-500",
+                  EASE,
+                  position,
+                  menuOpen &&
+                    (index === 0
+                      ? "translate-y-[4.25px] rotate-45"
+                      : "-translate-y-[4.25px] -rotate-45")
+                )}
+              />
+            ))}
           </button>
         </div>
       </header>
@@ -793,85 +639,68 @@ export default function Header() {
         )}
       >
         <ul className="m-0 flex list-none flex-col p-0">
-          {NAV_LINKS.map(
-            (
-              {
-                label,
-                href,
-              },
-              index
-            ) => {
-              const isActive =
-                pathname === href ||
-                pathname.startsWith(
-                  `${href}/`
-                );
+          {NAV_LINKS.map(({ label, href }, index) => {
+            const isActive =
+              pathname === href || pathname.startsWith(`${href}/`);
 
-              return (
-                <li
-                  key={href}
-                  style={{
-                    transitionDelay:
-                      menuOpen
-                        ? `${
-                            100 +
-                            index *
-                              60
-                          }ms`
-                        : "0ms",
-                  }}
+            return (
+              <li
+                key={href}
+                style={{
+                  transitionDelay: menuOpen ? `${100 + index * 60}ms` : "0ms",
+                }}
+                className={cn(
+                  "transition-[opacity,transform]",
+                  "duration-500",
+                  EASE,
+                  menuOpen
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-4 opacity-0"
+                )}
+              >
+                <Link
+                  href={href}
+                  tabIndex={menuOpen ? 0 : -1}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={closeMenu}
                   className={cn(
-                    "transition-[opacity,transform]",
-                    "duration-500",
+                    "group/mobile relative block",
+                    "border-b border-[#555252]/15",
+                    "py-5",
+                    "text-2xl leading-8 font-normal",
+                    "text-[#555252]",
+                    "no-underline",
+                    "outline-none",
+                    "transition-[color,transform]",
+                    "duration-300",
                     EASE,
-                    menuOpen
-                      ? "translate-y-0 opacity-100"
-                      : "translate-y-4 opacity-0"
+                    "hover:translate-x-1",
+                    "hover:text-black",
+                    "focus-visible:translate-x-1",
+                    "focus-visible:text-black",
+                    isActive && "text-black",
+                    "motion-reduce:transition-none",
+                    "motion-reduce:hover:translate-x-0",
+                    "motion-reduce:focus-visible:translate-x-0"
                   )}
                 >
-                  <Link
-                    href={href}
-                    tabIndex={
-                      menuOpen
-                        ? 0
-                        : -1
-                    }
-                    aria-current={
-                      isActive
-                        ? "page"
-                        : undefined
-                    }
-                    onClick={
-                      closeMenu
-                    }
-                    className={cn(
-                      "group/mobile relative block",
-                      "border-b border-[#555252]/15",
-                      "py-5",
-                      "text-2xl leading-8 font-normal",
-                      "text-[#555252]",
-                      "no-underline",
-                      "outline-none",
-                      "transition-[color,transform]",
-                      "duration-300",
-                      EASE,
-                      "hover:translate-x-1",
-                      "hover:text-black",
-                      "focus-visible:translate-x-1",
-                      "focus-visible:text-black",
-                      isActive &&
-                        "text-black",
-                      "motion-reduce:transition-none",
-                      "motion-reduce:hover:translate-x-0",
-                      "motion-reduce:focus-visible:translate-x-0"
-                    )}
-                  >
+                  {/* Wrapper hugs the text so the underline matches its width */}
+                  <span className="relative inline-block">
                     {label}
-                  </Link>
-                </li>
-              );
-            }
-          )}
+
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        UNDERLINE_BASE,
+                        "-left-1.5 -right-1.5 -bottom-1.5",
+                        "scale-x-100 opacity-100"
+                      )}
+                    />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </>

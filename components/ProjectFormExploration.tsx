@@ -15,6 +15,8 @@
  *           Touch: the same, with one finger (vertical swipes still scroll the page).
  *   TITLE   NEW. Left-aligned on the SAME grid as the CONCEPT title (same x, same y, same size).
  *   3D      NEW. "3D MODEL" at the bottom LEFT, under the title's left line (Comico 16, grey → black on hover). Click → the 3D viewer.
+ *           NEW. The client's hand-drawn circle (/public/circle_.png, 3000 × 3000) is ALWAYS drawn around "3D MODEL"
+ *           (no hover needed). The PNG is cropped to the ink of the drawing, so the circle hugs the text.
  *
  * UNITS  1u = 1vw, capped so the tallest frame always fits the band (see --u in the CSS).
  *        --cu = the CONCEPT section's unit (1 Canva px). Only the title, the 3D text and the viewer use it,
@@ -61,6 +63,18 @@ const GLIDE_MAX = 160;
 
 /** NEW: the frame under the pointer gets this soft shadow so it reads as "lifted" (set to "none" to remove) */
 const FRONT_SHADOW = "0 14px 36px rgba(0, 0, 0, 0.10)";
+
+/* ---------- NEW: the hand-drawn circle around "3D MODEL" ----------
+ * RING_SRC       the client's file in /public (3000 × 3000 px, transparent).
+ * RING_INK       where the drawing sits inside that file, as fractions of the file (measured from the PNG).
+ *                The box is cut to exactly this, so the circle is as big as the drawing, not as big as the empty square.
+ * RING_OVERHANG  how far the circle sticks out past the left AND right of the text, in em (1em = 16px).
+ *                Bigger = a wider circle (the height follows the drawing's own proportions, so it never distorts).
+ * RING_SHIFT_Y   nudge the circle up (negative) or down (positive), in em. 0 = centred on the text. */
+const RING_SRC = "/circle_.png";
+const RING_INK = { l: 0.0717, t: 0.359, w: 0.829, h: 0.2463 };
+const RING_OVERHANG = 2.2;
+const RING_SHIFT_Y = 0;
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 const wrap = (n: number, m: number) => ((n % m) + m) % m;
@@ -364,7 +378,25 @@ export default function ProjectFormExploration({ data }: { data: FormExploration
           aria-haspopup="dialog"
           onClick={() => setViewerOpen(true)}
         >
-          {data.model.label}
+          {/* the text hugs its own box, so the circle is centred on the text and sized from the text's width */}
+          <span className="fe-3d-text">
+            {data.model.label}
+            <span className="fe-3d-ring" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={RING_SRC}
+                alt=""
+                draggable={false}
+                decoding="async"
+                style={{
+                  width: `${100 / RING_INK.w}%`,
+                  height: `${100 / RING_INK.h}%`,
+                  left: `${(-RING_INK.l * 100) / RING_INK.w}%`,
+                  top: `${(-RING_INK.t * 100) / RING_INK.h}%`,
+                }}
+              />
+            </span>
+          </span>
         </button>
       ) : null}
 
@@ -482,6 +514,20 @@ const CSS = `
 @media (hover: hover) and (pointer: fine) {
   .fe-3d:hover { color: #000; }
 }
+
+/* the text hugs its own box (inline-block), so the circle is centred on the text and measured from the text's width */
+.fe-3d-text { display: inline-block; position: relative; }
+
+/* the client's hand-drawn circle — ALWAYS visible (no hover). It is the PNG cropped to its ink, so the box
+   has exactly the drawing's proportions (aspect-ratio) and the drawing never stretches. It sticks out
+   ${RING_OVERHANG}em past the text on the left and right and is centred on the text. */
+.fe-3d-ring {
+  position: absolute; pointer-events: none; overflow: hidden;
+  left: -${RING_OVERHANG}em; right: -${RING_OVERHANG}em;
+  top: calc(50% + ${RING_SHIFT_Y}em); transform: translateY(-50%);
+  aspect-ratio: ${(RING_INK.w / RING_INK.h).toFixed(4)};
+}
+.fe-3d-ring img { position: absolute; display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
 
 /* the page uses scroll-snap-type: y mandatory (ProjectDetail) — this section needs its own snap stop,
    otherwise the browser snaps back to the end of CONCEPT and this section can never be reached */
