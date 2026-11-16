@@ -52,21 +52,6 @@ const SECTION_HEIGHT_VH = 1;
 
 const SMOOTHING_MS = 160;
 
-/*
- * Hand-drawn orange underline (client supplied artwork).
- * File lives at /public/nav-underline.png (800 x 28, transparent).
- * The element keeps the artwork's 800:28 ratio, so it never distorts.
- * Always drawn on every nav link.
- */
-const UNDERLINE_BASE = cn(
-  "pointer-events-none absolute",
-  "aspect-[800/28]",
-  "bg-[url('/nav-underline.png')] bg-[length:100%_100%] bg-center bg-no-repeat",
-  "origin-left",
-  "transition-[transform,opacity] duration-[450ms]",
-  EASE,
-  "motion-reduce:transition-none"
-);
 
 const findHero = (): HTMLElement | null =>
   document.querySelector<HTMLElement>("[data-hero-section]") ??
@@ -573,7 +558,6 @@ export default function Header() {
                       <span
                         aria-hidden="true"
                         className={cn(
-                          UNDERLINE_BASE,
                           "left-[2px] right-[2px] bottom-[1px]",
                           "scale-x-100 opacity-100"
                         )}
@@ -691,7 +675,6 @@ export default function Header() {
                     <span
                       aria-hidden="true"
                       className={cn(
-                        UNDERLINE_BASE,
                         "-left-1.5 -right-1.5 -bottom-1.5",
                         "scale-x-100 opacity-100"
                       )}

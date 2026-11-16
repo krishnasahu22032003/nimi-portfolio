@@ -421,16 +421,18 @@ const CSS = `
 /* ---------- hint: the text hugs its own box, so the underline below is EXACTLY as wide as the text ---------- */
 .pm-hint { display: inline-block; position: relative; }
 
-/* hand-drawn orange underline (client artwork, /public/nav-underline.png, 800 x 28) — always visible, no hover */
+/* hand-drawn orange underline (client artwork, /public/nav-underline.png).
+   The PNG is a SQUARE canvas with the stroke at ~62.4% of its height, so it is scaled to the text's width
+   (100% auto) and shifted so the stroke lands in the middle of a 12px strip. Always visible, no hover. */
 .pm-ul {
   position: absolute;
   left: 0;
   right: 0;
   bottom: calc(var(--u) * var(--pm-ul-offset));
-  aspect-ratio: 800 / 28;
+  height: calc(var(--u) * 12);
   background-image: url('/nav-underline.png');
-  background-size: 100% 100%;
-  background-position: center;
+  background-size: 100% auto;
+  background-position: center 62.4%;
   background-repeat: no-repeat;
   pointer-events: none;
 }

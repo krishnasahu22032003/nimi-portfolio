@@ -407,16 +407,18 @@ const CSS = `
 /* second line: the text hugs its own box (inline-block), so the underline is exactly as wide as the text */
 .fb-ul-text { display: inline-block; position: relative; white-space: nowrap; }
 
-/* hand-drawn orange underline (client artwork, /public/nav-underline.png, 800 x 28) — always visible, no hover */
+/* hand-drawn orange underline (client artwork, /public/nav-underline.png).
+   The PNG is a SQUARE canvas with the stroke at ~62.4% of its height, so the image is scaled to the text's
+   width (100% auto) and shifted so the stroke lands in the middle of a 12-artboard-px strip. Always visible. */
 .fb-ul {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(${INTRO_UL_OFFSET} * var(--cu));
-  aspect-ratio: 800 / 28;
+  bottom: calc(${INTRO_UL_OFFSET} * var(--cu)); /* strip's bottom edge; the stroke sits ~4px under the text */
+  height: calc(12 * var(--cu));
   background-image: url('/nav-underline.png');
-  background-size: 100% 100%;
-  background-position: center;
+  background-size: 100% auto;
+  background-position: center 62.4%;
   background-repeat: no-repeat;
   pointer-events: none;
 }
@@ -542,7 +544,7 @@ const CSS = `
   .fb-intro { width: auto; margin-top: 12px; font-size: 14px; line-height: 20px; }
   .fb-intro > span:first-child { text-align: left; text-align-last: auto; }
   .fb-ul-text { white-space: normal; }
-  .fb-ul { bottom: -7px; }
+    .fb-ul { bottom: -9px; height: 12px; }
 
   .fb-tl { display: block; margin-top: 24px; }
   .fb-tg { display: block; margin-bottom: 18px; }

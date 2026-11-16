@@ -2,7 +2,8 @@
  * data/projects.ts        (or src/data/projects.ts if you use a src folder)
  *
  * One entry per project (key = slug, must match the slug in the slider).
- * Hero media: EITHER `video` (project one) OR `image` (project two, three).
+ * Hero media: EITHER `video` (project one) OR `image` (project two, three)
+ *             OR `gallery` (project eight: auto-changing photo slideshow with arrows).
  * Optional `story`            → page 2 heading + paragraphs (project one).
  * Optional `statement`        → page 2 centred uppercase statement (project three).
  * Optional `echoConcept`      → page 3 CONCEPT (project three, data/echoConcept.ts).
@@ -18,6 +19,7 @@
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
  *
  * Project three (Echo Pan) currently has pages 1–6 — add its sections here when her next pages are ready.
+ * Project eight (Puppet theatre) currently has page 1 only — add its sections here when her next pages are ready.
  *
  * LINE BREAKS ARE DATA. On desktop (≥1280px) every string below is rendered as ONE line,
  * exactly as she broke it in Canva. Below 1280px the lines reflow.
@@ -51,7 +53,7 @@ import type { EchoShapesData } from "./echoShapes";
 import { ECHO_PAN_SHAPES } from "./echoShapes";
 import type { EchoSoundData } from "./Echosound ";
 import { ECHO_PAN_SOUND } from "./Echosound ";
-/* NEW — page 6 (this file has a normal name, no trailing space) */
+/* page 6 (this file has a normal name, no trailing space) */
 import type { MaterialExplorationData } from "./materialExploration.";
 import { ECHO_PAN_MATERIALS } from "./materialExploration.";
 import type { ConstructionData } from "./construction";
@@ -60,6 +62,8 @@ import type { EchoTestingData } from "./echoTesting";
 import { ECHO_PAN_TESTING } from "./echoTesting";
 import type { EchoEndData } from "./echoEnding";
 import { ECHO_PAN_END } from "./echoEnding";
+import type { AboutData } from "./puppetAbout";
+import { PUPPET_ABOUT } from "./puppetAbout";
 
 export type ProjectDetailData = {
   slug: string;
@@ -83,6 +87,20 @@ export type ProjectDetailData = {
     position?: string; // CSS object-position, default "50% 50%"
     sizes?: string; // next/image `sizes`; override when a wide photo is cropped into the portrait frame
   };
+  /** hero SLIDESHOW (project eight): same frame, same beige panel, same reveal as the single photo.
+      Crossfades automatically, with left / right arrows. Canva's page timer says 5.0s → default 5000ms. */
+  gallery?: {
+    slides: { src: string; alt: string; position?: string }[]; // position = CSS object-position
+    intervalMs?: number; // default 5000
+  };
+  /** small circular client logo, bottom-right of the page-1 text block (project eight) */
+  badge?: { src: string; alt: string };
+  /** px between the tags / meta block and the note (default 12). Her Canva page 1 for project eight uses 24 */
+  noteGap?: number;
+  /** how high the page-1 text block sits above the photo's bottom edge, as a share of the photo height
+      (default 0.074). Project eight's Canva page has the text higher → 0.0964 */
+  introPb?: number;
+    about?: AboutData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -96,14 +114,14 @@ export type ProjectDetailData = {
   /** "How the dimensions are calculated ? | How it affects the sound ?" page (project three, page 5) */
   echoSound?: EchoSoundData;
   /** "Material exploration" page: hover a material → its acoustic / making / object details (project three, page 6) */
-  materialExploration?: MaterialExplorationData; // NEW
-    /** "Construction" page: six workshop photos / clips in a 3 × 2 grid (project three, page 7) */
+  materialExploration?: MaterialExplorationData;
+  /** "Construction" page: six workshop photos / clips in a 3 × 2 grid (project three, page 7) */
   construction?: ConstructionData;
-  /** tiles that change colour one after another + text */
-    /** "Testing" page: two clips on a beige / white split (project three, page 8) */
+  /** "Testing" page: two clips on a beige / white split (project three, page 8) */
   echoTesting?: EchoTestingData;
   /** "End" page: two videos with left / right arrows (project three, page 9) */
   echoEnd?: EchoEndData;
+  /** tiles that change colour one after another + text */
   colourStory?: ColourStoryData;
   /** collage page: chair cutouts, sketch, statement text (data/collage.ts) */
   collage?: CollageData;
@@ -214,14 +232,61 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* page 5 — dimensions + sound (components/ProjectEchoSound.tsx + data/echoSound.ts) */
     echoSound: ECHO_PAN_SOUND,
     /* page 6 — material exploration (components/ProjectMaterialExploration.tsx + data/materialExploration.ts) */
-    materialExploration: ECHO_PAN_MATERIALS, // NEW
-    /* no colourStory / collage / etc. yet → add sections here when her next pages are ready */
-      /* page 7 — construction (components/ProjectConstruction.tsx + data/construction.ts) */
+    materialExploration: ECHO_PAN_MATERIALS,
+    /* page 7 — construction (components/ProjectConstruction.tsx + data/construction.ts) */
     construction: ECHO_PAN_CONSTRUCTION,
-        /* page 8 — testing (components/ProjectEchoTesting.tsx + data/echoTesting.ts) */
+    /* page 8 — testing (components/ProjectEchoTesting.tsx + data/echoTesting.ts) */
     echoTesting: ECHO_PAN_TESTING,
     /* page 9 — end: two videos with arrows (components/ProjectEchoEnd.tsx + data/echoEnding.ts) */
     echoEnd: ECHO_PAN_END,
+  },
+
+  /* ============================ project eight ============================ */
+  eight: {
+    slug: "eight",
+    title: "Puppet theatre",
+    tagline: "Stories you can build, hold, and perform.",
+    tags: "Educational product · Creative learning · Buildable",
+    meta: "Thesis Project · 2025–26",
+    note: ["Client Project · Moware, Nepal · 2026"],
+    noteGap: 24, // her Canva page 1 leaves a larger gap before the client line
+    introPb: 0.0964, // her Canva page 1 has the text block higher than the other projects
+    badge: {
+      src: "/projects/puppet-theatre/moware-logo.jpg",
+      alt: "Moware Nepal logo",
+    },
+    gallery: {
+      intervalMs: 5000, // Canva's page timer says 5.0s
+      slides: [
+        {
+          src: "/projects/puppet-theatre/01-setup.jpg",
+          alt: "The Fable Box puppet theatre set up on two tables at the exhibition, with its poster and prints on the wall behind",
+          position: "50% 50%",
+        },
+        {
+          src: "/projects/puppet-theatre/02-peek.jpg",
+          alt: "Children peek through the stage of the puppet theatre while the designer leans in, smiling",
+          position: "50% 50%",
+        },
+        {
+          src: "/projects/puppet-theatre/03-family.jpg",
+          alt: "A family gathers around the table as a child picks up a puppet from the basket",
+          position: "50% 40%",
+        },
+        {
+          src: "/projects/puppet-theatre/04-play.jpg",
+          alt: "A girl reaches into the stage to move a puppet while the designer and a visitor watch",
+          position: "50% 45%",
+        },
+        {
+          src: "/projects/puppet-theatre/05-designer.jpg",
+          alt: "Nimi standing beside the exhibit, with a film of children playing on the screen behind her",
+          position: "50% 35%",
+        },
+      ],
+    },
+    /* page 2 onwards → add sections here when her next pages are ready */
+     about: PUPPET_ABOUT,
   },
 };
 
