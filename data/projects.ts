@@ -64,6 +64,8 @@ import type { EchoEndData } from "./echoEnding";
 import { ECHO_PAN_END } from "./echoEnding";
 import type { AboutData } from "./puppetAbout";
 import { PUPPET_ABOUT } from "./puppetAbout";
+import type { FeaturesData } from "./puppetFeatures";
+import { PUPPET_FEATURES } from "./puppetFeatures";
 
 export type ProjectDetailData = {
   slug: string;
@@ -101,6 +103,8 @@ export type ProjectDetailData = {
       (default 0.074). Project eight's Canva page has the text higher → 0.0964 */
   introPb?: number;
     about?: AboutData;
+      /** "Key features" page: pinned section, scrolling moves ten numbered feature cards sideways (project eight, page 3) */
+  features?: FeaturesData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -287,6 +291,9 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     },
     /* page 2 onwards → add sections here when her next pages are ready */
      about: PUPPET_ABOUT,
+         /* page 3 — KEY FEATURES (components/ProjectFeatures.tsx + data/puppetFeatures.ts) */
+    features: PUPPET_FEATURES,
+    /* page 4 onwards → add sections here when her next pages are ready */
   },
 };
 

@@ -66,6 +66,7 @@ import ProjectConstruction from "./ProjectConstruction";
 import ProjectEchoTesting from "./ProjectEchoTesting";
 import ProjectEchoEnd from "./ProjectEchoEnd";
 import ProjectAbout from "./ProjectAbout";
+import ProjectFeatures from "./ProjectFeatures";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -308,6 +309,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     joinery,
     badge,
     about,
+    features
   } = project;
 
   return (
@@ -499,6 +501,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       ) : null}
       {/* ============================ PAGE 2 (project eight) — ABOUT: text + auto-changing photos ============================ */}
       {about ? <ProjectAbout data={about} /> : null}
+       {/* ============================ PAGE 3 (project eight) — KEY FEATURES: pinned, scroll moves the cards sideways ============================ */}
+      {features ? <ProjectFeatures data={features} /> : null}
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 
