@@ -68,6 +68,8 @@ import ProjectEchoEnd from "./ProjectEchoEnd";
 import ProjectAbout from "./ProjectAbout";
 import ProjectFeatures from "./ProjectFeatures";
 import ProjectOpportunity from "./ProjectOpportunity";
+import ProjectSwatches from "./ProjectSwatches";
+import ProjectMaterial from "./ProjectMaterial";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -316,7 +318,9 @@ useEffect(() => {
     badge,
     about,
     features,
-      opportunity
+      opportunity,
+          swatches,
+          materialTaught
   } = project;
 
   return (
@@ -512,6 +516,10 @@ useEffect(() => {
       {features ? <ProjectFeatures data={features} /> : null}
             {/* ============================ (project eight) OPPORTUNITY: diagram + changing photos ============================ */}
       {opportunity ? <ProjectOpportunity data={opportunity} /> : null}
+            {/* ============================ (project eight) HDPE SWATCHES: click a tile to flip it ============================ */}
+      {swatches ? <ProjectSwatches data={swatches} /> : null}
+            {/* ============================ (project eight) WHAT THE MATERIAL TAUGHT ME: bullets + changing photos ============================ */}
+      {materialTaught ? <ProjectMaterial data={materialTaught} /> : null}
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 

@@ -50,6 +50,8 @@ import { PUPPET_OPPORTUNITY } from "./puppetOpportunity";
    like "Colourstory " and "Collage " above). If you rename the file to  echoConcept.ts  (recommended),
    change both paths to "./echoConcept". */
 import type { EchoConceptData } from "./Echoconcept ";
+import type { MaterialData } from "./puppetMaterial";
+import { PUPPET_MATERIAL } from "./puppetMaterial";
 import { ECHO_PAN_CONCEPT } from "./Echoconcept ";
 import type { EchoShapesData } from "./echoShapes";
 import { ECHO_PAN_SHAPES } from "./echoShapes";
@@ -68,6 +70,8 @@ import type { AboutData } from "./puppetAbout";
 import { PUPPET_ABOUT } from "./puppetAbout";
 import type { FeaturesData } from "./puppetFeatures";
 import { PUPPET_FEATURES } from "./puppetFeatures";
+import type { SwatchesData } from "./puppetSwatches";
+import { PUPPET_SWATCHES } from "./puppetSwatches";
 
 export type ProjectDetailData = {
   slug: string;
@@ -109,6 +113,10 @@ export type ProjectDetailData = {
   features?: FeaturesData;
     /** "Opportunity" page: pipe diagram + auto-changing photos + swatches intro (project eight) */
   opportunity?: OpportunityData;
+    /** "HDPE swatches" page: 3 × 3 tiles that flip from shredded plastic to the heat-pressed result (project eight) */
+  swatches?: SwatchesData;
+    /** "What the material taught me" page: four bullets + auto-changing photos (project eight) */
+  materialTaught?: MaterialData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -300,6 +308,10 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* page 4 onwards → add sections here when her next pages are ready */
         /* page 4 — OPPORTUNITY (components/ProjectOpportunity.tsx + data/puppetOpportunity.ts) */
     opportunity: PUPPET_OPPORTUNITY,
+        /* page 5 — HDPE SWATCHES (components/ProjectSwatches.tsx + data/puppetSwatches.ts) */
+    swatches: PUPPET_SWATCHES,
+        /* page 6 — WHAT THE MATERIAL TAUGHT ME (components/ProjectMaterial.tsx + data/puppetMaterial.ts) */
+    materialTaught: PUPPET_MATERIAL,
   },
 };
 

@@ -35,9 +35,9 @@ const DIAGRAM_W = 780; // diagram image width
 const STEPS_Y = 274; // captions top inside the block (→ y 514)
 
 const MEDIA_X = 978;
-const MEDIA_Y = 235;
-const MEDIA_W = 383;
-const MEDIA_H = 278;
+const MEDIA_Y = 197; // was 235: her box starts higher, level with the "1. Waste Landscape" heading
+const MEDIA_W = 519; // was 383
+const MEDIA_H = 325; // was 278
 const MEDIA_RADIUS = 4; // px
 const MEDIA_CAP_GAP = 21; // frame bottom → first caption line
 
@@ -446,7 +446,14 @@ const CSS = `
     top: calc(var(--header-h) + (var(--y) - 96) * var(--cu));
   }
   .op-scroll { overflow: visible; padding: 0; width: calc(var(--op-flow-w) * var(--cu)); height: calc(var(--op-flow-h) * var(--cu)); }
-  .op-right { max-width: none; width: calc(var(--op-media-w) * var(--cu)); }
+    .op-right {
+    max-width: none;
+    /* her full width, but never wider than the space left on screen (keeps a 40px right margin) */
+    width: min(
+      calc(var(--op-media-w) * var(--cu)),
+      calc(100cqw - (var(--ax) + var(--x) * var(--cu)) - 40px)
+    );
+  }
   .op-caps { margin-top: calc(var(--op-cap-gap) * var(--cu)); }
   .op-line { display: block; white-space: nowrap; }
   .op-cap .op-line, .op-p .op-line { white-space: nowrap; }
