@@ -44,6 +44,8 @@ import type { JoineryData } from "./joinery";
 import { CHAIR_JOINERY } from "./joinery";
 import { CHAIR_ENDING } from "./Endingchair";
 import type { StatementData } from "../components/Projectstatement";
+import type { OpportunityData } from "./puppetOpportunity";
+import { PUPPET_OPPORTUNITY } from "./puppetOpportunity";
 /* NOTE: the path below matches the file name exactly as it is on your disk (it has a trailing space,
    like "Colourstory " and "Collage " above). If you rename the file to  echoConcept.ts  (recommended),
    change both paths to "./echoConcept". */
@@ -105,6 +107,8 @@ export type ProjectDetailData = {
     about?: AboutData;
       /** "Key features" page: pinned section, scrolling moves ten numbered feature cards sideways (project eight, page 3) */
   features?: FeaturesData;
+    /** "Opportunity" page: pipe diagram + auto-changing photos + swatches intro (project eight) */
+  opportunity?: OpportunityData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -294,6 +298,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
          /* page 3 — KEY FEATURES (components/ProjectFeatures.tsx + data/puppetFeatures.ts) */
     features: PUPPET_FEATURES,
     /* page 4 onwards → add sections here when her next pages are ready */
+        /* page 4 — OPPORTUNITY (components/ProjectOpportunity.tsx + data/puppetOpportunity.ts) */
+    opportunity: PUPPET_OPPORTUNITY,
   },
 };
 

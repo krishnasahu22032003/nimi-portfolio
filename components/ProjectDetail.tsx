@@ -67,6 +67,7 @@ import ProjectEchoTesting from "./ProjectEchoTesting";
 import ProjectEchoEnd from "./ProjectEchoEnd";
 import ProjectAbout from "./ProjectAbout";
 import ProjectFeatures from "./ProjectFeatures";
+import ProjectOpportunity from "./ProjectOpportunity";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -314,7 +315,8 @@ useEffect(() => {
     joinery,
     badge,
     about,
-    features
+    features,
+      opportunity
   } = project;
 
   return (
@@ -508,6 +510,8 @@ useEffect(() => {
       {about ? <ProjectAbout data={about} /> : null}
        {/* ============================ PAGE 3 (project eight) — KEY FEATURES: pinned, scroll moves the cards sideways ============================ */}
       {features ? <ProjectFeatures data={features} /> : null}
+            {/* ============================ (project eight) OPPORTUNITY: diagram + changing photos ============================ */}
+      {opportunity ? <ProjectOpportunity data={opportunity} /> : null}
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 
