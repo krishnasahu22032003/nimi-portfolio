@@ -168,10 +168,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
   const slides = project.gallery?.slides ?? [];
   const count = slides.length;
   const interval = project.gallery?.intervalMs ?? SLIDE_INTERVAL;
-  const [slide, setSlide] = useState(0);
-  const [paused, setPaused] = useState(false); // keyboard focus only (never mouse hover / click)
-  const [inView, setInView] = useState(true); // scrolled off-screen → stop
-  const [tabVisible, setTabVisible] = useState(true); // another browser tab → stop
+const [slide, setSlide] = useState(0);
+const [paused, setPaused] = useState(false);
+const [inView, setInView] = useState(false);
+const [tabVisible, setTabVisible] = useState(true);
   const touchX = useRef<number | null>(null);
 
   const go = useCallback(
@@ -184,11 +184,16 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
   /* autoplay — the timer restarts on every change (auto or arrow click), so it never jumps twice in a row.
      It does NOT depend on prefers-reduced-motion: with reduced motion the CSS swaps photos instantly. */
-  useEffect(() => {
-    if (count < 2 || paused || !inView || !tabVisible) return;
-    const t = window.setTimeout(() => setSlide((i: number) => (i + 1) % count), interval);
-    return () => window.clearTimeout(t);
-  }, [slide, count, paused, inView, tabVisible, interval]);
+useEffect(() => {
+  if (count < 2 || paused || !inView || !tabVisible) return;
+
+  const t = window.setTimeout(
+    () => setSlide((i: number) => (i + 1) % count),
+    interval
+  );
+
+  return () => window.clearTimeout(t);
+}, [slide, count, paused, inView, tabVisible, interval]);
 
   /* stop advancing while the slideshow is mostly off-screen */
   useEffect(() => {
