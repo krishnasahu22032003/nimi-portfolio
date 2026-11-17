@@ -7,11 +7,11 @@
  *   intro ............ x 90, centre y 144, 16 Regular
  *   heading 1 ........ x 108, centre y 207, 20 Medium ("1." regular)
  *   diagram .......... x 104 → 884, top y 240 (pipes + hand-drawn numerals), captions 14 / 22 under it
- *   photo frame ...... x 978, y 235, 383 × 278, small radius, auto-changing every 5s
+ *   photo frame ...... x 978, y 197, 519 × 325, small radius, auto-changing every 5s
  *   photo caption .... x 978, 21 below the frame, 14 / 22
  *   heading 2 ........ x 108, centre y 667
  *   paragraph ........ x 90, 16 / 26, left aligned, her line breaks kept
- *   hint ............. x 90, centre y 800
+ *   hint ............. x 90, centre y 800, with a hand-drawn RED underline (always visible)
  *
  * Slideshow: crossfade every 5s, small translucent arrows, caption changes with the photo.
  *   · clicking an arrow restarts the timer, autoplay continues
@@ -35,9 +35,9 @@ const DIAGRAM_W = 780; // diagram image width
 const STEPS_Y = 274; // captions top inside the block (→ y 514)
 
 const MEDIA_X = 978;
-const MEDIA_Y = 197; // was 235: her box starts higher, level with the "1. Waste Landscape" heading
-const MEDIA_W = 519; // was 383
-const MEDIA_H = 325; // was 278
+const MEDIA_Y = 197; // her green box starts level with the "1. Waste Landscape" heading
+const MEDIA_W = 519;
+const MEDIA_H = 325;
 const MEDIA_RADIUS = 4; // px
 const MEDIA_CAP_GAP = 21; // frame bottom → first caption line
 
@@ -48,6 +48,9 @@ const ARROW_SIZE = 32; // px: small indicator, circle diameter
 const ARROW_INSET = 10; // px from the frame edge
 const ARROW_BG = "rgba(0, 0, 0, 0.5)";
 const ARROW_BG_HOVER = "rgba(0, 0, 0, 0.68)";
+
+const UNDERLINE_COLOR = "#D8333A"; // red of her Canva underline; swap for the exact hex from the colour picker
+const UNDERLINE_OFFSET = -7; // artboard px: bottom of the text line → bottom of the underline strip (more negative = lower)
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 
@@ -170,6 +173,8 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
         "--op-arrow-bg": ARROW_BG,
         "--op-arrow-bg-hover": ARROW_BG_HOVER,
         "--op-ratio": `${MEDIA_W} / ${MEDIA_H}`,
+        "--op-ul": UNDERLINE_COLOR,
+        "--op-ul-off": UNDERLINE_OFFSET,
       })}
     >
       <h2 className="op-abs op-label op-r" style={cssVars({ "--x": 90, "--y": 89, "--d": 0 })}>
@@ -268,7 +273,7 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
                   alt={s.alt}
                   fill
                   loading="eager"
-                  sizes="(max-width: 1239px) 100vw, 30vw"
+                  sizes="(max-width: 1239px) 100vw, 40vw"
                   quality={90}
                   draggable={false}
                   style={{ objectFit: "cover", objectPosition: s.position ?? "50% 50%" }}
@@ -308,7 +313,11 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
       </p>
 
       <p className="op-abs op-p op-hint op-r" style={cssVars({ "--x": 90, "--y": 787, "--d": 6 })}>
-        {swatches.hint}
+        {/* the text hugs its own box, so the underline is exactly as wide as the text */}
+        <span className="op-ul-text">
+          {swatches.hint}
+          <span className="op-ul" aria-hidden="true" />
+        </span>
       </p>
 
       <noscript>
@@ -347,6 +356,22 @@ const CSS = `
 .op-hn { font-weight: 400; margin-right: 8px; }
 .op-hint { margin-top: 0; }
 
+/* hand-drawn red underline: the Fabrication stroke (/nav-underline.png) used as a mask and filled red.
+   The PNG is a square canvas with the stroke at ~62.4% of its height, so it is scaled to the text's width
+   (100% auto) and shifted so the stroke sits in the middle of a 12-unit strip. */
+.op-ul-text { display: inline-block; position: relative; white-space: nowrap; }
+.op-ul {
+  position: absolute; left: 0; right: 0;
+  bottom: calc(var(--op-ul-off) * var(--cu));
+  height: calc(12 * var(--cu));
+  background: var(--op-ul);
+  -webkit-mask-image: url('/nav-underline.png'); mask-image: url('/nav-underline.png');
+  -webkit-mask-size: 100% auto; mask-size: 100% auto;
+  -webkit-mask-position: center 62.4%; mask-position: center 62.4%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  pointer-events: none;
+}
+
 /* diagram block */
 .op-scroll {
   margin: 0 -24px 40px; padding: 0 24px; overflow-x: auto; outline: none;
@@ -356,8 +381,8 @@ const CSS = `
   position: relative; flex: none;
   width: calc(var(--op-flow-w) * var(--cu)); height: calc(var(--op-flow-h) * var(--cu));
 }
-.op-diagram { position: absolute; top: 0; left: calc(var(--op-dia-x) * var(--cu)); width: calc(var(--op-dia-w) * var(--cu)); }
-.op-diagram img { user-select: none; -webkit-user-drag: none; }
+.op-diagram { position: absolute; top: calc(4 * var(--cu)); left: calc(var(--op-dia-x) * var(--cu)); width: calc(var(--op-dia-w) * var(--cu)); }
+.op-diagram img { user-select: none; -webkit-user-drag: none; mix-blend-mode: multiply; }
 .op-steps { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
 .op-step {
   position: absolute; top: calc(var(--op-steps-y) * var(--cu)); left: calc(var(--sx) * var(--cu));
@@ -446,7 +471,7 @@ const CSS = `
     top: calc(var(--header-h) + (var(--y) - 96) * var(--cu));
   }
   .op-scroll { overflow: visible; padding: 0; width: calc(var(--op-flow-w) * var(--cu)); height: calc(var(--op-flow-h) * var(--cu)); }
-    .op-right {
+  .op-right {
     max-width: none;
     /* her full width, but never wider than the space left on screen (keeps a 40px right margin) */
     width: min(

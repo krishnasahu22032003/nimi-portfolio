@@ -55,13 +55,13 @@ export const PUPPET_OPPORTUNITY: OpportunityData = {
     {
       src: `${D}/02-bw2v-board.jpg`,
       alt: "Information board at the BW2V compost production and processing centre showing how waste is segregated and processed",
-      caption: ["Waste segregation and processing system at BW2V", "facility, Kathmandu"],
+      caption: ["Workers sorting mixed waste, both organic and dry waste by hand"],
       position: "50% 50%",
     },
     {
       src: `${D}/01-segregation.jpg`,
       alt: "Three workers in uniforms sorting a large pile of mixed waste beside a yellow truck inside a warehouse",
-      caption: ["Workers sorting mixed waste by hand at a", "segregation facility, Kathmandu"], // placeholder: confirm with client
+      caption: ["Waste segregation and processing system at BW2V facility, Kathmandu"], // placeholder: confirm with client
       position: "50% 62%",
     },
   ],
