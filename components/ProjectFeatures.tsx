@@ -267,7 +267,7 @@ const CSS = `
 
 .kf-num {
   height: calc(var(--kf-num-h) * var(--cu)); display: flex; align-items: center;
-  font-size: calc(var(--kf-num-fs) * var(--cu)); line-height: 1; font-weight: 400; letter-spacing: .04em;
+  font-size: calc(var(--kf-num-fs) * var(--cu)); line-height: 1; font-weight: 500; letter-spacing: .04em;
   font-variant-numeric: tabular-nums; color: var(--kf-grey);
 }
 
@@ -306,7 +306,7 @@ const CSS = `
 
 .kf-cap {
   margin-top: calc(var(--kf-cap-gap) * var(--cu));
-  font-size: max(12px, calc(16 * var(--cu))); line-height: 1.625; font-weight: 400; letter-spacing: 0; color: var(--ink);
+  font-size: max(12px, calc(16 * var(--cu))); line-height: 1.625; font-weight: 500; letter-spacing: 0; color: var(--ink);
   text-align: justify; hyphens: none;
 }
 .kf-sr {
