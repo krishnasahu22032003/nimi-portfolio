@@ -72,6 +72,8 @@ import type { FeaturesData } from "./puppetFeatures";
 import { PUPPET_FEATURES } from "./puppetFeatures";
 import type { SwatchesData } from "./puppetSwatches";
 import { PUPPET_SWATCHES } from "./puppetSwatches";
+import type { ResearchData } from "./puppetResearch";
+import { PUPPET_RESEARCH } from "./puppetResearch";
 
 export type ProjectDetailData = {
   slug: string;
@@ -117,6 +119,7 @@ export type ProjectDetailData = {
   swatches?: SwatchesData;
     /** "What the material taught me" page: four bullets + auto-changing photos (project eight) */
   materialTaught?: MaterialData;
+   research?: ResearchData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -312,6 +315,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     swatches: PUPPET_SWATCHES,
         /* page 6 — WHAT THE MATERIAL TAUGHT ME (components/ProjectMaterial.tsx + data/puppetMaterial.ts) */
     materialTaught: PUPPET_MATERIAL,
+    research: PUPPET_RESEARCH,
   },
 };
 
