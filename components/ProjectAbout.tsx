@@ -12,6 +12,7 @@
  *   body ................ 14 Regular #000, 26px line-height, one blank line between paragraphs, bold = 600
  *
  * Image: same auto-changing slideshow as page 1 (crossfade every 5s, translucent grey arrows).
+ *   · arrows are the SAME size as the Research / Material pages: 32px circle, 16px chevron, 10px from the edge
  *   · clicking an arrow restarts the timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
  *   · ← / → keys and swipe work too; reduced motion → photos swap instantly
@@ -36,8 +37,8 @@ const LABEL_TOP = "max(calc(var(--header-h) - 7px), calc(var(--page-h) * 0.0989)
 const SLIDE_INTERVAL = 5000; // ms
 const SLIDE_FADE_MS = 1000;
 const SWIPE_PX = 40;
-const ARROW_SIZE = 48; // px (also the touch target)
-const ARROW_INSET = 16; // px from the photo's edge to the circle
+const ARROW_SIZE = 32; // px: small indicator, same as the Research page
+const ARROW_INSET = 10; // px from the photo's edge to the circle
 const ARROW_BG = "rgba(0, 0, 0, 0.5)";
 const ARROW_BG_HOVER = "rgba(0, 0, 0, 0.68)";
 
@@ -75,11 +76,11 @@ function Lines({ lines }: { lines: AboutLine[] }) {
 
 function Chevron({ dir }: { dir: "prev" | "next" }) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
       <polyline
         points={dir === "prev" ? "14.5,6 8.5,12 14.5,18" : "9.5,6 15.5,12 9.5,18"}
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -328,6 +329,7 @@ const CSS = `
 .pa-slide.is-active { opacity: 1; }
 .pa-slide img { -webkit-user-drag: none; }
 
+/* arrows: SAME as the Research page: 32px circle, 16px chevron, 10px from the photo edge, vertically centred */
 .pa-arrow {
   position: absolute; z-index: 3; top: 50%;
   width: var(--pa-arrow); height: var(--pa-arrow); margin-top: calc(var(--pa-arrow) / -2);
@@ -346,8 +348,8 @@ const CSS = `
 .pa-arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pa-arrow:hover { background: var(--pa-arrow-bg-hover); }
-  .pa-arrow--prev:hover svg { transform: translateX(-2px); }
-  .pa-arrow--next:hover svg { transform: translateX(2px); }
+  .pa-arrow--prev:hover svg { transform: translateX(-1.5px); }
+  .pa-arrow--next:hover svg { transform: translateX(1.5px); }
 }
 .pa-arrow:active svg { transform: scale(.92); }
 
@@ -382,8 +384,6 @@ const CSS = `
   .pa-label { position: static; }
   .pa-grid { grid-template-columns: minmax(0, 1fr); row-gap: 40px; }
   .pa-body p { text-align: left; }
-  .pa-arrow--prev { left: 12px; }
-  .pa-arrow--next { right: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

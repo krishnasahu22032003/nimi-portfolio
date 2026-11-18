@@ -4,15 +4,13 @@
  * Project eight: "3. Primary research", measured from the Canva page (1440 × 900, scaled with --cu
  * exactly like the Opportunity page, so at 1440 × 900 the screen IS the Canva page):
  *   heading .......... x 108, centre y 91, 18 Medium ("3." regular)
- *   box 1 ............ x 91, y 140 → 392, 531 wide, radius 50, beige outline (WHERE I WENT, 16 / 26)
- *   box 2 ............ x 91, y 438 → 822, 531 wide (THE GAP, bullets 16 / 26)
- *   top caption ...... x 681, centre y 78, 18 Medium uppercase + hand-drawn arrow into the photo
+ *   box 1 ............ x 91, y 140 → 392, 531 wide, radius 50, beige outline (WHERE I WENT)
+ *   box 2 ............ x 91, y 438 → 822, 531 wide (THE GAP)
  *   top photo ........ x 771, y 103, 579 × 339
- *   bottom caption ... x 681, centre y 465
  *   bottom photo ..... x 771, y 484, 579 × 339
+ *   (the "REFERENCE TEXT" labels and black arrows on Canva were notes only, so they are not on the site)
  *
- * Both photo frames auto-change (crossfade every 5s, second one starts 2.5s later so they never flip together).
- *   · caption changes with the photo
+ * Both photo frames auto-change (crossfade every 5s, the second one starts 2.5s later so they never flip together).
  *   · clicking an arrow restarts that frame's timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
  *   · ← / → keys and swipe work; reduced motion → photos swap instantly
@@ -35,15 +33,11 @@ const BOX_RADIUS = 50;
 const BOX_BORDER = 4;
 const BOX_COLOR = "#E4D6A3"; // beige outline of her boxes; swap for the exact hex from the colour picker
 
-const MEDIA_X = 681; // left of caption + arrow
-const MEDIA_W = 669; // caption column + photo (681 → 1350)
 const PHOTO_X = 771; // photo's left edge
 const PHOTO_W = 579;
 const PHOTO_H = 339;
-const TOP_Y = 63; // caption top (centre y 78)
-const BOTTOM_Y = 450; // caption top (centre y 465)
-const CAP_H = 30;
-const CAP_GAP = 10; // caption bottom → photo top (63 + 30 + 10 = 103)
+const TOP_Y = 103; // top photo's top edge
+const BOTTOM_Y = 484; // bottom photo's top edge
 
 const SLIDE_INTERVAL = 5000;
 const SLIDE_FADE_MS = 1000;
@@ -83,23 +77,7 @@ function Chevron({ dir }: { dir: "prev" | "next" }) {
   );
 }
 
-/* hand-drawn black arrow that curls from the caption into the photo */
-function PointerArrow() {
-  return (
-    <svg className="pr-pointer" viewBox="0 0 80 150" fill="none" aria-hidden="true" focusable="false">
-      <path
-        d="M34 4 C 8 22, -2 62, 14 96 C 26 122, 46 132, 66 134"
-        stroke="#000"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M46 118 L67 134 L44 143" stroke="#000" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-/* one auto-changing photo frame with its own caption, arrows and timer */
+/* one auto-changing photo frame with its own arrows and timer */
 function Slideshow({
   slides,
   label,
@@ -168,17 +146,7 @@ function Slideshow({
   }, [count]);
 
   return (
-    <div className="pr-abs pr-media pr-r" style={cssVars({ "--x": MEDIA_X, "--y": y, "--d": d })}>
-      <PointerArrow />
-
-      <div className="pr-caps" aria-live="off">
-        {slides.map((s, i: number) => (
-          <p key={s.src} className={`pr-cap${i === slide ? " is-active" : ""}`} aria-hidden={i === slide ? undefined : true}>
-            {s.caption}
-          </p>
-        ))}
-      </div>
-
+    <div className="pr-abs pr-media pr-r" style={cssVars({ "--x": PHOTO_X, "--y": y, "--d": d })}>
       <div
         ref={frameRef}
         className="pr-frame"
@@ -282,11 +250,7 @@ export default function ProjectResearch({ data }: { data: ResearchData }) {
         "--pr-radius": BOX_RADIUS,
         "--pr-border": BOX_BORDER,
         "--pr-box-color": BOX_COLOR,
-        "--pr-media-w": MEDIA_W,
-        "--pr-photo-x": PHOTO_X - MEDIA_X,
         "--pr-photo-w": PHOTO_W,
-        "--pr-cap-h": CAP_H,
-        "--pr-cap-gap": CAP_GAP,
         "--pr-ratio": `${PHOTO_W} / ${PHOTO_H}`,
         "--pr-fade": `${SLIDE_FADE_MS}ms`,
         "--pr-arrow": `${ARROW_SIZE}px`,
@@ -320,14 +284,7 @@ export default function ProjectResearch({ data }: { data: ResearchData }) {
         </ul>
       </div>
 
-      <Slideshow
-        slides={data.top}
-        label="Classroom photos"
-        interval={interval}
-        offset={0}
-        y={TOP_Y}
-        d={3}
-      />
+      <Slideshow slides={data.top} label="Classroom photos" interval={interval} offset={0} y={TOP_Y} d={3} />
       <Slideshow
         slides={data.bottom}
         label="Research visit photos"
@@ -388,17 +345,8 @@ const CSS = `
 }
 .pr-line { display: inline; }
 
-/* photo + caption blocks */
+/* photo frames */
 .pr-media { position: relative; width: 100%; max-width: 640px; }
-.pr-pointer { display: none; }
-
-.pr-caps { display: grid; margin-bottom: 12px; }
-.pr-cap {
-  grid-area: 1 / 1; margin: 0; opacity: 0; transition: opacity .6s ease;
-  font-size: max(14px, calc(18 * var(--cu))); line-height: calc(30 * var(--cu));
-  font-weight: 500; letter-spacing: 0; text-transform: uppercase; color: var(--ink);
-}
-.pr-cap.is-active { opacity: 1; }
 
 .pr-frame {
   position: relative; overflow: hidden; width: 100%;
@@ -480,19 +428,11 @@ const CSS = `
   .pr-list li::before { left: calc(13 * var(--cu)); top: calc(13 * var(--cu) - 2.5px * var(--cu) / 1px); }
   .pr-list .pr-line { display: block; white-space: nowrap; }
 
-  .pr-media { width: calc(var(--pr-media-w) * var(--cu)); max-width: none; }
-  .pr-caps { margin: 0 0 calc(var(--pr-cap-gap) * var(--cu)) calc(0 * var(--cu)); height: calc(var(--pr-cap-h) * var(--cu)); }
-  .pr-cap { white-space: nowrap; }
-  .pr-frame { margin-left: calc(var(--pr-photo-x) * var(--cu)); width: calc(var(--pr-photo-w) * var(--cu)); }
-  .pr-pointer {
-    display: block; position: absolute; pointer-events: none;
-    left: calc(14 * var(--cu)); top: calc(34 * var(--cu));
-    width: calc(80 * var(--cu)); height: calc(150 * var(--cu));
-  }
+  .pr-media { width: calc(var(--pr-photo-w) * var(--cu)); max-width: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pr-r, .pr-frame, .pr-slides, .pr-slide, .pr-cap, .pr-arrow, .pr-arrow svg { transition: none !important; }
+  .pr-r, .pr-frame, .pr-slides, .pr-slide, .pr-arrow, .pr-arrow svg { transition: none !important; }
   .pr-r { opacity: 1; transform: none; }
   .pr-frame { clip-path: none; }
   .pr-slides { transform: none; }

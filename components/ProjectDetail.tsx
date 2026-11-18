@@ -35,13 +35,15 @@
  * Project eight (Puppet theatre):
  *  14. `project.gallery` turns the hero into an AUTO-CHANGING SLIDESHOW: same frame, same beige panel, same reveal.
  *      · crossfade every `intervalMs` (default 5000, the 5.0s on her Canva page)
- *      · left / right arrows inside the photo: translucent grey circle + white chevron (her reference)
+ *      · small translucent arrows inside the photo, SAME SIZE as the Research page:
+ *        32px circle, 16px chevron, 10px from the photo edge, vertically centred
  *      · keeps playing after an arrow click (the timer simply restarts). It only pauses for KEYBOARD focus,
  *        when scrolled off-screen, or when the browser tab is hidden. Swipe on touch.
  *      · reduced-motion: the photos still advance, but swap instantly instead of fading
  *  15. `project.badge` places the small circular client logo at the bottom-right, measured from her Canva page
  *  16. `project.noteGap` sets the space between the tags / meta block and the note (default 12px)
  *  17. `project.introPb` lifts the page-1 text block (share of the photo height, default 0.074)
+ *  18. `project.research` renders the last page — "3. Primary research" (ProjectResearch)
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -112,12 +114,9 @@ const SLIDE_INTERVAL = 5000; // ms per photo (overridden by gallery.intervalMs) 
 const SLIDE_FADE_MS = 1000; // crossfade duration
 const SWIPE_PX = 40; // minimum horizontal swipe on touch screens
 
-/* arrows — placed from her red marks. Both are measured INSIDE the photo:
-   ARROW_X = distance from the photo's left / right edge to the arrow's centre (% of the photo's width)
-   ARROW_Y = distance from the photo's top to the arrow's centre (% of the photo's height) */
-const ARROW_X = 11;
-const ARROW_Y = 48;
-const ARROW_SIZE = 48; // px — diameter of the grey circle (also the touch target, WCAG ≥ 44)
+/* arrows — SAME as the Research page: small indicator, 10px from the photo edge, vertically centred */
+const ARROW_SIZE = 32; // px — diameter of the grey circle
+const ARROW_INSET = 10; // px from the photo's left / right edge
 const ARROW_BG = "rgba(0, 0, 0, 0.5)"; // translucent grey, as in her reference
 const ARROW_BG_HOVER = "rgba(0, 0, 0, 0.68)";
 
@@ -148,14 +147,14 @@ function Lines({ lines }: { lines: string[] }) {
   );
 }
 
-/* open chevron inside the grey circle */
+/* open chevron inside the grey circle (16px, same as the Research page) */
 function Chevron({ dir }: { dir: "prev" | "next" }) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
       <polyline
         points={dir === "prev" ? "14.5,6 8.5,12 14.5,18" : "9.5,6 15.5,12 9.5,18"}
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -172,10 +171,10 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
   const slides = project.gallery?.slides ?? [];
   const count = slides.length;
   const interval = project.gallery?.intervalMs ?? SLIDE_INTERVAL;
-const [slide, setSlide] = useState(0);
-const [paused, setPaused] = useState(false);
-const [inView, setInView] = useState(false);
-const [tabVisible, setTabVisible] = useState(true);
+  const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [inView, setInView] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
   const touchX = useRef<number | null>(null);
 
   const go = useCallback(
@@ -188,16 +187,13 @@ const [tabVisible, setTabVisible] = useState(true);
 
   /* autoplay — the timer restarts on every change (auto or arrow click), so it never jumps twice in a row.
      It does NOT depend on prefers-reduced-motion: with reduced motion the CSS swaps photos instantly. */
-useEffect(() => {
-  if (count < 2 || paused || !inView || !tabVisible) return;
+  useEffect(() => {
+    if (count < 2 || paused || !inView || !tabVisible) return;
 
-  const t = window.setTimeout(
-    () => setSlide((i: number) => (i + 1) % count),
-    interval
-  );
+    const t = window.setTimeout(() => setSlide((i: number) => (i + 1) % count), interval);
 
-  return () => window.clearTimeout(t);
-}, [slide, count, paused, inView, tabVisible, interval]);
+    return () => window.clearTimeout(t);
+  }, [slide, count, paused, inView, tabVisible, interval]);
 
   /* stop advancing while the slideshow is mostly off-screen */
   useEffect(() => {
@@ -319,10 +315,10 @@ useEffect(() => {
     badge,
     about,
     features,
-      opportunity,
-          swatches,
-          materialTaught,
-                 research
+    opportunity,
+    swatches,
+    materialTaught,
+    research,
   } = project;
 
   return (
@@ -343,9 +339,8 @@ useEffect(() => {
         "--intro-k": INTRO_V === "end" ? (project.introPb ?? INTRO_PB_DEFAULT) : 0,
         "--note-gap": `${project.noteGap ?? 12}px`,
         "--fade": `${SLIDE_FADE_MS}ms`,
-        "--arrow-x": `${ARROW_X}%`,
-        "--arrow-y": `${ARROW_Y}%`,
         "--arrow-size": `${ARROW_SIZE}px`,
+        "--arrow-inset": `${ARROW_INSET}px`,
         "--arrow-bg": ARROW_BG,
         "--arrow-bg-hover": ARROW_BG_HOVER,
         "--badge": BADGE_SIZE,
@@ -512,18 +507,25 @@ useEffect(() => {
           </div>
         </section>
       ) : null}
+
       {/* ============================ PAGE 2 (project eight) — ABOUT: text + auto-changing photos ============================ */}
       {about ? <ProjectAbout data={about} /> : null}
-       {/* ============================ PAGE 3 (project eight) — KEY FEATURES: pinned, scroll moves the cards sideways ============================ */}
+
+      {/* ============================ PAGE 3 (project eight) — KEY FEATURES: pinned, scroll moves the cards sideways ============================ */}
       {features ? <ProjectFeatures data={features} /> : null}
-            {/* ============================ (project eight) OPPORTUNITY: diagram + changing photos ============================ */}
+
+      {/* ============================ (project eight) OPPORTUNITY: diagram + changing photos ============================ */}
       {opportunity ? <ProjectOpportunity data={opportunity} /> : null}
-            {/* ============================ (project eight) HDPE SWATCHES: click a tile to flip it ============================ */}
+
+      {/* ============================ (project eight) HDPE SWATCHES: click a tile to flip it ============================ */}
       {swatches ? <ProjectSwatches data={swatches} /> : null}
-            {/* ============================ (project eight) WHAT THE MATERIAL TAUGHT ME: bullets + changing photos ============================ */}
+
+      {/* ============================ (project eight) WHAT THE MATERIAL TAUGHT ME: bullets + changing photos ============================ */}
       {materialTaught ? <ProjectMaterial data={materialTaught} /> : null}
-            {/* ============================ (project eight) PRIMARY RESEARCH: two boxes + two changing photo frames ============================ */}
+
+      {/* ============================ (project eight) PRIMARY RESEARCH: two boxes + two changing photo frames ============================ */}
       {research ? <ProjectResearch data={research} /> : null}
+
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 
@@ -670,11 +672,12 @@ html.pd-snap { scroll-snap-type: y mandatory; }
 .pd-slide.is-active { opacity: 1; }
 .pd-slide img { -webkit-user-drag: none; }
 
-/* arrows: translucent grey circle + white chevron (her reference). They appear after the photo has wiped in. */
+/* arrows: SAME as the Research page. 32px translucent circle + 16px white chevron,
+   10px from the photo edge, vertically centred. They appear after the photo has wiped in. */
 .pd-arrow {
-  position: absolute; z-index: 3; top: var(--arrow-y);
+  position: absolute; z-index: 3; top: 50%;
   width: var(--arrow-size); height: var(--arrow-size);
-  margin: calc(var(--arrow-size) / -2) 0 0 calc(var(--arrow-size) / -2);
+  margin-top: calc(var(--arrow-size) / -2);
   padding: 0; border: 0; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--arrow-bg); color: #fff;
@@ -683,15 +686,15 @@ html.pd-snap { scroll-snap-type: y mandatory; }
   opacity: 0;
   transition: opacity .7s ease 1.3s, background-color .35s ease;
 }
-.pd-arrow--prev { left: var(--arrow-x); }
-.pd-arrow--next { left: calc(100% - var(--arrow-x)); }
+.pd-arrow--prev { left: var(--arrow-inset); }
+.pd-arrow--next { right: var(--arrow-inset); }
 .pd-arrow svg { display: block; transition: transform .5s cubic-bezier(.22, 1, .36, 1); }
 .pd-arrow:focus { outline: none; }
 .pd-arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .pd-arrow:hover { background: var(--arrow-bg-hover); }
-  .pd-arrow--prev:hover svg { transform: translateX(-2px); }
-  .pd-arrow--next:hover svg { transform: translateX(2px); }
+  .pd-arrow--prev:hover svg { transform: translateX(-1.5px); }
+  .pd-arrow--next:hover svg { transform: translateX(1.5px); }
 }
 .pd-arrow:active svg { transform: scale(.92); }
 

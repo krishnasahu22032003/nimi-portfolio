@@ -4,12 +4,10 @@
  *
  * LINE BREAKS ARE DATA: every string is one line, as she broke it in Canva.
  * Images live in  public/projects/puppet-theatre/research/
- * (file names are exactly the ones in the Drive folder)
- * Captions (the "TOP / BOTTOM (REFERENCE TEXT)" on Canva) change with the photo.
- * They describe what each photo shows. Replace with her real captions.
+ * The photos have no captions (the "REFERENCE TEXT" labels on Canva were only notes).
  * ---------------------------------------------------------------------- */
 
-export type ResearchSlide = { src: string; alt: string; caption: string; position?: string };
+export type ResearchSlide = { src: string; alt: string; position?: string };
 
 export type ResearchData = {
   heading: string; // "Primary research" (the "3." is added by the component)
@@ -49,25 +47,21 @@ export const PUPPET_RESEARCH: ResearchData = {
     {
       src: `${D}/1_TOP.jpg`,
       alt: "A play corner with a blue bear-shaped play fence, alphabet floor mats, a low red table with wooden puzzles and red cushions",
-      caption: "Play corner with floor mats and puzzles",
       position: "50% 50%",
     },
     {
       src: `${D}/2_TOP.jpg`,
       alt: "Tall wooden shelves filled with toys, puzzles and baskets, with soft toys on top and two child-sized tables in front",
-      caption: "Toy shelves and reading corner",
       position: "50% 50%",
     },
     {
       src: `${D}/3_TOP.jpg`,
       alt: "A classroom with orange child-sized desks and chairs on a blue carpet, a rug and a jungle-painted window",
-      caption: "Classroom with child-sized desks",
       position: "50% 50%",
     },
     {
       src: `${D}/4_TOP.jpg`,
       alt: "A bright classroom with a red rug, blue carpet and walls covered with alphabet, animal and word displays",
-      caption: "Wall displays and story rug",
       position: "50% 50%",
     },
   ],
@@ -75,25 +69,21 @@ export const PUPPET_RESEARCH: ResearchData = {
     {
       src: `${D}/1_BOTTOM.jpg`,
       alt: "The designer smiling and holding up a tablet to show a concept to children in red woollen hats",
-      caption: "Sharing the concept with children in class",
       position: "50% 40%",
     },
     {
       src: `${D}/2_BOTTOM.jpg`,
       alt: "A teacher stands beside rows of young children in red hats at orange desks in a green classroom",
-      caption: "A teacher-led lesson in a government school",
       position: "50% 50%",
     },
     {
       src: `${D}/3_BOTTOM.jpg`,
       alt: "Children in red uniforms playing with number and letter puzzles at a blue table beside colourful shelves",
-      caption: "Children playing at a Montessori table",
       position: "50% 50%",
     },
     {
       src: `${D}/4_BOTTOM.jpg`,
       alt: "Small children seated on bright plastic chairs around tables while a carer sits with them",
-      caption: "Mealtime in a play-based kindergarten",
       position: "50% 55%",
     },
   ],
