@@ -55,7 +55,7 @@ export const PUPPET_MATERIAL: MaterialData = {
   ],
   slides: [
     {
-      src: `${D}/01-collage.png`,
+      src: `${D}/01-collage.jpg`,
       alt: "A collage of the lab process: white HDPE bottles on a scale, buckets of colourful shredded plastic, mixing bowls and the blue heat press",
       position: "50% 50%",
     },
