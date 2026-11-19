@@ -17,6 +17,8 @@
  * Optional `joinery`          → page 6 three detail photos + three notes (project two, data/joinery.ts).
  * Optional `concept` · `formExploration` · `fabrication` · `ending` → the later sections.
  *   project two's `ending` (data/endingChair.ts) is the closing clip, right after the joinery page.
+ * Optional `howItWorks`       → "HOW IT WORKS · BUILD" page + the BUILD / COMPOSE / INTERPRET / PERFORM timeline
+ *                               (project eight, components/ProjectBuild.tsx + data/puppetBuild.ts).
  *
  * Project three (Echo Pan) currently has pages 1–6 — add its sections here when her next pages are ready.
  * Project eight (Puppet theatre) currently has page 1 only — add its sections here when her next pages are ready.
@@ -110,16 +112,20 @@ export type ProjectDetailData = {
   /** how high the page-1 text block sits above the photo's bottom edge, as a share of the photo height
       (default 0.074). Project eight's Canva page has the text higher → 0.0964 */
   introPb?: number;
-    about?: AboutData;
-      /** "Key features" page: pinned section, scrolling moves ten numbered feature cards sideways (project eight, page 3) */
+  about?: AboutData;
+  /** "Key features" page: pinned section, scrolling moves ten numbered feature cards sideways (project eight, page 3) */
   features?: FeaturesData;
-    /** "Opportunity" page: pipe diagram + auto-changing photos + swatches intro (project eight) */
+  /** "Opportunity" page: pipe diagram + auto-changing photos + swatches intro (project eight) */
   opportunity?: OpportunityData;
-    /** "HDPE swatches" page: 3 × 3 tiles that flip from shredded plastic to the heat-pressed result (project eight) */
+  /** "HDPE swatches" page: 3 × 3 tiles that flip from shredded plastic to the heat-pressed result (project eight) */
   swatches?: SwatchesData;
-    /** "What the material taught me" page: four bullets + auto-changing photos (project eight) */
+  /** "What the material taught me" page: four bullets + auto-changing photos (project eight) */
   materialTaught?: MaterialData;
-   research?: ResearchData;
+  research?: ResearchData;
+  /** "HOW IT WORKS · BUILD" page (3D flat panels → click to build the theatre) and the fixed
+      BUILD / COMPOSE / INTERPRET / PERFORM timeline that stays on pages 102–108 (project eight).
+      The content lives in data/puppetBuild.ts; this is only an on / off switch. */
+  howItWorks?: boolean;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -305,17 +311,19 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
       ],
     },
     /* page 2 onwards → add sections here when her next pages are ready */
-     about: PUPPET_ABOUT,
-         /* page 3 — KEY FEATURES (components/ProjectFeatures.tsx + data/puppetFeatures.ts) */
+    about: PUPPET_ABOUT,
+    /* page 3 — KEY FEATURES (components/ProjectFeatures.tsx + data/puppetFeatures.ts) */
     features: PUPPET_FEATURES,
     /* page 4 onwards → add sections here when her next pages are ready */
-        /* page 4 — OPPORTUNITY (components/ProjectOpportunity.tsx + data/puppetOpportunity.ts) */
+    /* page 4 — OPPORTUNITY (components/ProjectOpportunity.tsx + data/puppetOpportunity.ts) */
     opportunity: PUPPET_OPPORTUNITY,
-        /* page 5 — HDPE SWATCHES (components/ProjectSwatches.tsx + data/puppetSwatches.ts) */
+    /* page 5 — HDPE SWATCHES (components/ProjectSwatches.tsx + data/puppetSwatches.ts) */
     swatches: PUPPET_SWATCHES,
-        /* page 6 — WHAT THE MATERIAL TAUGHT ME (components/ProjectMaterial.tsx + data/puppetMaterial.ts) */
+    /* page 6 — WHAT THE MATERIAL TAUGHT ME (components/ProjectMaterial.tsx + data/puppetMaterial.ts) */
     materialTaught: PUPPET_MATERIAL,
     research: PUPPET_RESEARCH,
+    /* page 102 — HOW IT WORKS · BUILD + the timeline (components/ProjectBuild.tsx + data/puppetBuild.ts) */
+    howItWorks: true,
   },
 };
 

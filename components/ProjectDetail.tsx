@@ -44,6 +44,10 @@
  *  16. `project.noteGap` sets the space between the tags / meta block and the note (default 12px)
  *  17. `project.introPb` lifts the page-1 text block (share of the photo height, default 0.074)
  *  18. `project.research` renders the last page — "3. Primary research" (ProjectResearch)
+ *  19. `project.howItWorks` renders page 102 — "HOW IT WORKS · BUILD" (ProjectBuild: 3D panels, click to build)
+ *      together with the fixed BUILD / COMPOSE / INTERPRET / PERFORM timeline (HowItWorksTimeline).
+ *      The timeline draws itself into <body>, so `container-type` on .pd-root cannot trap its position:fixed.
+ *      Pages 103–108 only need  data-hiw-step="compose" | "interpret" | "perform"  on their root <section>.
  */
 import Image from "next/image";
 import { Familjen_Grotesk } from "next/font/google";
@@ -73,6 +77,8 @@ import ProjectOpportunity from "./ProjectOpportunity";
 import ProjectSwatches from "./ProjectSwatches";
 import ProjectMaterial from "./ProjectMaterial";
 import ProjectResearch from "./ProjectResearch";
+import ProjectBuild from "./ProjectBuild ";
+import HowItWorksTimeline from "./HowItWorksTimeline";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -319,6 +325,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     swatches,
     materialTaught,
     research,
+    howItWorks,
   } = project;
 
   return (
@@ -525,6 +532,15 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
       {/* ============================ (project eight) PRIMARY RESEARCH: two boxes + two changing photo frames ============================ */}
       {research ? <ProjectResearch data={research} /> : null}
+
+      {/* ============================ (project eight) PAGE 102 — HOW IT WORKS · BUILD: click the lighter panel to build the theatre.
+          The timeline (BUILD · COMPOSE · INTERPRET · PERFORM) is fixed at the top centre while pages 102–108 are on screen. ============================ */}
+      {howItWorks ? (
+        <>
+          <HowItWorksTimeline />
+          <ProjectBuild />
+        </>
+      ) : null}
 
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
