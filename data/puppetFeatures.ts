@@ -1,7 +1,14 @@
 /* -------------------------------------------------------------------------
  * data/puppetFeatures.ts  (or src/data/puppetFeatures.ts)
  * Project eight (Puppet theatre) — page 3: KEY FEATURES
- * Ten features, numbered 01–10 automatically in the order below.
+ * Eleven features, numbered 01–11 automatically in the order below.
+ *
+ * NOTE: the existing image files keep their ORIGINAL names, so a few names
+ * no longer describe the photo (e.g. 05-arrows.jpg is the grip photo).
+ * The caption + alt on each card describe what the photo really shows.
+ * The new photo (Canva page 94) is 11-nested-sheets.jpg and is placed
+ * 6th in the array.
+ *
  * pos (optional) = CSS object-position for the crop inside the 630 × 432 frame.
  * Images live in  public/projects/puppet-theatre/features/
  * ---------------------------------------------------------------------- */
@@ -23,7 +30,7 @@ export const PUPPET_FEATURES: FeaturesData = {
     {
       src: `${D}/02-interlocking.jpg`,
       alt: "Two hands slide the slotted roof panel onto the theatre's interlocking tabs",
-      caption: "Simple interlocking joints make assembly and dismantling quick and effortless.",
+      caption: "Simple interlocking joints make assembly and dismantling quick & effortless.",
       pos: "50% 70%",
     },
     {
@@ -39,27 +46,38 @@ export const PUPPET_FEATURES: FeaturesData = {
       pos: "50% 30%",
     },
     {
+      /* file is named "arrows" but shows the GRIP photo */
       src: `${D}/05-arrows.jpg`,
-      alt: "Two green panels being aligned, with carved arrows on the edge of one of them",
-      caption: "Directional arrows guide children in aligning and locking the panels together.",
-      pos: "50% 50%",
-    },
-    {
-      src: `${D}/06-podiums.jpg`,
-      alt: "Grooved podiums resting on the wavy green base of the theatre",
-      caption: "Window cut-outs are repurposed as grooved podiums for displaying characters.",
-      pos: "50% 50%",
-    },
-    {
-      src: `${D}/07-grip.jpg`,
       alt: "A person carrying the theatre by its integrated grips, with the base on the floor in front",
       caption: "Integrated grip that makes the theatre easy to pick up and carry.",
       pos: "50% 45%",
     },
     {
-      src: `${D}/08-twist-off.jpg`,
+      /* NEW — Canva page 94 / drive file 11.jpg → upload as 11-nested-sheets.jpg */
+      src: `${D}/11-nested-sheets.jpg`,
+      alt: "Two 3 × 3 ft green sheets with the theatre's components cut out and nested closely together",
+      caption: "Components are nested within two 3 × 3 ft sheets to minimise material waste.",
+      pos: "50% 50%",
+    },
+    {
+      /* file is named "podiums" but shows the TWIST-OFF photo */
+      src: `${D}/06-podiums.jpg`,
       alt: "A hand twisting the bottom panel out of the theatre's side panels",
       caption: "A twist-off bottom panel allows the base to be easily removed and replaced with an alternative platform.",
+      pos: "50% 50%",
+    },
+    {
+      /* file is named "grip" but shows the ARROWS photo */
+      src: `${D}/07-grip.jpg`,
+      alt: "Two green panels being aligned, with carved arrows on the edge of one of them",
+      caption: "Directional arrows guide children in aligning and locking the panels together.",
+      pos: "50% 50%",
+    },
+    {
+      /* file is named "twist-off" but shows the PODIUMS photo */
+      src: `${D}/08-twist-off.jpg`,
+      alt: "Grooved podiums resting on the wavy green base of the theatre",
+      caption: "Window cut-outs are repurposed as grooved podiums for displaying characters.",
       pos: "50% 50%",
     },
     {
