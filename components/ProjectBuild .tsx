@@ -3,15 +3,16 @@
  *
  * Project eight — page 102 "HOW IT WORKS · BUILD".
  *
- * The flat 3D panels sit in the LEFT box (REGION_FLAT, the pink box). The NEXT panel to place
- * blinks (lighter, pulsing). The visitor clicks it and it flies into the RIGHT box (REGION_BUILT,
- * the orange box) to build the theatre, in the client's order 1–8. Then the four loose pieces glide
- * to the corner, and the visitor can drag to look around it from every side.
+ * The flat 3D panels sit in the LEFT box (REGION_FLAT). They are turned to FACE THE CAMERA, so their edges
+ * are perfectly straight on screen (no slant). The NEXT panel to place blinks (lighter, pulsing). The visitor
+ * clicks it and it flies into the RIGHT box (REGION_BUILT) to build the theatre, in the client's order 1–8.
+ * Then the four loose pieces glide to the corner, and the visitor can drag to look around it.
  *
- * CAMERA: fixed for the whole build. The flat panels never change angle or position while the
- * theatre forms, and nothing zooms after the theatre is built — it stays the same (big) size.
- * The theatre is fitted to the orange box once; the flat panels are laid out to fill the pink box
- * (they grow to full size as they fly across, which reads as being lifted towards the viewer).
+ * CAMERA: fixed for the whole build. Nothing zooms after the theatre is built.
+ * FLAT LAYOUT: two groups — PURPLE (front panel, base, top panel, two small domes) and PINK (the rest).
+ *   "row"   = both groups side by side, as in the original layout
+ *   "stack" = purple on top, pink below
+ *   "auto"  = whichever gives the BIGGER panels
  *
  * MODE = "auto" (below) builds it by itself instead, as the visitor arrives.
  *
@@ -26,14 +27,14 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type * as ThreeNS from "three";
 import { BUILD_LOOSE, BUILD_MODEL_URL, BUILD_POSES, BUILD_STEPS, BUILD_TEXT } from "../data/PuppetBuild ";
-
+import HowItWorksTimeline from "./HowItWorksTimeline";
 /* ------------------------------ TUNING (artboard px, 1440 × 900) ------------------------------ */
 const CANVAS_TOP = 226; // canvas covers the page from here to the bottom edge
 const CANVAS_BOTTOM = 900;
 const LEFT_X = 90; // left margin of title, label and text
 const HINT_X = 301;
 const STEP_Y = 186; // top of "BUILD" and of the hint line
-const COPY_Y = 687; // top of the first paragraph
+const COPY_Y = 738; // top of the first paragraph (was 687 — lowered so the bigger flats fit above it)
 const COPY_W = 509;
 const STAGE_X = 831; // "The stage is set." block
 const STAGE_Y = 765;
@@ -62,16 +63,22 @@ const LIFT = 0.32; // metres a panel rises while it flies
 const SUN_REF_SHIFT_X = 1.97;
 
 /* FIXED camera (degrees): az = turn around the model, el = height above the floor (90 = straight down).
-   One angle for the whole build → the flat panels never move or tilt.
-   az 0 = flat panels perfectly square-on · a few degrees gives the theatre a little more depth. */
+   The flats are turned to face this camera, so they look perfectly straight whatever angle you pick here. */
 const AZ_VIEW = 10;
 const EL_VIEW = 50;
 
 /* the two boxes, as fractions of the canvas width / height (x0,y0 = top-left, x1,y1 = bottom-right)
-   REGION_FLAT  = pink box   → the flat panels fill this
-   REGION_BUILT = orange box → the finished theatre fills this (and keeps this size) */
-const REGION_FLAT = { x0: 0.05, y0: 0.05, x1: 0.51, y1: 0.68 };
+   REGION_FLAT  = left box   → the flat panels fill this
+   REGION_BUILT = right box  → the finished theatre fills this (and keeps this size) */
+const REGION_FLAT = { x0: 0.0625, y0: 0.035, x1: 0.55, y1: 0.735 };
 const REGION_BUILT = { x0: 0.52, y0: 0.03, x1: 0.985, y1: 0.72 };
+
+/* FLAT LAYOUT — "auto" | "row" | "stack"  (see the top of the file) */
+const FLAT_LAYOUT: "auto" | "row" | "stack" = "auto";
+/* the PURPLE group: these panels stay together (and go on top when stacked). Everything else = PINK group. */
+const PURPLE_KEYS = ["Body14", "Body1", "Body1.001", "Body1.002", "Body1.003"];
+const FLAT_GAP_M = 0.16; // metres between the two groups when stacked
+const FLAT_FILL = 0.97; // share of the box the flats use (1 = touch the box edges)
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), b);
@@ -81,6 +88,7 @@ const rad = (d: number) => (d * Math.PI) / 180;
 
 type Region = { x0: number; y0: number; x1: number; y1: number };
 type Api = { next: () => void; replay: () => void };
+type MBox = { minX: number; maxX: number; minY: number; maxY: number };
 
 export default function ProjectBuild() {
   const outerRef = useRef<HTMLElement>(null);
@@ -181,11 +189,13 @@ export default function ProjectBuild() {
 
         type Piece = {
           key: string;
+          mesh: ThreeNS.Mesh;
           pivot: ThreeNS.Group;
           mat: ThreeNS.MeshStandardMaterial;
-          fp: ThreeNS.Vector3; // where the flat panel rests on screen (worked out by layout())
+          fp: ThreeNS.Vector3; // where the flat panel rests (worked out by layout())
           to: ThreeNS.Vector3; // where it ends up in the finished theatre
-          q: ThreeNS.Quaternion;
+          qf: ThreeNS.Quaternion; // the flat pose: turned to face the camera
+          q: ThreeNS.Quaternion; // the finished pose
           t0: number | null; // when it started to fly (ms), null = still flat
         };
         const makePiece = (key: string): Piece | null => {
@@ -200,7 +210,7 @@ export default function ProjectBuild() {
           mesh.removeFromParent();
           const mat = baseMaterial.clone();
           mesh.material = mat;
-          mesh.castShadow = true;
+          mesh.castShadow = false; // a resting flat casts no shadow; it starts to once it flies
           mesh.receiveShadow = true;
           mesh.matrixAutoUpdate = false;
           mesh.matrix.copy(new THREE.Matrix4().makeTranslation(-from.x, -from.y, -from.z).multiply(world0));
@@ -209,15 +219,45 @@ export default function ProjectBuild() {
           pivot.add(mesh);
           world.add(pivot);
           const to = new THREE.Vector3(...pose.to);
-          return { key, pivot, mat, fp: from.clone(), to, q: new THREE.Quaternion(...pose.q), t0: null };
+          return {
+            key,
+            mesh,
+            pivot,
+            mat,
+            fp: from.clone(),
+            to,
+            qf: new THREE.Quaternion(),
+            q: new THREE.Quaternion(...pose.q),
+            t0: null,
+          };
         };
         const steps = BUILD_STEPS.map((s) => makePiece(s.key)).filter((p): p is Piece => p !== null);
         const loose = BUILD_LOOSE.map(makePiece).filter((p): p is Piece => p !== null);
         const all = [...steps, ...loose];
         const ident = new THREE.Quaternion();
 
-        /* size of the flat panels relative to the finished theatre (≤ 1). Worked out in layout(). */
+        /* size of the flats relative to the finished theatre (can be > 1: the flats are now bigger). Set in layout(). */
         let flatK = 1;
+
+        /* footprint (model x / y, metres) of the purple and pink groups in the ORIGINAL flat layout.
+           measured now, while every pivot is still at its original place with no rotation */
+        world.updateMatrixWorld(true);
+        const isPurple = (p: Piece) => PURPLE_KEYS.includes(p.key);
+        const groupP = all.filter(isPurple);
+        const groupK = all.filter((p: Piece) => !isPurple(p));
+        const mbox = (list: Piece[]): MBox => {
+          const b = new THREE.Box3();
+          list.forEach((p: Piece) => b.expandByObject(p.pivot));
+          return { minX: b.min.x, maxX: b.max.x, minY: -b.max.z, maxY: -b.min.z }; // scene → model: y = -z
+        };
+        const bP = mbox(groupP);
+        const bK = groupK.length ? mbox(groupK) : bP;
+        const bAll: MBox = {
+          minX: Math.min(bP.minX, bK.minX),
+          maxX: Math.max(bP.maxX, bK.maxX),
+          minY: Math.min(bP.minY, bK.minY),
+          maxY: Math.max(bP.maxY, bK.maxY),
+        };
 
         const kOf = (p: Piece, now: number) => (p.t0 === null ? 0 : clamp((now - p.t0) / (dur * 1000), 0, 1));
         const poseAt = (p: Piece, k: number) => {
@@ -225,7 +265,10 @@ export default function ProjectBuild() {
           p.pivot.position.lerpVectors(p.fp, p.to, e);
           if (k > 0 && k < 1) p.pivot.position.z += LIFT * Math.sin(Math.PI * e);
           p.pivot.scale.setScalar(lerp(flatK, 1, e)); // flat size → full size while it flies
-          p.pivot.quaternion.copy(ident).slerp(p.q, ease(clamp((k - 0.1) / 0.8, 0, 1)));
+          /* flat pose (facing the camera) → finished pose */
+          p.pivot.quaternion.copy(p.qf).slerp(p.q, ease(clamp((k - 0.1) / 0.8, 0, 1)));
+          const flying = k > 0;
+          if (p.mesh.castShadow !== flying) p.mesh.castShadow = flying;
         };
         const applyAll = (now: number) => {
           for (const p of all) poseAt(p, kOf(p, now));
@@ -274,10 +317,17 @@ export default function ProjectBuild() {
 
         const az = rad(AZ_VIEW);
         const el = rad(EL_VIEW);
+        const dv = dirOf(az, el); // from the model towards the camera
         const eDone = extents(boxDone, az, el);
-        const eFlat = extents(boxFlat, az, el);
         const Tdone = boxDone.getCenter(new THREE.Vector3()); // the camera looks at (and orbits) the finished theatre
-        const Sflat = boxFlat.getCenter(new THREE.Vector3());
+
+        /* the FLAT pose: model X → screen right, model Y → screen up, model Z (the panel's face) → the camera.
+           Every flat is turned like this, so it looks perfectly straight on screen. (scene → model: (x, -z, y)) */
+        const toModel = (v: ThreeNS.Vector3) => new THREE.Vector3(v.x, -v.z, v.y);
+        const qFlat = new THREE.Quaternion().setFromRotationMatrix(
+          new THREE.Matrix4().makeBasis(toModel(eDone.right), toModel(eDone.cup), toModel(dv))
+        );
+        all.forEach((p: Piece) => p.qf.copy(qFlat));
 
         /* view: T = point the camera looks at · s = pixels per metre · (rx, ry) = where T sits in the canvas (px) */
         const view = { T: Tdone.clone(), s: 1, rx: 0, ry: 0 };
@@ -291,14 +341,15 @@ export default function ProjectBuild() {
           camera.updateProjectionMatrix();
         };
         const placeCamera = () => {
-          camera.position.copy(view.T).addScaledVector(dirOf(az, el), 10);
+          camera.position.copy(view.T).addScaledVector(dv, 10);
           camera.up.copy(UP);
           camera.lookAt(view.T);
         };
 
         /* the whole layout, in one place (runs at start and on every resize):
-           1. the finished theatre is fitted to the orange box  → that sets the scale, and it never changes again
-           2. the flat panels are shrunk just enough to fit the pink box, and centred in it */
+           1. the finished theatre is fitted to the right box  → that sets its scale, and it never changes again
+           2. the flats get THEIR OWN scale: as big as they can be inside the left box, as a row or as a stack,
+              placed straight on screen (facing the camera) */
         const layout = () => {
           const gB = regionPx(REGION_BUILT);
           const gF = regionPx(REGION_FLAT);
@@ -307,29 +358,60 @@ export default function ProjectBuild() {
           view.rx = gB.cx;
           view.ry = gB.cy;
 
-          flatK = Math.min(
-            1,
-            gF.w / (view.s * (eFlat.maxU - eFlat.minU)),
-            gF.h / (view.s * (eFlat.maxV - eFlat.minV))
-          );
+          const wP = bP.maxX - bP.minX, hP = bP.maxY - bP.minY;
+          const wK = bK.maxX - bK.minX, hK = bK.maxY - bK.minY;
+          const wR = bAll.maxX - bAll.minX, hR = bAll.maxY - bAll.minY;
+          const hasK = groupK.length > 0;
 
-          /* ground point G (scene) whose screen position is the centre of the pink box */
-          const A = (gF.cx - view.rx) / view.s + Tdone.dot(eDone.right);
-          const Bp = (view.ry - gF.cy) / view.s + Tdone.dot(eDone.cup);
-          const C = -Bp / Math.sin(el);
-          const gx = A * Math.cos(az) + C * Math.sin(az);
-          const gz = -A * Math.sin(az) + C * Math.cos(az);
+          const sRow = Math.min(gF.w / wR, gF.h / hR);
+          const wS = Math.max(wP, hasK ? wK : 0);
+          const hS = hP + (hasK ? FLAT_GAP_M + hK : 0);
+          const sStack = Math.min(gF.w / wS, gF.h / hS);
+          const stack = FLAT_LAYOUT === "stack" || (FLAT_LAYOUT === "auto" && sStack > sRow);
 
-          /* scene (x, y, z) → model (x, -z, y) */
-          const gmx = gx;
-          const gmy = -gz;
-          const cmx = Sflat.x;
-          const cmy = -Sflat.z;
-          for (const p of all) {
+          const sF = (stack ? sStack : sRow) * FLAT_FILL; // pixels per metre of the flat panels
+          flatK = sF / view.s;
+
+          const mx = (b: MBox) => (b.minX + b.maxX) / 2;
+          const my = (b: MBox) => (b.minY + b.maxY) / 2;
+
+          const tu = Tdone.dot(eDone.right);
+          const tv = Tdone.dot(eDone.cup);
+          const tw = Tdone.dot(dv);
+          const P = new THREE.Vector3();
+
+          all.forEach((p: Piece, i: number) => {
             const f = BUILD_POSES[p.key].from;
-            p.fp.set(gmx + flatK * (f[0] - cmx), gmy + flatK * (f[1] - cmy), flatK * f[2]);
-          }
+            let lx: number; // position inside the flat layout, metres, y up
+            let ly: number;
+            if (!stack) {
+              lx = f[0] - mx(bAll);
+              ly = f[1] - my(bAll);
+            } else if (isPurple(p)) {
+              lx = f[0] - mx(bP);
+              ly = f[1] - my(bP) + (hS / 2 - hP / 2); // purple on top
+            } else {
+              lx = f[0] - mx(bK);
+              ly = f[1] - my(bK) - (hS / 2 - hK / 2); // pink below
+            }
+            const px = gF.cx + lx * sF;
+            const py = gF.cy - ly * sF;
 
+            /* the scene point that the camera shows at canvas pixel (px, py); a tiny depth step per panel
+               stops overlapping flats from flickering (the base lies on top, as before) */
+            const u = (px - view.rx) / view.s + tu;
+            const v = (view.ry - py) / view.s + tv;
+            const w = tw + (all.length - i) * 0.004;
+            P.set(0, 0, 0).addScaledVector(eDone.right, u).addScaledVector(eDone.cup, v).addScaledVector(dv, w);
+            p.fp.set(P.x, -P.z, P.y); // scene → model
+          });
+
+          /* the sun: same recipe as before, so the shadows do not change */
+          const gcx = (gF.cx - view.rx) / view.s + tu;
+          const gcy = (view.ry - gF.cy) / view.s + tv;
+          const C = -gcy / Math.sin(el);
+          const gx = gcx * Math.cos(az) + C * Math.sin(az);
+          const gz = -gcx * Math.sin(az) + C * Math.cos(az);
           sun.target.position.set((gx + Tdone.x) / 2, Tdone.y / 2, (gz + Tdone.z) / 2);
           sun.position.copy(sun.target.position).add(sunOffset);
           setFrustum();
@@ -555,6 +637,7 @@ export default function ProjectBuild() {
     >
       <div className="hw-stage">
         <h2 className="hw-title hw-r">{BUILD_TEXT.title}</h2>
+        <HowItWorksTimeline active="build" />
         <p className="hw-step hw-r">{BUILD_TEXT.step}</p>
 
         {/* hint with the hand-drawn orange underline (same recipe as FABRICATION: the text hugs its own box,

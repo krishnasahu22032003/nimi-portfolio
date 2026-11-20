@@ -78,7 +78,6 @@ import ProjectSwatches from "./ProjectSwatches";
 import ProjectMaterial from "./ProjectMaterial";
 import ProjectResearch from "./ProjectResearch";
 import ProjectBuild from "./ProjectBuild ";
-import HowItWorksTimeline from "./HowItWorksTimeline";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -535,12 +534,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 
       {/* ============================ (project eight) PAGE 102 — HOW IT WORKS · BUILD: click the lighter panel to build the theatre.
           The timeline (BUILD · COMPOSE · INTERPRET · PERFORM) is fixed at the top centre while pages 102–108 are on screen. ============================ */}
-      {howItWorks ? (
-        <>
-          <HowItWorksTimeline />
-          <ProjectBuild />
-        </>
-      ) : null}
+{howItWorks ? <ProjectBuild /> : null}
 
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}

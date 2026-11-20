@@ -1,278 +1,190 @@
 "use client";
+
 /* components/HowItWorksTimeline.tsx   (or src/components/HowItWorksTimeline.tsx)
  *
- * BUILD — COMPOSE — INTERPRET — PERFORM
- * One timeline, fixed at the top centre, for pages 102–108 ("How it works").
+ * BUILD · COMPOSE · INTERPRET · PERFORM — the same timeline as FABRICATION:
+ *   · the same hand-drawn dots (white ring → small solid black dot for the current step)
+ *   · the same thin grey line joining the dots
+ *   · the same font (Comico, 10px, uppercase) for the names under the dots
+ *   · the same function: click a dot (or its name) to go to that step, ← → keys move between steps
+ *   · NO animation of any kind. It is part of the page it is placed in (not fixed to the screen).
  *
- *  - It finds the pages by themselves: every page of this part carries
- *    data-hiw-step="build" | "compose" | "interpret" | "perform".
- *    The timeline is only on screen while one of those pages is on screen.
- *  - Clicking a step scrolls to the first page of that step.
- *  - Black when it first appears, then it rests at reduced opacity (grey).
- *    Cursor near it (or keyboard focus / a tap) → black again.
- *  - Dots fill as the reader moves forward: current and earlier steps are filled.
+ * USE   <HowItWorksTimeline active="build" />  inside the page's section (ProjectBuild has it).
+ *       For pages 103–108 put  <HowItWorksTimeline active="compose" />  (or "interpret" / "perform")
+ *       and give that page's root <section> the attribute  data-hiw-step="compose"  so the dots can jump to it.
+ *       A dot whose page is not on screen yet simply does nothing when clicked.
  *
- * Put it ONCE on the project page, next to the pages, e.g.
- *    <HowItWorksTimeline />
- * It draws itself straight into <body> (a portal). This matters: .pd-root uses
- * container-type, which would otherwise make "position: fixed" scroll with the page.
+ * PLACE  Uses the page's artboard grid (1440 × 900, --cu / --ax / --y0 set by the parent section, as in ProjectBuild).
+ *        The row is centred on the page; its dots sit on the same line as the "HOW IT WORKS ?" title.
  */
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import type { CSSProperties } from "react";
+import { useRef } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
 
 /* ------------------------------ TUNING (artboard px, 1440 × 900) ------------------------------ */
-const REST_OPACITY = 0.38; // resting "grey"; 1 = black
-const AWAKE_MS = 2600; // how long it stays black after appearing
-const NEAR_PX = 80; // cursor distance that wakes it (artboard px)
+const STEPS = [
+  { key: "build", label: "Build" },
+  { key: "compose", label: "Compose" },
+  { key: "interpret", label: "Interpret" },
+  { key: "perform", label: "Perform" },
+] as const;
 
-export type HowItWorksStepId = "build" | "compose" | "interpret" | "perform";
+const DOT_PITCH = 100; // centre of one dot → centre of the next (same as FABRICATION)
+const CENTER_X = 720; //  the row is centred on the 1440 page
+const DOT_Y = 104; //     centre of the dots = centre of the "HOW IT WORKS ?" title line
 
-/* x values are artboard px measured from the Canva page (pg 102), relative to the
-   left edge of the timeline (x = 563). dot / label = centre / left edge. */
-const STEPS: { id: HowItWorksStepId; label: string; dot: number; labelX: number; labelW: number }[] = [
-  { id: "build", label: "Build", dot: 16, labelX: 0, labelW: 42 },
-  { id: "compose", label: "Compose", dot: 111, labelX: 58, labelW: 73 },
-  { id: "interpret", label: "Interpret", dot: 196, labelX: 147, labelW: 85 },
-  { id: "perform", label: "Perform", dot: 271, labelX: 241, labelW: 73 },
-];
-const DASHES = [68, 153, 228]; // centres of the three dashes
-const BOX_W = 314;
-const BOX_H = 50;
-const DOT_Y = 12; // centre of the dots, from the top of the box
-const LABEL_Y = 38; // centre of the labels
-const DOT = 20;
+export type HiwStep = (typeof STEPS)[number]["key"];
+
+/* ---------- the hand-drawn dots of FABRICATION / CONCEPT (same code, same seeds → the same dots) ---------- */
+function rnd(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+function blob(seed: number, r: number, wobble: number): string {
+  const R = rnd(seed * 7919 + 13);
+  const n = 9;
+  const start = R() * Math.PI * 2;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const a = start + (i / n) * Math.PI * 2;
+    const rr = r * (1 + (R() - 0.5) * wobble);
+    pts.push([11 + Math.cos(a) * rr, 11 + Math.sin(a) * rr]);
+  }
+  const f = (v: number) => v.toFixed(2);
+  let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(
+      p2[1] - (p3[1] - p1[1]) / 6
+    )} ${f(p2[0])} ${f(p2[1])}`;
+  }
+  return d + "Z";
+}
+const RINGS: string[] = Array.from({ length: 12 }, (_, i) => blob(i + 1, 7.4, 0.12));
+const FILLS: string[] = Array.from({ length: 12 }, (_, i) => blob(i + 1, 5.4, 0.12));
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 
-export default function HowItWorksTimeline() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [active, setActive] = useState<HowItWorksStepId>("build");
-  const [awake, setAwake] = useState(false);
-  const [near, setNear] = useState(false);
-  const wakeTimer = useRef<number>(0);
+const dotX = (i: number) => CENTER_X + (i - (STEPS.length - 1) / 2) * DOT_PITCH;
 
-  useEffect(() => setMounted(true), []);
+export default function HowItWorksTimeline({ active = "build" }: { active?: HiwStep }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const current = Math.max(0, STEPS.findIndex((s) => s.key === active));
 
-  /* 1 — which page is on screen, and which step is it? */
-  useEffect(() => {
-    let io1: IntersectionObserver | null = null;
-    let io2: IntersectionObserver | null = null;
-    let retry = 0;
-
-    const setup = () => {
-      io1?.disconnect();
-      io2?.disconnect();
-      const pages = Array.from(document.querySelectorAll<HTMLElement>("[data-hiw-step]"));
-      if (!pages.length) return false;
-
-      const onScreen = new Set<Element>();
-      /* visible while ANY page of the series touches the screen */
-      io1 = new IntersectionObserver((entries: IntersectionObserverEntry[]) => {
-        entries.forEach((e: IntersectionObserverEntry) => {
-          if (e.isIntersecting) onScreen.add(e.target);
-          else onScreen.delete(e.target);
-        });
-        setVisible(onScreen.size > 0);
-      });
-      /* active step = the page crossing the middle line of the screen */
-      io2 = new IntersectionObserver(
-        (entries: IntersectionObserverEntry[]) => {
-          entries.forEach((e: IntersectionObserverEntry) => {
-            if (!e.isIntersecting) return;
-            const id = (e.target as HTMLElement).dataset.hiwStep as HowItWorksStepId | undefined;
-            if (id) setActive(id);
-          });
-        },
-        { rootMargin: "-50% 0px -50% 0px" }
-      );
-      pages.forEach((p) => {
-        io1?.observe(p);
-        io2?.observe(p);
-      });
-      return true;
-    };
-
-    if (!setup()) retry = window.setTimeout(setup, 600); // pages mounted a moment later
-    window.addEventListener("load", setup);
-    return () => {
-      window.clearTimeout(retry);
-      window.removeEventListener("load", setup);
-      io1?.disconnect();
-      io2?.disconnect();
-    };
-  }, []);
-
-  /* 2 — black for a moment when it appears, then rest */
-  useEffect(() => {
-    window.clearTimeout(wakeTimer.current);
-    if (!visible) {
-      setAwake(false);
-      return;
+  /* go to a step: jump to its page if it is on screen (instantly, no animation), and keep keyboard focus on its dot */
+  const goTo = (i: number, focus = false) => {
+    const j = Math.min(STEPS.length - 1, Math.max(0, i));
+    if (STEPS[j].key !== active) {
+      document.querySelector<HTMLElement>(`[data-hiw-step="${STEPS[j].key}"]`)?.scrollIntoView({ block: "start" });
     }
-    setAwake(true);
-    wakeTimer.current = window.setTimeout(() => setAwake(false), AWAKE_MS);
-    return () => window.clearTimeout(wakeTimer.current);
-  }, [visible]);
-
-  /* 3 — cursor near it → black */
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!mounted || !el) return;
-    let raf = 0;
-    let x = 0;
-    let y = 0;
-    const check = () => {
-      raf = 0;
-      const box = el.querySelector<HTMLElement>(".hwt-box");
-      if (!box) return;
-      const r = box.getBoundingClientRect();
-      const pad = (NEAR_PX * r.width) / BOX_W;
-      setNear(x > r.left - pad && x < r.right + pad && y > r.top - pad && y < r.bottom + pad);
-    };
-    const onMove = (e: PointerEvent) => {
-      x = e.clientX;
-      y = e.clientY;
-      if (!raf) raf = requestAnimationFrame(check);
-    };
-    const onLeave = () => setNear(false);
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onMove);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-    };
-  }, [mounted]);
-
-  const go = (id: HowItWorksStepId) => {
-    const target = document.querySelector<HTMLElement>(`[data-hiw-step="${id}"]`);
-    if (!target) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    if (focus) rootRef.current?.querySelector<HTMLElement>(`[data-hiw-dot="${j}"]`)?.focus({ preventScroll: true });
   };
 
-  /* a tap on a phone also counts as "interacted" */
-  const wakeBriefly = () => {
-    setAwake(true);
-    window.clearTimeout(wakeTimer.current);
-    wakeTimer.current = window.setTimeout(() => setAwake(false), AWAKE_MS);
+  const onKey = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goTo(current + 1, true);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goTo(current - 1, true);
+    }
   };
 
-  const activeIndex = STEPS.findIndex((s) => s.id === active);
-  const state = !visible ? "hidden" : awake || near ? "awake" : "rest";
-
-  if (!mounted) return null;
-
-  return createPortal(
-    <div
-      ref={rootRef}
-      className="hwt"
-      data-state={state}
-      style={cssVars({ "--hwt-rest": REST_OPACITY })}
-      onPointerDown={wakeBriefly}
-    >
-      <nav className="hwt-box" aria-label="How it works" aria-hidden={!visible}>
-        {DASHES.map((x, i) => (
-          <span
-            key={i}
-            className="hwt-dash"
-            aria-hidden="true"
-            style={cssVars({ "--x": x, "--y": DOT_Y })}
-          />
+  return (
+    <nav ref={rootRef} className="hiw" aria-label="How it works steps" onKeyDown={onKey}>
+      <div className="hiw-dots">
+        <span
+          className="hiw-line hiw-abs"
+          aria-hidden="true"
+          style={cssVars({ "--x": dotX(0), "--y": DOT_Y, "--w": dotX(STEPS.length - 1) - dotX(0) })}
+        />
+        {STEPS.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            className={`hiw-dot hiw-abs${i === current ? " is-on" : ""}`}
+            data-hiw-dot={i}
+            aria-current={i === current ? "step" : undefined}
+            aria-label={`Step ${i + 1} of ${STEPS.length}: ${s.label}`}
+            onClick={() => goTo(i)}
+            style={cssVars({ "--x": dotX(i), "--y": DOT_Y - 15 })}
+          >
+            <svg className="hiw-dot-c" viewBox="0 0 22 22" aria-hidden="true">
+              <path className="hiw-ring" d={RINGS[i % RINGS.length]} />
+              <path className="hiw-fill" d={FILLS[i % FILLS.length]} />
+            </svg>
+            <span className="hiw-dot-l" aria-hidden="true">
+              {s.label}
+            </span>
+          </button>
         ))}
-
-        {STEPS.map((s, i) => {
-          const reached = i <= activeIndex;
-          return (
-            <div key={s.id} className="hwt-step">
-              <span
-                className={reached ? "hwt-dot is-on" : "hwt-dot"}
-                aria-hidden="true"
-                style={cssVars({ "--x": s.dot, "--y": DOT_Y })}
-              />
-              <span className="hwt-label" aria-hidden="true" style={cssVars({ "--x": s.labelX, "--y": LABEL_Y })}>
-                {s.label}
-              </span>
-              {/* the click target covers the dot and its label */}
-              <button
-                type="button"
-                className="hwt-hit"
-                tabIndex={visible ? 0 : -1}
-                aria-label={s.label}
-                aria-current={s.id === active ? "step" : undefined}
-                onClick={() => go(s.id)}
-                onFocus={() => setNear(true)}
-                onBlur={() => setNear(false)}
-                style={cssVars({
-                  "--x": Math.min(s.dot - DOT / 2, s.labelX) - 6,
-                  "--w": Math.max(s.dot + DOT / 2, s.labelX + s.labelW) - Math.min(s.dot - DOT / 2, s.labelX) + 12,
-                })}
-              />
-            </div>
-          );
-        })}
-      </nav>
+      </div>
       <style>{CSS}</style>
-    </div>,
-    document.body
+    </nav>
   );
 }
 
+/* ------------------------------- CSS (no transitions, no animation) ------------------------------- */
 const CSS = `
-.hwt {
-  position: fixed; z-index: 40; left: 0; right: 0; top: 0; height: 0;
-  container-type: inline-size; pointer-events: none;
-}
-.hwt-box {
-  --u: min(calc(100cqw / 1440), calc((100svh - 96px) / 804));
-  position: absolute; box-sizing: border-box;
-  left: calc(50% - ${BOX_W / 2} * var(--u));
-  top: calc(96px - 5 * var(--u));              /* artboard y = 91 */
-  width: calc(${BOX_W} * var(--u)); height: calc(${BOX_H} * var(--u));
-  opacity: 0; transform: translate3d(0, -6px, 0); visibility: hidden;
-  transition: opacity .55s cubic-bezier(.22, 1, .36, 1), transform .7s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .7s;
-  color: #000;
-}
-.hwt[data-state="rest"]  .hwt-box { opacity: var(--hwt-rest); transform: none; visibility: visible; transition-delay: 0s; }
-.hwt[data-state="awake"] .hwt-box { opacity: 1;               transform: none; visibility: visible; transition-delay: 0s; }
-
-.hwt-dot, .hwt-dash, .hwt-label { position: absolute; pointer-events: none; }
-
-.hwt-dot {
-  left: calc((var(--x) - ${DOT / 2}) * var(--u)); top: calc((var(--y) - ${DOT / 2}) * var(--u));
-  width: calc(${DOT} * var(--u)); height: calc(${DOT} * var(--u));
-  box-sizing: border-box; border-radius: 50%; border: calc(1.5 * var(--u)) solid currentColor; background: transparent;
-  transition: background-color .35s ease;
-}
-.hwt-dot.is-on { background: currentColor; }
-
-.hwt-dash {
-  left: calc((var(--x) - 10) * var(--u)); top: calc((var(--y) - 1.25) * var(--u));
-  width: calc(20 * var(--u)); height: calc(2.5 * var(--u)); border-radius: 2px; background: currentColor;
+@import url("https://fonts.googleapis.com/css2?family=Comico&display=swap");
+@font-face {
+  font-family: "Comico"; font-style: normal; font-weight: 400; font-display: swap;
+  src: local("Comico"), local("Comico Regular"), url("/fonts/Comico-Regular.woff2") format("woff2"), url("/fonts/Comico-Regular.ttf") format("truetype");
 }
 
-.hwt-label {
-  left: calc(var(--x) * var(--u)); top: calc((var(--y) - 10) * var(--u));
-  font-family: var(--font-hand, "Patrick Hand", "Gaegu", "Comic Sans MS", cursive);
-  font-size: calc(17 * var(--u)); line-height: calc(20 * var(--u)); font-weight: 700;
-  letter-spacing: .02em; text-transform: uppercase; white-space: nowrap;
+.hiw, .hiw-dots { display: contents; }
+
+/* placed by artboard coordinates, same maths as the rest of the page: y0 + y * cu */
+.hiw-abs {
+  position: absolute;
+  left: calc(var(--ax) + var(--x, 0) * var(--cu));
+  top: calc(var(--y0) + var(--y, 0) * var(--cu));
 }
 
-.hwt-hit {
-  position: absolute; pointer-events: auto; cursor: pointer; margin: 0; padding: 0; border: 0; background: transparent;
-  left: calc(var(--x) * var(--u)); width: calc(var(--w) * var(--u));
-  top: 0; height: 100%; border-radius: calc(8 * var(--u));
+/* the grey timeline line, behind the dots (the white ring hides it inside each dot) */
+.hiw-line { z-index: 3; width: calc(var(--w) * var(--cu)); height: 1px; background: #d6d6d6; pointer-events: none; }
+
+/* one step = a zero-size button at the dot's centre; the dot and the name hang off it */
+.hiw-dot {
+  z-index: 4; width: 0; height: 0; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; color: #000; overflow: visible;
   -webkit-tap-highlight-color: transparent;
 }
-.hwt-hit:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-
-@media (max-width: 820px) {
-  .hwt-box { --u: .74px; top: calc(96px - 4px); }
+.hiw-dot::before { /* bigger hit area: the dot AND its name */
+  content: ""; position: absolute; left: calc(-35 * var(--cu)); top: calc(-8 * var(--cu)); width: calc(70 * var(--cu)); height: calc(56 * var(--cu));
 }
-@media (prefers-reduced-motion: reduce) {
-  .hwt-box { transition: none; transform: none; }
+/* the same dot as FABRICATION: a 21 × 22 box centred on the dot's x */
+.hiw-dot-c {
+  position: absolute; left: calc(-10.5 * var(--cu)); top: calc(4 * var(--cu));
+  width: calc(21 * var(--cu)); height: calc(22 * var(--cu)); display: block; overflow: visible; border-radius: 50%;
+}
+.hiw-ring { fill: #fff; stroke: #000; stroke-width: 1.15; }
+.hiw-fill { fill: #000; }
+.hiw-dot .hiw-fill { display: none; }
+.hiw-dot.is-on .hiw-ring { display: none; }  /* current step = the small solid black dot */
+.hiw-dot.is-on .hiw-fill { display: block; }
+.hiw-dot-l {
+  position: absolute; left: 0; top: calc(34 * var(--cu)); white-space: nowrap; color: #000;
+  transform: translateX(-50%);
+  font-family: "Comico", "Familjen Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-size: max(10px, calc(10 * var(--cu))); line-height: calc(14 * var(--cu)); font-weight: 400; font-synthesis: none; letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hiw-dot:focus-visible { outline: none; }
+.hiw-dot:focus-visible .hiw-dot-c { outline: 2px solid #000; outline-offset: 3px; }
+
+/* ---- phones: a row of four dots across the page, names under them ---- */
+@media (max-width: 820px) {
+  .hiw { display: block; margin: 0 16px 24px; }
+  .hiw-dots { display: flex; justify-content: space-between; }
+  .hiw-abs { position: static; }
+  .hiw-line { display: none; }
+  .hiw-dot {
+    flex: 1; width: auto; height: auto; padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .hiw-dot::before { display: none; }
+  .hiw-dot-c { position: static; width: 21px; height: 22px; }
+  .hiw-dot-l { position: static; transform: none; font-size: 10px; line-height: 12px; text-align: center; }
 }
 `;
