@@ -6,11 +6,14 @@
  *
  * HOW IT WORKS
  *   Only ONE model is loaded: panel_flat.glb (all panels laid flat, on the left).
- *   The visitor clicks the highlighted panel and it flies to the right, into the
- *   theatre. Eight clicks build the theatre; the four loose pieces then glide to
- *   the corner by themselves, as in the Canva page.
+ *   The visitor clicks the blinking panel and it flies to the right, into the
+ *   theatre. Eight clicks build the theatre; the four loose pieces then glide
+ *   to the corner by themselves, as in the Canva page.
  *   "to" and "q" were calculated from constructed_.glb, so every panel lands
- *   exactly where the designer placed it. Units are metres, model axes (Z up).
+ *   where the designer placed it. Units are metres, model axes (Z up).
+ *   (The flat panels' on-screen position and size are worked out in
+ *   ProjectBuild.tsx so they fill the left box — "from" is only used as the
+ *   panel's own centre and for the layout between the flat panels.)
  *
  * THE ORDER (the client's numbers 1–8) is BUILD_STEPS below.
  * To change it, re-order the lines. Nothing else needs touching.
@@ -43,10 +46,16 @@ export type BuildPose = {
 };
 
 export const BUILD_POSES: Record<string, BuildPose> = {
-  "Body14": { // stage base
+  "Body14": {
+    // stage base.
+    // FIXED (client note): the straight, flat edge must be the side that meets the theatre,
+    // and the wavy edge must face the visitor (as in the photo). It was the other way round,
+    // so the base is now turned 180° about its own centre: q = [0, 0, 1, 0]  (rotation about Z, up).
+    // If the straight edge pokes out behind the front panel, or leaves a gap, nudge the 2nd number of
+    // "to" (the Y value, 1.68281) by 0.02–0.07 — smaller Y moves the base towards the visitor.
     from: [1.34164, 1.59163, 0.00375],
     to: [1.33697, 1.68281, 0.00375],
-    q: [0, 0, 0, 1],
+    q: [0, 0, 1, 0],
   },
   "Body1": { // front panel
     from: [1.34166, 1.58078, 0.00375],
@@ -109,11 +118,12 @@ export const BUILD_POSES: Record<string, BuildPose> = {
 export const BUILD_TEXT = {
   title: "How it works ?",
   step: "Build",
-  hint: "Tap to start building, step by step.",
+  hint: "Tap the blinking panel to start building, step by step.",
   paragraphs: [
     "The flat-pack pieces use simple slot-and-tab joints that lock together without glue, tools, or additional hardware.",
     "Children can assemble the theatre themselves, making the act of building the first part of the play.",
   ],
+  /* the LAST line gets the hand-drawn orange underline */
   done: ["The stage is set.", "Move around to explore it from every side."],
   alt: "3D model of the puppet theatre. Flat panels on the left are clicked one by one and fly to the right to build the theatre. When it is built, drag to look around it.",
 };
