@@ -76,6 +76,8 @@ import type { SwatchesData } from "./puppetSwatches";
 import { PUPPET_SWATCHES } from "./puppetSwatches";
 import type { ResearchData } from "./puppetResearch";
 import { PUPPET_RESEARCH } from "./puppetResearch";
+import type { UserTestingData } from "./puppetUserTesting";
+import { PUPPET_USER_TESTING } from "./puppetUserTesting";
 
 export type ProjectDetailData = {
   slug: string;
@@ -126,6 +128,8 @@ export type ProjectDetailData = {
       BUILD / COMPOSE / INTERPRET / PERFORM timeline that stays on pages 102–108 (project eight).
       The content lives in data/puppetBuild.ts; this is only an on / off switch. */
   howItWorks?: boolean;
+    /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
+  userTesting?: UserTestingData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -324,6 +328,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     research: PUPPET_RESEARCH,
     /* page 102 — HOW IT WORKS · BUILD + the timeline (components/ProjectBuild.tsx + data/puppetBuild.ts) */
     howItWorks: true,
+        /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
+    userTesting: PUPPET_USER_TESTING,
   },
 };
 
