@@ -79,6 +79,7 @@ import ProjectMaterial from "./ProjectMaterial";
 import ProjectResearch from "./ProjectResearch";
 import ProjectBuild from "./ProjectBuild ";
 import ProjectUserTesting from "./ProjectUserTesting";
+import ProjectWhy from "./ProjectWhy";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -328,7 +329,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     research,
     howItWorks,
     userTesting,
-    targetUser
+    targetUser,
+    whyPuppet
   } = project;
 
   return (
@@ -543,6 +545,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
       {userTesting ? <ProjectUserTesting data={userTesting} /> : null}
             {/* ============================ (project eight) TARGET USER: age bar + three age-group cards ============================ */}
       {targetUser ? <ProjectTargetUser data={targetUser} /> : null}
+            {/* ============================ (project eight) PAGE 115 — WHY PUPPET THEATRE ? ============================ */}
+      {whyPuppet ? <ProjectWhy data={whyPuppet} /> : null}
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 
