@@ -3,15 +3,15 @@
  *
  * Project eight — page 110 "USER TESTING".
  *
- * PAGE: white. The beige band (#F6F3E9) runs the FULL WIDTH of the page, but only between her green lines:
- *       from BAND_PAD above the video to BAND_PAD below it (equal on both sides — her blue marks).
- *       The title sits on the white above the band.
- * LEFT   video (changes with the number)
+ * PAGE: white. The beige band (#F6F3E9) runs the FULL WIDTH of the page, but only between her green lines.
+ * LEFT   video (changes with the number) + SOUND button at the BOTTOM LEFT of the video.
+ *        · Videos start MUTED (browsers do not allow sound before a click).
+ *        · One click on the speaker turns the sound ON for ALL videos; it stays on while you move between numbers.
+ *        · Click again to mute. Clips that have no audio track simply stay silent.
  * MIDDLE number rail 01–13, equal spacing, no background. The cursor on a number → beige rectangle + bold type,
  *        a small BLACK DOT next to it, the video and the three texts change. (click / tap / focus do the same.)
  * RIGHT  arrows (just the two circles) · counter "01 / 13" · OBSERVATION · INSIGHT · DESIGN DIRECTION,
  *        separated by thin ORANGE lines that run from the text to the RIGHT EDGE of the page.
- *        The headings and lines NEVER move; only the text below each heading changes.
  *
  * Measured from her Canva page (1440 × 900 artboard). Everything below is artboard px.
  * Data: data/puppetUserTesting.ts
@@ -34,6 +34,13 @@ const VIDEO_H = 490; // 754 / 490 = her 838 / 545 frame
 
 /* the beige band: full page width, BAND_PAD above the video and BAND_PAD below it (her green lines + blue marks) */
 const BAND_PAD = 52;
+
+/* sound button — bottom left INSIDE the video (same look as the arrows on the first page of this project) */
+const SOUND_D = 36; // diameter of the circle
+const SOUND_ICON = 18; // speaker icon size
+const SOUND_INSET = 14; // distance from the video's left and bottom edge
+const SOUND_BG = "rgba(0, 0, 0, 0.5)"; // translucent dark circle
+const SOUND_BG_HOVER = "rgba(0, 0, 0, 0.68)";
 
 const RAIL_X = 864; // 20px right of the video
 const RAIL_W = 67;
@@ -91,6 +98,23 @@ function Arrow({ dir }: { dir: "prev" | "next" }) {
   );
 }
 
+/* speaker icon: with waves = sound on · with a cross = muted */
+function Speaker({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" fill="currentColor" />
+      {muted ? (
+        <path d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      ) : (
+        <>
+          <path d="M15.6 9.2a4 4 0 0 1 0 5.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M18.3 6.6a7.8 7.8 0 0 1 0 10.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export default function ProjectUserTesting({ data }: { data: UserTestingData }) {
   const outerRef = useRef<HTMLElement>(null);
   const vids = useRef<(HTMLVideoElement | null)[]>([]);
@@ -98,6 +122,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
   const [active, setActive] = useState(0);
   const [onScreen, setOnScreen] = useState(false);
   const [warm, setWarm] = useState(false);
+  const [muted, setMuted] = useState(true); // starts muted: browsers only allow sound after a click
 
   const { items, videos } = data;
   const n = items.length;
@@ -142,14 +167,14 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
     return () => io.disconnect();
   }, []);
 
-  /* videos must be muted for autoplay (React does not always render the attribute) */
+  /* the sound button decides for ALL videos at once (React does not reliably render the muted attribute) */
   useEffect(() => {
     vids.current.forEach((v: HTMLVideoElement | null) => {
       if (!v) return;
-      v.muted = true;
-      v.defaultMuted = true;
+      v.defaultMuted = true; // the attribute stays "muted" so autoplay is always allowed
+      v.muted = muted;
     });
-  }, []);
+  }, [muted, warm]);
 
   /* the active video plays (from 0:00 if it just became active); every other one pauses once its fade-out is over */
   useEffect(() => {
@@ -164,7 +189,16 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
           /* metadata not loaded yet: it starts at 0 anyway */
         }
       }
-      if (onScreen && !reduce) v.play().catch(() => { });
+      if (onScreen && !reduce) {
+        v.play().catch((err: unknown) => {
+          /* the browser refused to play WITH sound → fall back to muted, and play */
+          if ((err as { name?: string })?.name === "NotAllowedError" && !v.muted) {
+            v.muted = true;
+            setMuted(true);
+            v.play().catch(() => { });
+          }
+        });
+      }
     });
     lastVid.current = activeVideo;
 
@@ -175,6 +209,17 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
     }, FADE_MS + 60);
     return () => window.clearTimeout(t);
   }, [activeVideo, onScreen]);
+
+  /* the click itself is what lets the browser play sound: unmute + play the current video right here */
+  const toggleSound = () => {
+    const next = !muted;
+    vids.current.forEach((v: HTMLVideoElement | null) => {
+      if (v) v.muted = next;
+    });
+    setMuted(next);
+    const cur = vids.current[activeVideo];
+    if (cur && cur.paused) cur.play().catch(() => { });
+  };
 
   const blocks: { h: string; text: string }[] = [
     { h: "Observation", text: item.observation },
@@ -194,6 +239,11 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
         "--ut-vw": VIDEO_W,
         "--ut-vh": VIDEO_H,
         "--ut-bpad": BAND_PAD,
+        "--ut-sd": SOUND_D,
+        "--ut-si": SOUND_ICON,
+        "--ut-sin": SOUND_INSET,
+        "--ut-sbg": SOUND_BG,
+        "--ut-sbg-h": SOUND_BG_HOVER,
         "--ut-rx": RAIL_X,
         "--ut-rw": RAIL_W,
         "--ut-rpt": RAIL_PT,
@@ -233,7 +283,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
 
         <h2 className="ut-title ut-r">{data.title}</h2>
 
-        {/* LEFT — the videos, stacked, crossfaded */}
+        {/* LEFT — the videos, stacked, crossfaded + the sound button (bottom left) */}
         <div className="ut-media ut-r" role="group" aria-label={data.title}>
           {videos.map((v, i: number) => (
             <video
@@ -256,6 +306,16 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
               onContextMenu={(e) => e.preventDefault()}
             />
           ))}
+
+          <button
+            type="button"
+            className="ut-sound"
+            aria-label={muted ? "Turn sound on" : "Mute sound"}
+            aria-pressed={!muted}
+            onClick={toggleSound}
+          >
+            <Speaker muted={muted} />
+          </button>
         </div>
 
         {/* MIDDLE — numbers 01–13, equal spacing: every number owns a slot of the same height */}
@@ -359,6 +419,25 @@ const CSS = `
   pointer-events: none; user-select: none;
 }
 .ut-video.is-on { opacity: 1; z-index: 1; }
+
+/* ---- sound button: bottom left inside the video, same translucent circle as the arrows on page 1 ---- */
+.ut-sound {
+  position: absolute; z-index: 3;
+  left: calc(var(--ut-sin) * var(--cu)); bottom: calc(var(--ut-sin) * var(--cu));
+  width: calc(var(--ut-sd) * var(--cu)); height: calc(var(--ut-sd) * var(--cu));
+  min-width: 32px; min-height: 32px;
+  padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--ut-sbg); color: #fff;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background-color .3s ease, transform .3s var(--ease);
+}
+.ut-sound svg { width: calc(var(--ut-si) * var(--cu)); height: calc(var(--ut-si) * var(--cu)); min-width: 16px; min-height: 16px; display: block; }
+.ut-sound:focus { outline: none; }
+.ut-sound:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .ut-sound:hover { background: var(--ut-sbg-h); transform: scale(1.06); } }
+.ut-sound:active { transform: scale(.94); }
 
 /* ---- number rail: NO background; 13 equal slots from the top to the bottom of the video ---- */
 .ut-rail {
@@ -485,6 +564,8 @@ const CSS = `
   .ut-title, .ut-media, .ut-rail, .ut-arrows, .ut-count, .ut-block { position: relative; left: auto; top: auto; }
   .ut-title { margin: 0 0 28px; font-size: 18px; line-height: 30px; }
   .ut-media { width: 100%; height: auto; aspect-ratio: 754 / 490; }
+  .ut-sound { left: 12px; bottom: 12px; width: 36px; height: 36px; }
+  .ut-sound svg { width: 18px; height: 18px; }
   .ut-rail {
     width: 100%; height: 52px; padding: 0 4px; flex-direction: row; align-items: center;
     overflow-x: auto; scrollbar-width: none;
@@ -505,7 +586,7 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ut-r, .ut-video, .ut-num, .ut-arrow { transition: none !important; }
+  .ut-r, .ut-video, .ut-num, .ut-arrow, .ut-sound { transition: none !important; }
   .ut-r { opacity: 1; transform: none; }
   .ut-p, .ut-dot { animation: none; }
 }
