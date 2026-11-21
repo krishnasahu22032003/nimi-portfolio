@@ -5,11 +5,14 @@
  *
  * Measured from her Canva page (1440 × 900 artboard). Everything below is artboard px.
  *
+ * NO MOTION: when the visitor arrives, the whole page is already there — title, line, subtitle, the orange bar
+ * with its numbers, and the three cards. Nothing fades, slides or wipes in.
+ *
  * THE BAR
  *   Three rounded shapes, all #DC7B36:  3–5 at 40% · 5–7 "Sweet spot" at 80% · 7–9 at 100%.
  *   The middle shape has a ROUNDED END ON BOTH SIDES (left lens from the 80% over the 40%; right lens painted
  *   with LENS_RIGHT, because 80% over 100% would be the same colour and the curve would not show).
- *   The AGE NUMBERS 3–9 sit under the bar, outside the wipe-in, so they are always visible.
+ *   The AGE NUMBERS 3–9 sit under the bar.
  *
  * CARDS
  *   · the first three bullets of every card are MEDIUM weight (BULLET_WEIGHT)
@@ -18,7 +21,6 @@
  * Data: data/puppetTargetUser.ts
  * Phones (≤820px): the bar scrolls sideways if needed, the three cards stack.
  */
-import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { Familjen_Grotesk, Playfair_Display } from "next/font/google";
 import type { TargetUserData } from "../data/puppetTargetUser";
@@ -89,27 +91,6 @@ function Lines({ lines }: { lines: string[] }) {
 }
 
 export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
-  const outerRef = useRef<HTMLElement>(null);
-
-  /* reveal once, when the section first appears */
-  useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries: IntersectionObserverEntry[]) => {
-        entries.forEach((e: IntersectionObserverEntry) => {
-          if (e.isIntersecting) {
-            e.target.classList.add("is-in");
-            io.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.01 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
   /* bar shapes, relative to the bar's own top-left corner */
   const rel = (s: number[]) => ({ x: s[0] - BAR_X, w: s[1] - s[0] });
   const L = rel(SEG_LIGHT);
@@ -120,7 +101,6 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
 
   return (
     <section
-      ref={outerRef}
       className="pd-page tu"
       aria-label={data.title}
       style={cssVars({
@@ -152,14 +132,13 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
       })}
     >
       <div className="tu-stage">
-        <h2 className="tu-title tu-r">{data.title}</h2>
-        <span className="tu-line tu-r" aria-hidden="true" />
-        <p className="tu-sub tu-r">{data.subtitle}</p>
+        <h2 className="tu-title">{data.title}</h2>
+        <span className="tu-line" aria-hidden="true" />
+        <p className="tu-sub">{data.subtitle}</p>
 
         {/* ---------------- the bar + the age numbers ---------------- */}
-        <div className="tu-barwrap tu-r" role="img" aria-label={data.alt}>
+        <div className="tu-barwrap" role="img" aria-label={data.alt}>
           <div className="tu-bar">
-            {/* the shapes and the label wipe in from the left … */}
             <div className="tu-shapes">
               <svg className="tu-svg" viewBox={`0 0 ${BAR_W} ${BAR_H}`} aria-hidden="true" focusable="false">
                 <defs>
@@ -183,7 +162,6 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
               </p>
             </div>
 
-            {/* … the numbers 3–9 sit under the bar, OUTSIDE the wipe, so they are never cut off */}
             <ul className="tu-nums" aria-hidden="true">
               {data.ages.map((a) => (
                 <li key={a.label} style={{ left: pct(a.x) }}>
@@ -196,11 +174,7 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
 
         {/* ---------------- the three cards ---------------- */}
         {data.cards.map((c, i: number) => (
-          <article
-            key={c.heading}
-            className="tu-card tu-r"
-            style={cssVars({ "--x": CARD_X[i], "--i": i, "--tone": OP[c.tone] })}
-          >
+          <article key={c.heading} className="tu-card" style={cssVars({ "--x": CARD_X[i], "--tone": OP[c.tone] })}>
             <h3 className={`tu-head ${playfair.className}`}>{c.heading}</h3>
             <ul className="tu-list">
               {c.bullets.map((lines: string[], k: number) => (
@@ -216,9 +190,6 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
         ))}
       </div>
 
-      <noscript>
-        <style>{`.tu-r{opacity:1!important;transform:none!important}.tu-shapes{clip-path:none!important}.tu-nums li{opacity:1!important}`}</style>
-      </noscript>
       <style>{CSS}</style>
     </section>
   );
@@ -229,7 +200,6 @@ const CSS = `
   --header-h: 96px;
   --cu: min(calc(100cqw / 1440), calc((100svh - var(--header-h)) / 804));
   --ax: calc((100cqw - 1440 * var(--cu)) / 2);
-  --ease: cubic-bezier(.22, 1, .36, 1);
   --y0: calc(var(--header-h) - 96 * var(--cu));   /* artboard y → page y: y0 + y * cu */
   background: #fff;
 }
@@ -267,8 +237,7 @@ const CSS = `
   width: calc(var(--tu-bw) * var(--cu)); height: calc(var(--tu-bh) * var(--cu));
 }
 .tu-bar { position: relative; width: 100%; height: 100%; }
-/* only the shapes + label wipe in; the numbers below are NOT inside this clip */
-.tu-shapes { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
+.tu-shapes { position: absolute; inset: 0; }
 .tu-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
 
 .tu-sweet {
@@ -281,9 +250,7 @@ const CSS = `
 .tu-nums li {
   position: absolute; top: 0; transform: translateX(-50%);
   font-size: calc(25.3 * var(--cu)); line-height: calc(30 * var(--cu)); font-weight: 500; letter-spacing: 0; color: var(--tu-num);
-  opacity: 0; transition: opacity .8s var(--ease) .9s;
 }
-.is-in .tu-nums li { opacity: 1; }
 
 /* ---- cards ---- */
 .tu-card {
@@ -318,7 +285,7 @@ const CSS = `
   width: calc(5 * var(--cu)); height: calc(5 * var(--cu)); min-width: 4px; min-height: 4px;
   left: calc(41 * var(--cu)); top: calc(10.5 * var(--cu));
 }
-/* the OUTCOME bullet: pinned to the same height in all three cards (regular weight, as before) */
+/* the OUTCOME bullet: pinned to the same height in all three cards (regular weight) */
 .tu-list li.tu-outcome {
   position: absolute; left: 0; right: 0;
   top: calc((var(--tu-oy) - var(--tu-ly)) * var(--cu));
@@ -327,19 +294,6 @@ const CSS = `
 
 /* ≥1280px: DESIGN MODE — every string is exactly one line, as she broke it in Canva */
 @media (min-width: 1280px) { .tu-ln { display: block; white-space: nowrap; } }
-
-/* ---- reveal ---- */
-.tu-r { opacity: 0; transform: translate3d(0, 14px, 0); }
-.is-in .tu-r {
-  opacity: 1; transform: none;
-  transition: opacity .9s var(--ease), transform 1.1s var(--ease);
-  transition-delay: 100ms;
-}
-.is-in .tu-line { transition-delay: 150ms; }
-.is-in .tu-sub { transition-delay: 250ms; }
-.is-in .tu-barwrap { transition-delay: 350ms; }
-.is-in .tu-shapes { clip-path: inset(0 0 0 0); transition: clip-path 1.4s cubic-bezier(.77, 0, .18, 1) .45s; }
-.is-in .tu-card { transition-delay: calc(900ms + var(--i) * 140ms); }
 
 /* ---- phones: bar scrolls sideways, cards stack ---- */
 @media (max-width: 820px) {
@@ -361,12 +315,5 @@ const CSS = `
   .tu-list li { padding-left: 42px; font-size: 14px; line-height: 24px; }
   .tu-list li::before { left: 24px; top: 9.5px; }
   .tu-list li.tu-outcome { position: relative; top: auto; left: auto; right: auto; margin-top: 16px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tu-r, .tu-nums li, .tu-shapes { transition: none !important; }
-  .tu-r { opacity: 1; transform: none; }
-  .tu-shapes { clip-path: none; }
-  .tu-nums li { opacity: 1; }
 }
 `;

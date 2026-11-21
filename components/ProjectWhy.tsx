@@ -228,7 +228,7 @@ const CSS = `
 }
 .wy-para {
   top: calc(var(--y0) + var(--wy-py) * var(--cu));
-  font-size: max(12px, calc(14 * var(--cu))); line-height: calc(var(--wy-plh) * var(--cu)); font-weight: 400; letter-spacing: 0; color: var(--wy-body);
+  font-size: max(12px, calc(16 * var(--cu))); line-height: calc(var(--wy-plh) * var(--cu)); font-weight: 400; letter-spacing: 0; color: var(--wy-body);
 }
 .wy-headline strong, .wy-para strong { font-weight: 600; }
 
