@@ -78,6 +78,8 @@ import type { ResearchData } from "./puppetResearch";
 import { PUPPET_RESEARCH } from "./puppetResearch";
 import type { UserTestingData } from "./puppetUserTesting";
 import { PUPPET_USER_TESTING } from "./puppetUserTesting";
+import type { TargetUserData } from "./puppetTargetUser";
+import { PUPPET_TARGET_USER } from "./puppetTargetUser";
 
 export type ProjectDetailData = {
   slug: string;
@@ -130,6 +132,7 @@ export type ProjectDetailData = {
   howItWorks?: boolean;
     /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
   userTesting?: UserTestingData;
+  targetUser?: TargetUserData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -330,6 +333,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     howItWorks: true,
         /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
     userTesting: PUPPET_USER_TESTING,
+        /* page — TARGET USER (components/ProjectTargetUser.tsx + data/puppetTargetUser.ts) */
+    targetUser: PUPPET_TARGET_USER,
   },
 };
 

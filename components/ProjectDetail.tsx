@@ -82,6 +82,7 @@ import ProjectUserTesting from "./ProjectUserTesting";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
+   import ProjectTargetUser from "./ProjectTargetUser";
 const grotesk = Familjen_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
 
 /* ------------------------------ TUNING ------------------------------ */
@@ -326,7 +327,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     materialTaught,
     research,
     howItWorks,
-    userTesting
+    userTesting,
+    targetUser
   } = project;
 
   return (
@@ -539,6 +541,8 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 {howItWorks ? <ProjectBuild /> : null}
       {/* ============================ (project eight) PAGE 109 — USER TESTING: hover a number, the video + texts change ============================ */}
       {userTesting ? <ProjectUserTesting data={userTesting} /> : null}
+            {/* ============================ (project eight) TARGET USER: age bar + three age-group cards ============================ */}
+      {targetUser ? <ProjectTargetUser data={targetUser} /> : null}
       {/* ============================ PAGE 2 (project three) — centred statement ============================ */}
       {statement ? <ProjectStatement data={statement} /> : null}
 
