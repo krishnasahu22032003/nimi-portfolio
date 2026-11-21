@@ -5,12 +5,15 @@
  *
  * Measured from her Canva page (1440 × 900 artboard). Everything below is artboard px.
  *
- * THE BAR  (the part she could not make in Canva)
+ * THE BAR
  *   Three rounded shapes, all #DC7B36:  3–5 at 40% · 5–7 "Sweet spot" at 80% · 7–9 at 100%.
- *   The middle shape has a ROUNDED END ON BOTH SIDES. Where it overlaps its neighbours you see a rounded
- *   lens: on the left it comes from the 80% sitting over the 40%; on the right the lens is painted with
- *   LENS_RIGHT (a touch deeper than the 100% orange), because 80% over 100% would be the same colour and
- *   the curve would not show. Set LENS_RIGHT = ORANGE to hide it again.
+ *   The middle shape has a ROUNDED END ON BOTH SIDES (left lens from the 80% over the 40%; right lens painted
+ *   with LENS_RIGHT, because 80% over 100% would be the same colour and the curve would not show).
+ *   The AGE NUMBERS 3–9 sit under the bar, outside the wipe-in, so they are always visible.
+ *
+ * CARDS
+ *   · the first three bullets of every card are MEDIUM weight (BULLET_WEIGHT)
+ *   · the "Outcome" bullet of EVERY card starts at the same height (OUTCOME_Y), so the three line up
  *
  * Data: data/puppetTargetUser.ts
  * Phones (≤820px): the bar scrolls sideways if needed, the three cards stack.
@@ -56,7 +59,8 @@ const HEAD_R = 38; // radius of the header's lower corners
 const HEAD_PAD = 47; // heading text: distance from the card's left edge
 const LIST_Y = 105; // top of the bullet list, from the card's top
 const LIST_X = 60; // bullet text: distance from the card's left edge
-const OUTCOME_GAP = 26; // extra space above the "Outcome" bullet
+const OUTCOME_Y = 261; // top of the "Outcome" bullet, from the card's top — the SAME in all three cards
+const BULLET_WEIGHT = 500; // the first three bullets: 500 = medium, 600 = semibold
 
 /* colours (her codes) */
 const ORANGE = "#DC7B36"; // bar, borders, headers
@@ -137,7 +141,8 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
         "--tu-hpad": HEAD_PAD,
         "--tu-ly": LIST_Y,
         "--tu-lx": LIST_X,
-        "--tu-og": OUTCOME_GAP,
+        "--tu-oy": OUTCOME_Y,
+        "--tu-bw-weight": BULLET_WEIGHT,
         "--tu-orange": ORANGE,
         "--tu-gold": LINE_GOLD,
         "--tu-sub": SUB_ORANGE,
@@ -151,30 +156,34 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
         <span className="tu-line tu-r" aria-hidden="true" />
         <p className="tu-sub tu-r">{data.subtitle}</p>
 
-        {/* ---------------- the bar ---------------- */}
+        {/* ---------------- the bar + the age numbers ---------------- */}
         <div className="tu-barwrap tu-r" role="img" aria-label={data.alt}>
           <div className="tu-bar">
-            <svg className="tu-svg" viewBox={`0 0 ${BAR_W} ${BAR_H}`} aria-hidden="true" focusable="false">
-              <defs>
-                <clipPath id="tu-clip-mid">
-                  <rect x={M.x} y={0} width={M.w} height={BAR_H} rx={R} ry={R} />
-                </clipPath>
-              </defs>
-              {/* order matters: 40% and 100% first, the 80% middle on top of both */}
-              <rect x={L.x} y={0} width={L.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[0]} />
-              <rect x={D.x} y={0} width={D.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[2]} />
-              <rect x={M.x} y={0} width={M.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[1]} />
-              {/* the rounded lens on the RIGHT end of the middle shape: where it meets the 100% shape */}
-              <rect x={D.x} y={0} width={D.w} height={BAR_H} rx={R} ry={R} fill={LENS_RIGHT} clipPath="url(#tu-clip-mid)" />
-            </svg>
+            {/* the shapes and the label wipe in from the left … */}
+            <div className="tu-shapes">
+              <svg className="tu-svg" viewBox={`0 0 ${BAR_W} ${BAR_H}`} aria-hidden="true" focusable="false">
+                <defs>
+                  <clipPath id="tu-clip-mid">
+                    <rect x={M.x} y={0} width={M.w} height={BAR_H} rx={R} ry={R} />
+                  </clipPath>
+                </defs>
+                {/* order matters: 40% and 100% first, the 80% middle on top of both */}
+                <rect x={L.x} y={0} width={L.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[0]} />
+                <rect x={D.x} y={0} width={D.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[2]} />
+                <rect x={M.x} y={0} width={M.w} height={BAR_H} rx={R} ry={R} fill={ORANGE} fillOpacity={OP[1]} />
+                {/* the rounded lens on the RIGHT end of the middle shape: where it meets the 100% shape */}
+                <rect x={D.x} y={0} width={D.w} height={BAR_H} rx={R} ry={R} fill={LENS_RIGHT} clipPath="url(#tu-clip-mid)" />
+              </svg>
 
-            <p
-              className={`tu-sweet ${familjenItalic.className}`}
-              style={{ left: pct(SWEET_X), top: `calc((${SWEET_Y - BAR_Y} / ${BAR_H}) * 100%)` }}
-            >
-              {data.sweetLabel}
-            </p>
+              <p
+                className={`tu-sweet ${familjenItalic.className}`}
+                style={{ left: pct(SWEET_X), top: `calc((${SWEET_Y - BAR_Y} / ${BAR_H}) * 100%)` }}
+              >
+                {data.sweetLabel}
+              </p>
+            </div>
 
+            {/* … the numbers 3–9 sit under the bar, OUTSIDE the wipe, so they are never cut off */}
             <ul className="tu-nums" aria-hidden="true">
               {data.ages.map((a) => (
                 <li key={a.label} style={{ left: pct(a.x) }}>
@@ -208,7 +217,7 @@ export default function ProjectTargetUser({ data }: { data: TargetUserData }) {
       </div>
 
       <noscript>
-        <style>{`.tu-r{opacity:1!important;transform:none!important}.tu-bar{clip-path:none!important}`}</style>
+        <style>{`.tu-r{opacity:1!important;transform:none!important}.tu-shapes{clip-path:none!important}.tu-nums li{opacity:1!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -257,7 +266,9 @@ const CSS = `
   top: calc(var(--y0) + var(--tu-by) * var(--cu));
   width: calc(var(--tu-bw) * var(--cu)); height: calc(var(--tu-bh) * var(--cu));
 }
-.tu-bar { position: relative; width: 100%; height: 100%; clip-path: inset(0 100% 0 0); }
+.tu-bar { position: relative; width: 100%; height: 100%; }
+/* only the shapes + label wipe in; the numbers below are NOT inside this clip */
+.tu-shapes { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
 .tu-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
 
 .tu-sweet {
@@ -265,6 +276,7 @@ const CSS = `
   font-size: calc(19 * var(--cu)); line-height: 1.2; font-weight: 600; font-style: italic; letter-spacing: 0; color: #262626;
 }
 
+/* the age numbers 3–9, under the bar (Familjen Grotesk, 25.3) */
 .tu-nums { list-style: none; margin: 0; padding: 0; position: absolute; left: 0; right: 0; top: calc(100% + var(--tu-numgap) * var(--cu)); }
 .tu-nums li {
   position: absolute; top: 0; transform: translateX(-50%);
@@ -299,14 +311,19 @@ const CSS = `
 }
 .tu-list li {
   position: relative; padding-left: calc((var(--tu-lx) - 2) * var(--cu));
-  font-size: max(12px, calc(14 * var(--cu))); line-height: calc(26 * var(--cu)); font-weight: 400; letter-spacing: 0; color: var(--tu-body);
+  font-size: max(12px, calc(14 * var(--cu))); line-height: calc(26 * var(--cu)); font-weight: var(--tu-bw-weight); letter-spacing: 0; color: var(--tu-body);
 }
 .tu-list li::before {                                   /* the bullet */
   content: ""; position: absolute; border-radius: 50%; background: var(--tu-body);
   width: calc(5 * var(--cu)); height: calc(5 * var(--cu)); min-width: 4px; min-height: 4px;
   left: calc(41 * var(--cu)); top: calc(10.5 * var(--cu));
 }
-.tu-list li.tu-outcome { margin-top: calc(var(--tu-og) * var(--cu)); }
+/* the OUTCOME bullet: pinned to the same height in all three cards (regular weight, as before) */
+.tu-list li.tu-outcome {
+  position: absolute; left: 0; right: 0;
+  top: calc((var(--tu-oy) - var(--tu-ly)) * var(--cu));
+  font-weight: 400;
+}
 
 /* ≥1280px: DESIGN MODE — every string is exactly one line, as she broke it in Canva */
 @media (min-width: 1280px) { .tu-ln { display: block; white-space: nowrap; } }
@@ -321,7 +338,7 @@ const CSS = `
 .is-in .tu-line { transition-delay: 150ms; }
 .is-in .tu-sub { transition-delay: 250ms; }
 .is-in .tu-barwrap { transition-delay: 350ms; }
-.is-in .tu-bar { clip-path: inset(0 0 0 0); transition: clip-path 1.4s cubic-bezier(.77, 0, .18, 1) .45s; }
+.is-in .tu-shapes { clip-path: inset(0 0 0 0); transition: clip-path 1.4s cubic-bezier(.77, 0, .18, 1) .45s; }
 .is-in .tu-card { transition-delay: calc(900ms + var(--i) * 140ms); }
 
 /* ---- phones: bar scrolls sideways, cards stack ---- */
@@ -343,13 +360,13 @@ const CSS = `
   .tu-list { position: relative; top: auto; right: auto; padding: 22px 20px 0 0; }
   .tu-list li { padding-left: 42px; font-size: 14px; line-height: 24px; }
   .tu-list li::before { left: 24px; top: 9.5px; }
-  .tu-list li.tu-outcome { margin-top: 16px; }
+  .tu-list li.tu-outcome { position: relative; top: auto; left: auto; right: auto; margin-top: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tu-r, .tu-nums li, .tu-bar { transition: none !important; }
+  .tu-r, .tu-nums li, .tu-shapes { transition: none !important; }
   .tu-r { opacity: 1; transform: none; }
-  .tu-bar { clip-path: none; }
+  .tu-shapes { clip-path: none; }
   .tu-nums li { opacity: 1; }
 }
 `;
