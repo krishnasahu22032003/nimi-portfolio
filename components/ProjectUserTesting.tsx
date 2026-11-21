@@ -1,22 +1,20 @@
 "use client";
 /* components/ProjectUserTesting.tsx   (or src/components/ProjectUserTesting.tsx)
  *
- * Project eight — page 109 "USER TESTING".
+ * Project eight — page 110 "USER TESTING".
  *
  * LEFT   video (changes with the number)
- * MIDDLE number rail 01–13. The cursor on a number → that number gets the beige rectangle and bold type,
- *        the video and the three texts change. The rectangle stays on the last number the cursor touched.
- *        (click / tap / keyboard focus do the same, so phones work)
- * RIGHT  arrows (prev / next) + OBSERVATION · INSIGHT · DESIGN DIRECTION.
- *        The three headings NEVER move; only the text below each of them changes.
+ * MIDDLE number rail 01–13, EQUAL spacing from the top to the bottom of the video, no background.
+ *        The cursor on a number → that number gets the beige rectangle + bold type, a small BLACK DOT appears
+ *        next to it, the video and the three texts change. (click / tap / keyboard focus do the same.)
+ * RIGHT  arrows (just the two circles, no background) · counter "01 / 13" · OBSERVATION · INSIGHT · DESIGN DIRECTION
+ *        separated by thin ORANGE lines. The headings and lines NEVER move; only the text below each heading changes.
  *
- * VIDEOS: every video is mounted once, stacked in the same frame, and crossfaded. A video that two numbers
- * share (08–13) is NOT restarted when you move between those numbers. A video that becomes active starts from 0:00.
- * Only the active video plays; all pause when the page is off-screen. Reduced-motion: no autoplay.
+ * PAGE BACKGROUND: #F6F3E9 (her Canva colour code).
  *
- * Measured from her Canva page (1600-wide screenshot ÷ 1.111 → 1440 × 900 artboard). Everything below is artboard px.
+ * Measured from her Canva page (1440 × 900 artboard). Everything below is artboard px.
  * Data: data/puppetUserTesting.ts
- * Phones (≤820px): video, number strip, arrows, then the three texts underneath.
+ * Phones (≤820px): video, number strip, arrows, counter, then the three texts underneath.
  */
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -35,12 +33,14 @@ const VIDEO_H = 490; // 754 / 490 = her 838 / 545 frame
 
 const RAIL_X = 864; // 20px right of the video
 const RAIL_W = 67; // same height as the video
-const RAIL_PT = 24; // space above the first number's slot
-const RAIL_PITCH = 35.2; // distance between two numbers
-const CHIP_W = 56; // the beige rectangle
+const RAIL_PT = 16; // space above the first slot (the small tick sits here)
+const RAIL_PB = 8; // space below the last slot
+const CHIP_W = 56; // the beige rectangle behind the active number
 const CHIP_H = 32;
+const DOT_D = 7; // the black dot next to the active number
+const DOT_GAP = 9; // px between the beige rectangle and the dot
 
-const ARROWS_X = 1236; // pill with the two arrow buttons (top aligned with the video)
+const ARROWS_X = 1236; // the two circles (top aligned with the video)
 const ARROWS_W = 90;
 const ARROWS_H = 41;
 const ARROW_D = 34; // diameter of one arrow button
@@ -48,22 +48,31 @@ const ARROW_D = 34; // diameter of one arrow button
 const TEXT_X = 1051; // left edge of the three headings / texts
 const TEXT_Y = 293; // top of the first heading
 const TEXT_PITCH = 145; // distance from one heading to the next
-const TEXT_W = 252; // text width: she breaks "Children approached and / engaged immediately." — nudge ±6 if a line breaks differently
+const TEXT_W = 252; // text width: nudge ±6 if a line breaks differently from her Canva page
 const HEAD_GAP = 4; // heading → text
 
+const COUNT_Y = 251; // top of the "01 / 13" counter (just above OBSERVATION)
+
+const LINE_W = 299; // orange lines run from TEXT_X to 90px before the right edge (1051 + 299 = 1350)
+const LINE_UP = 22; // a line sits this far ABOVE the next heading
+
 /* colours */
+const PAGE_BG = "#F6F3E9"; // her colour code for the page
 const INK = "#000";
 const GREY = "#404040";
-const RAIL_BG = "#F6F2EB";
-const CHIP_BG = "#EDE3D0";
+const CHIP_BG = "#E6DECB";
 const NUM_OFF = "#7A7266";
 const NUM_ON = "#1A1713";
 const ARROW_FILL = "#85705B";
-const ARROW_LINE = "#E2DACB";
+const ARROW_LINE = "#D8CFBC";
+const ARROW_PREV_BG = "#FBF9F3"; // the small light circle behind the left arrow — set "transparent" for an outline only
+const LINE_COLOR = "#DDA070"; // thin orange lines
+const TICK = "#BDB4A3";
 
 const FADE_MS = 450; // video crossfade
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
+const two = (n: number) => String(n).padStart(2, "0");
 
 function Arrow({ dir }: { dir: "prev" | "next" }) {
   return (
@@ -167,7 +176,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
   const blocks: { h: string; text: string }[] = [
     { h: "Observation", text: item.observation },
     { h: "Insight", text: item.insight },
-    { h: "Design direction", text: item.direction },
+    { h: "Approach", text: item.direction },
   ];
 
   return (
@@ -184,9 +193,11 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
         "--ut-rx": RAIL_X,
         "--ut-rw": RAIL_W,
         "--ut-rpt": RAIL_PT,
-        "--ut-pitch": RAIL_PITCH,
+        "--ut-rpb": RAIL_PB,
         "--ut-chip-w": CHIP_W,
         "--ut-chip-h": CHIP_H,
+        "--ut-dot": DOT_D,
+        "--ut-dot-gap": DOT_GAP,
         "--ut-ax": ARROWS_X,
         "--ut-aw": ARROWS_W,
         "--ut-ah": ARROWS_H,
@@ -196,14 +207,20 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
         "--ut-tp": TEXT_PITCH,
         "--ut-tw": TEXT_W,
         "--ut-hg": HEAD_GAP,
+        "--ut-cy": COUNT_Y,
+        "--ut-lw": LINE_W,
+        "--ut-lup": LINE_UP,
+        "--ut-bg": PAGE_BG,
         "--ut-ink": INK,
         "--ut-grey": GREY,
-        "--ut-rail-bg": RAIL_BG,
         "--ut-chip-bg": CHIP_BG,
         "--ut-num-off": NUM_OFF,
         "--ut-num-on": NUM_ON,
         "--ut-arrow-fill": ARROW_FILL,
         "--ut-arrow-line": ARROW_LINE,
+        "--ut-arrow-prev": ARROW_PREV_BG,
+        "--ut-line": LINE_COLOR,
+        "--ut-tick": TICK,
         "--ut-fade": `${FADE_MS}ms`,
       })}
     >
@@ -235,26 +252,28 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
           ))}
         </div>
 
-        {/* MIDDLE — numbers 01–13 */}
+        {/* MIDDLE — numbers 01–13, equal spacing: every number owns a slot of the same height */}
         <div className={`ut-rail ut-r ${serif.className}`} role="tablist" aria-orientation="vertical" aria-label="Observations">
           {items.map((_, i: number) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={i === active}
-              aria-label={`Observation ${i + 1} of ${n}`}
-              className={`ut-num${i === active ? " is-on" : ""}`}
-              onMouseEnter={() => show(i)}
-              onFocus={() => show(i)}
-              onClick={() => show(i)}
-            >
-              {String(i + 1).padStart(2, "0")}
-            </button>
+            <div key={i} className="ut-slot" role="presentation">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={i === active}
+                aria-label={`Observation ${i + 1} of ${n}`}
+                className={`ut-num${i === active ? " is-on" : ""}`}
+                onMouseEnter={() => show(i)}
+                onFocus={() => show(i)}
+                onClick={() => show(i)}
+              >
+                {two(i + 1)}
+              </button>
+              {i === active ? <span className="ut-dot" aria-hidden="true" /> : null}
+            </div>
           ))}
         </div>
 
-        {/* RIGHT — arrows (fixed) */}
+        {/* RIGHT — arrows: just the two circles, no background */}
         <div className="ut-arrows ut-r">
           <button type="button" className="ut-arrow" aria-label="Previous observation" onClick={() => step(-1)}>
             <Arrow dir="prev" />
@@ -264,15 +283,24 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
           </button>
         </div>
 
-        {/* RIGHT — three fixed headings, only the text under them changes */}
+        {/* RIGHT — counter "01 / 13" */}
+        <p className={`ut-count ut-r ${serif.className}`} aria-hidden="true">
+          {two(active + 1)} / {two(n)}
+        </p>
+
+        {/* RIGHT — three fixed headings; only the text under them changes */}
         {blocks.map((b, i: number) => (
-          <div key={b.h} className="ut-block ut-r" style={cssVars({ "--i": i })}>
+          <div key={b.h} className={`ut-block ut-r${i > 0 ? " ut-block--line" : ""}`} style={cssVars({ "--i": i })}>
             <h3 className="ut-h">{b.h}</h3>
             <p key={active} className="ut-p" aria-live={i === 0 ? "polite" : undefined}>
               {b.text}
             </p>
           </div>
         ))}
+
+        {/* the two thin orange lines between the blocks */}
+        <span className="ut-line ut-r" style={cssVars({ "--i": 1 })} aria-hidden="true" />
+        <span className="ut-line ut-r" style={cssVars({ "--i": 2 })} aria-hidden="true" />
       </div>
 
       <noscript>
@@ -290,9 +318,9 @@ const CSS = `
   --ax: calc((100cqw - 1440 * var(--cu)) / 2);
   --ease: cubic-bezier(.22, 1, .36, 1);
   --y0: calc(var(--header-h) - 96 * var(--cu));   /* artboard y → page y: y0 + y * cu */
-  background: #fff;
+  background: var(--ut-bg);
 }
-.ut-stage { position: relative; height: var(--page-h); overflow: hidden; box-sizing: border-box; }
+.ut-stage { position: relative; height: var(--page-h); overflow: hidden; box-sizing: border-box; background: var(--ut-bg); }
 
 /* ---- title (same place as "KEY FEATURES") ---- */
 .ut-title {
@@ -318,25 +346,28 @@ const CSS = `
 }
 .ut-video.is-on { opacity: 1; z-index: 1; }
 
-/* ---- number rail ---- */
+/* ---- number rail: NO background; 13 equal slots from the top to the bottom of the video ---- */
 .ut-rail {
   position: absolute; z-index: 2; box-sizing: border-box;
   left: calc(var(--ax) + var(--ut-rx) * var(--cu));
   top: calc(var(--y0) + var(--ut-vy) * var(--cu));
   width: calc(var(--ut-rw) * var(--cu)); height: calc(var(--ut-vh) * var(--cu));
-  padding-top: calc(var(--ut-rpt) * var(--cu));
-  display: flex; flex-direction: column; align-items: center;
-  background: var(--ut-rail-bg);
+  padding: calc(var(--ut-rpt) * var(--cu)) 0 calc(var(--ut-rpb) * var(--cu));
+  display: flex; flex-direction: column;
+  background: transparent;
 }
 .ut-rail::before {                       /* the small tick above "01" */
-  content: ""; position: absolute; top: calc(4 * var(--cu)); left: 50%;
-  width: 1px; height: calc(10 * var(--cu)); background: #CFC6B5; transform: translateX(-50%);
+  content: ""; position: absolute; top: calc(2 * var(--cu)); left: 50%;
+  width: 1px; height: calc(10 * var(--cu)); background: var(--ut-tick); transform: translateX(-50%);
+}
+.ut-slot {
+  position: relative; flex: 1 1 0; min-height: 0;     /* every slot is exactly the same height → equal spacing */
+  display: flex; align-items: center; justify-content: center;
 }
 .ut-num {
   appearance: none; border: 0; padding: 0; background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   width: calc(var(--ut-chip-w) * var(--cu)); height: calc(var(--ut-chip-h) * var(--cu));
-  margin: calc((var(--ut-pitch) - var(--ut-chip-h)) / 2 * var(--cu)) 0;
   font-family: inherit; font-size: calc(18 * var(--cu)); line-height: 1; font-weight: 400; letter-spacing: 0;
   font-variant-numeric: lining-nums;
   color: var(--ut-num-off);
@@ -348,18 +379,30 @@ const CSS = `
 .ut-num:focus { outline: none; }
 .ut-num:focus-visible { outline: 2px solid var(--ut-arrow-fill); outline-offset: 1px; }
 
-/* ---- arrows ---- */
+/* the black dot next to the active box */
+.ut-dot {
+  position: absolute; top: 50%;
+  left: calc(50% + (var(--ut-chip-w) / 2 + var(--ut-dot-gap)) * var(--cu));
+  width: calc(var(--ut-dot) * var(--cu)); height: calc(var(--ut-dot) * var(--cu));
+  margin-top: calc(var(--ut-dot) * var(--cu) / -2);
+  border-radius: 50%; background: var(--ut-num-on);
+  pointer-events: none;
+  animation: ut-dot .35s var(--ease) both;
+}
+@keyframes ut-dot { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+
+/* ---- arrows: only the two circles, NO background behind them ---- */
 .ut-arrows {
   position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; gap: calc(8 * var(--cu));
   left: calc(var(--ax) + var(--ut-ax) * var(--cu));
   top: calc(var(--y0) + var(--ut-vy) * var(--cu));
   width: calc(var(--ut-aw) * var(--cu)); height: calc(var(--ut-ah) * var(--cu));
-  background: var(--ut-rail-bg);
+  background: transparent;
 }
 .ut-arrow {
   appearance: none; padding: 0; cursor: pointer; display: grid; place-items: center;
   width: calc(var(--ut-ad) * var(--cu)); height: calc(var(--ut-ad) * var(--cu)); border-radius: 50%;
-  border: 1px solid var(--ut-arrow-line); background: #FAF8F4; color: #2B2621;
+  border: 1px solid var(--ut-arrow-line); background: var(--ut-arrow-prev); color: #2B2621;
   transition: transform .3s var(--ease), background-color .25s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -369,6 +412,15 @@ const CSS = `
 .ut-arrow:focus-visible { outline: 2px solid var(--ut-arrow-fill); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .ut-arrow:hover { transform: scale(1.07); } }
 .ut-arrow:active { transform: scale(.94); }
+
+/* ---- counter "01 / 13" ---- */
+.ut-count {
+  position: absolute; z-index: 2; margin: 0; white-space: nowrap;
+  left: calc(var(--ax) + var(--ut-tx) * var(--cu));
+  top: calc(var(--y0) + var(--ut-cy) * var(--cu));
+  font-size: calc(15 * var(--cu)); line-height: calc(24 * var(--cu)); font-weight: 400; letter-spacing: 0;
+  font-variant-numeric: lining-nums; color: var(--ut-num-on);
+}
 
 /* ---- the three blocks: the heading is pinned, the paragraph underneath is swapped ---- */
 .ut-block {
@@ -390,6 +442,14 @@ const CSS = `
 }
 @keyframes ut-in { from { opacity: 0; transform: translate3d(0, 5px, 0); } to { opacity: 1; transform: none; } }
 
+/* ---- the thin orange lines (they never move) ---- */
+.ut-line {
+  position: absolute; z-index: 2; height: 1px; background: var(--ut-line); pointer-events: none;
+  left: calc(var(--ax) + var(--ut-tx) * var(--cu));
+  width: calc(var(--ut-lw) * var(--cu));
+  top: calc(var(--y0) + (var(--ut-ty) + var(--i) * var(--ut-tp) - var(--ut-lup)) * var(--cu));
+}
+
 /* ---- reveal (same recipe as the other pages) ---- */
 .ut-r { opacity: 0; transform: translate3d(0, 14px, 0); }
 .is-in .ut-r {
@@ -399,26 +459,30 @@ const CSS = `
 }
 .is-in .ut-media { transition-delay: 250ms; }
 .is-in .ut-rail, .is-in .ut-arrows { transition-delay: 400ms; }
-.is-in .ut-block { transition-delay: 550ms; }
+.is-in .ut-count, .is-in .ut-block, .is-in .ut-line { transition-delay: 550ms; }
 
-/* ---- phones: video, number strip, arrows, then the three texts ---- */
+/* ---- phones: video, number strip, arrows, counter, then the three texts ---- */
 @media (max-width: 820px) {
   .ut { --cu: 1px; --y0: 0px; }
   .ut-stage { height: auto; overflow: visible; padding: calc(var(--header-h) + 8px) 16px 56px; display: flex; flex-direction: column; }
-  .ut-title, .ut-media, .ut-rail, .ut-arrows, .ut-block { position: relative; left: auto; top: auto; }
+  .ut-title, .ut-media, .ut-rail, .ut-arrows, .ut-count, .ut-block { position: relative; left: auto; top: auto; }
   .ut-title { margin: 0 0 28px; font-size: 18px; line-height: 30px; }
   .ut-media { width: 100%; height: auto; aspect-ratio: 754 / 490; }
   .ut-rail {
-    width: 100%; height: 52px; padding: 0 4px; flex-direction: row; align-items: center; justify-content: flex-start;
+    width: 100%; height: 52px; padding: 0 4px; flex-direction: row; align-items: center;
     overflow-x: auto; scrollbar-width: none;
   }
   .ut-rail::-webkit-scrollbar { display: none; }
   .ut-rail::before { display: none; }
-  .ut-num { flex: 0 0 auto; width: 48px; height: 36px; margin: 0 2px; font-size: 17px; }
+  .ut-slot { flex: 0 0 auto; width: 52px; }
+  .ut-num { width: 48px; height: 36px; font-size: 17px; }
+  .ut-dot { display: none; }
   .ut-arrows { align-self: flex-end; margin-top: 16px; width: 90px; height: 41px; }
   .ut-arrow { width: 34px; height: 34px; }
-  .ut-block { width: auto; margin-top: 26px; }
-  .ut-arrows + .ut-block { margin-top: 8px; }
+  .ut-count { margin-top: 12px; font-size: 15px; line-height: 24px; }
+  .ut-block { width: auto; margin-top: 14px; }
+  .ut-block--line { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--ut-line); }
+  .ut-line { display: none; }
   .ut-h { font-size: 18px; line-height: 28px; margin-bottom: 4px; }
   .ut-p { font-size: 14px; line-height: 22px; }
 }
@@ -426,6 +490,6 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   .ut-r, .ut-video, .ut-num, .ut-arrow { transition: none !important; }
   .ut-r { opacity: 1; transform: none; }
-  .ut-p { animation: none; }
+  .ut-p, .ut-dot { animation: none; }
 }
 `;
