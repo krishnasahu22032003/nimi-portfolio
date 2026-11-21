@@ -3,14 +3,15 @@
  *
  * Project eight — page 110 "USER TESTING".
  *
+ * PAGE: white. The beige band (#F6F3E9) runs the FULL WIDTH of the page, but only between her green lines:
+ *       from BAND_PAD above the video to BAND_PAD below it (equal on both sides — her blue marks).
+ *       The title sits on the white above the band.
  * LEFT   video (changes with the number)
- * MIDDLE number rail 01–13, EQUAL spacing from the top to the bottom of the video, no background.
- *        The cursor on a number → that number gets the beige rectangle + bold type, a small BLACK DOT appears
- *        next to it, the video and the three texts change. (click / tap / keyboard focus do the same.)
- * RIGHT  arrows (just the two circles, no background) · counter "01 / 13" · OBSERVATION · INSIGHT · DESIGN DIRECTION
- *        separated by thin ORANGE lines. The headings and lines NEVER move; only the text below each heading changes.
- *
- * PAGE BACKGROUND: #F6F3E9 (her Canva colour code).
+ * MIDDLE number rail 01–13, equal spacing, no background. The cursor on a number → beige rectangle + bold type,
+ *        a small BLACK DOT next to it, the video and the three texts change. (click / tap / focus do the same.)
+ * RIGHT  arrows (just the two circles) · counter "01 / 13" · OBSERVATION · INSIGHT · DESIGN DIRECTION,
+ *        separated by thin ORANGE lines that run from the text to the RIGHT EDGE of the page.
+ *        The headings and lines NEVER move; only the text below each heading changes.
  *
  * Measured from her Canva page (1440 × 900 artboard). Everything below is artboard px.
  * Data: data/puppetUserTesting.ts
@@ -31,8 +32,11 @@ const VIDEO_Y = 209;
 const VIDEO_W = 754;
 const VIDEO_H = 490; // 754 / 490 = her 838 / 545 frame
 
+/* the beige band: full page width, BAND_PAD above the video and BAND_PAD below it (her green lines + blue marks) */
+const BAND_PAD = 52;
+
 const RAIL_X = 864; // 20px right of the video
-const RAIL_W = 67; // same height as the video
+const RAIL_W = 67;
 const RAIL_PT = 16; // space above the first slot (the small tick sits here)
 const RAIL_PB = 8; // space below the last slot
 const CHIP_W = 56; // the beige rectangle behind the active number
@@ -45,7 +49,7 @@ const ARROWS_W = 90;
 const ARROWS_H = 41;
 const ARROW_D = 34; // diameter of one arrow button
 
-const TEXT_X = 1051; // left edge of the three headings / texts
+const TEXT_X = 1051; // left edge of the three headings / texts / orange lines
 const TEXT_Y = 293; // top of the first heading
 const TEXT_PITCH = 145; // distance from one heading to the next
 const TEXT_W = 252; // text width: nudge ±6 if a line breaks differently from her Canva page
@@ -53,11 +57,10 @@ const HEAD_GAP = 4; // heading → text
 
 const COUNT_Y = 251; // top of the "01 / 13" counter (just above OBSERVATION)
 
-const LINE_W = 299; // orange lines run from TEXT_X to 90px before the right edge (1051 + 299 = 1350)
-const LINE_UP = 22; // a line sits this far ABOVE the next heading
+const LINE_UP = 22; // an orange line sits this far ABOVE the next heading
 
 /* colours */
-const PAGE_BG = "#F6F3E9"; // her colour code for the page
+const BAND_BG = "#F6F3E9"; // her colour code — only inside the band
 const INK = "#000";
 const GREY = "#404040";
 const CHIP_BG = "#E6DECB";
@@ -176,7 +179,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
   const blocks: { h: string; text: string }[] = [
     { h: "Observation", text: item.observation },
     { h: "Insight", text: item.insight },
-    { h: "Approach", text: item.direction },
+    { h: "Design direction", text: item.direction },
   ];
 
   return (
@@ -190,6 +193,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
         "--ut-vy": VIDEO_Y,
         "--ut-vw": VIDEO_W,
         "--ut-vh": VIDEO_H,
+        "--ut-bpad": BAND_PAD,
         "--ut-rx": RAIL_X,
         "--ut-rw": RAIL_W,
         "--ut-rpt": RAIL_PT,
@@ -208,9 +212,8 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
         "--ut-tw": TEXT_W,
         "--ut-hg": HEAD_GAP,
         "--ut-cy": COUNT_Y,
-        "--ut-lw": LINE_W,
         "--ut-lup": LINE_UP,
-        "--ut-bg": PAGE_BG,
+        "--ut-band": BAND_BG,
         "--ut-ink": INK,
         "--ut-grey": GREY,
         "--ut-chip-bg": CHIP_BG,
@@ -225,6 +228,9 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
       })}
     >
       <div className="ut-stage">
+        {/* the beige band, full page width, only between the green lines */}
+        <div className="ut-band ut-r" aria-hidden="true" />
+
         <h2 className="ut-title ut-r">{data.title}</h2>
 
         {/* LEFT — the videos, stacked, crossfaded */}
@@ -298,7 +304,7 @@ export default function ProjectUserTesting({ data }: { data: UserTestingData }) 
           </div>
         ))}
 
-        {/* the two thin orange lines between the blocks */}
+        {/* the two thin orange lines between the blocks — from the text to the RIGHT EDGE of the page */}
         <span className="ut-line ut-r" style={cssVars({ "--i": 1 })} aria-hidden="true" />
         <span className="ut-line ut-r" style={cssVars({ "--i": 2 })} aria-hidden="true" />
       </div>
@@ -318,11 +324,19 @@ const CSS = `
   --ax: calc((100cqw - 1440 * var(--cu)) / 2);
   --ease: cubic-bezier(.22, 1, .36, 1);
   --y0: calc(var(--header-h) - 96 * var(--cu));   /* artboard y → page y: y0 + y * cu */
-  background: var(--ut-bg);
+  background: #fff;
 }
-.ut-stage { position: relative; height: var(--page-h); overflow: hidden; box-sizing: border-box; background: var(--ut-bg); }
+.ut-stage { position: relative; height: var(--page-h); overflow: hidden; box-sizing: border-box; background: #fff; }
 
-/* ---- title (same place as "KEY FEATURES") ---- */
+/* ---- the beige band: full width, from BAND_PAD above the video to BAND_PAD below it. Everything else is white. ---- */
+.ut-band {
+  position: absolute; z-index: 0; left: 0; right: 0;
+  top: calc(var(--y0) + (var(--ut-vy) - var(--ut-bpad)) * var(--cu));
+  height: calc((var(--ut-vh) + 2 * var(--ut-bpad)) * var(--cu));
+  background: var(--ut-band);
+}
+
+/* ---- title (same place as "KEY FEATURES") — on the white above the band ---- */
 .ut-title {
   position: absolute; z-index: 2; margin: 0;
   left: calc(var(--ax) + var(--ut-title-x) * var(--cu));
@@ -442,11 +456,11 @@ const CSS = `
 }
 @keyframes ut-in { from { opacity: 0; transform: translate3d(0, 5px, 0); } to { opacity: 1; transform: none; } }
 
-/* ---- the thin orange lines (they never move) ---- */
+/* ---- the thin orange lines: start at the text, run to the RIGHT EDGE of the page. They never move. ---- */
 .ut-line {
   position: absolute; z-index: 2; height: 1px; background: var(--ut-line); pointer-events: none;
   left: calc(var(--ax) + var(--ut-tx) * var(--cu));
-  width: calc(var(--ut-lw) * var(--cu));
+  right: 0;
   top: calc(var(--y0) + (var(--ut-ty) + var(--i) * var(--ut-tp) - var(--ut-lup)) * var(--cu));
 }
 
@@ -457,6 +471,8 @@ const CSS = `
   transition: opacity .9s var(--ease), transform 1.1s var(--ease);
   transition-delay: 150ms;
 }
+.is-in .ut-band { transform: none; transition-delay: 0ms; }
+.ut-band.ut-r { transform: none; }              /* the band only fades, it never slides */
 .is-in .ut-media { transition-delay: 250ms; }
 .is-in .ut-rail, .is-in .ut-arrows { transition-delay: 400ms; }
 .is-in .ut-count, .is-in .ut-block, .is-in .ut-line { transition-delay: 550ms; }
@@ -465,6 +481,7 @@ const CSS = `
 @media (max-width: 820px) {
   .ut { --cu: 1px; --y0: 0px; }
   .ut-stage { height: auto; overflow: visible; padding: calc(var(--header-h) + 8px) 16px 56px; display: flex; flex-direction: column; }
+  .ut-band { display: none; }
   .ut-title, .ut-media, .ut-rail, .ut-arrows, .ut-count, .ut-block { position: relative; left: auto; top: auto; }
   .ut-title { margin: 0 0 28px; font-size: 18px; line-height: 30px; }
   .ut-media { width: 100%; height: auto; aspect-ratio: 754 / 490; }
