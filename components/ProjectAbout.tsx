@@ -34,8 +34,8 @@ const LABEL_TRACK = "0.02em";
 /* ABOUT's cap-centre sits at 104 / 900 of the page height; it never rises into the 96px site header */
 const LABEL_TOP = "max(calc(var(--header-h) - 7px), calc(var(--page-h) * 0.0989))";
 
-const SLIDE_INTERVAL = 5000; // ms
-const SLIDE_FADE_MS = 1000;
+const SLIDE_INTERVAL = 3000; // was 5000
+const SLIDE_FADE_MS = 700;   // was 1000, so the fade is not too long for a 3s interval
 const SWIPE_PX = 40;
 const ARROW_SIZE = 32; // px: small indicator, same as the Research page
 const ARROW_INSET = 10; // px from the photo's edge to the circle

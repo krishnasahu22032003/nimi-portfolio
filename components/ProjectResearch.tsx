@@ -39,10 +39,9 @@ const PHOTO_W = 579;
 const PHOTO_H = 339;
 const TOP_Y = 103; // top photo's top edge
 const BOTTOM_Y = 484; // bottom photo's top edge
-
-const SLIDE_INTERVAL = 5000;
-const SLIDE_FADE_MS = 1000;
-const SECOND_OFFSET = 2500; // second slideshow starts this much later
+const SLIDE_INTERVAL = 3000; // was 5000
+const SLIDE_FADE_MS = 700;   // was 1000
+const SECOND_OFFSET = 1500;  // was 2500, half the interval so the two frames still never flip together
 const SWIPE_PX = 40;
 const ARROW_SIZE = 32;
 const ARROW_INSET = 10;
