@@ -82,6 +82,8 @@ import type { TargetUserData } from "./puppetTargetUser";
 import { PUPPET_TARGET_USER } from "./puppetTargetUser";
 import type { WhyData } from "./puppetWhy";
 import { PUPPET_WHY } from "./puppetWhy";
+import type { IterationsData } from "./puppetIterations";
+import { PUPPET_ITERATIONS } from "./puppetIterations";
 
 export type ProjectDetailData = {
   slug: string;
@@ -137,6 +139,8 @@ export type ProjectDetailData = {
   targetUser?: TargetUserData;
     /** "WHY PUPPET THEATRE ?" page: kicker + headline + four learning cards (project eight, page 115) */
   whyPuppet?: WhyData;
+    /** "ITERATIONS & PROTOTYPES": six sticky-stacking colour cards (project eight) */
+  iterations?: IterationsData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -341,6 +345,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     targetUser: PUPPET_TARGET_USER,
         /* page 115 — WHY PUPPET THEATRE ? (components/ProjectWhy.tsx + data/puppetWhy.ts) */
     whyPuppet: PUPPET_WHY,
+        iterations: PUPPET_ITERATIONS,
   },
 };
 
