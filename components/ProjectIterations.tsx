@@ -208,7 +208,7 @@ const CSS = `
   position: absolute; z-index: 2; margin: 0;
   left: calc((var(--ip-capx) - var(--ip-left)) * var(--cu));
   top: calc((var(--ip-capy) - var(--ip-cy)) * var(--cu));
-  font-size: max(12px, calc(14 * var(--cu))); line-height: calc(var(--ip-caplh) * var(--cu));
+  font-size: 14px; line-height: 22px;   /* literal px, like the other pages' type spec */
   font-weight: 500; letter-spacing: 0; color: var(--ip-ink);
 }
 

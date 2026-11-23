@@ -46,7 +46,7 @@ export const PUPPET_ITERATIONS: IterationsData = {
       ],
       images: [
         {
-          src: `${BASE}/01-cardboard-front.png`,
+          src: `${BASE}/01-cardboard-front1.png`,
           alt: "Cardboard prototype of the theatre seen from the front, with a scalloped stage mat and an arched opening",
           x: 128, y: 350, w: 612, h: 462,
         },
@@ -66,12 +66,12 @@ export const PUPPET_ITERATIONS: IterationsData = {
       ],
 images: [
   {
-    src: `${BASE}/02-frames-left.png`,
+    src: `${BASE}/02-frames-left2.png`,
     alt: "Six line drawings of theatre frames with different openings and coloured or black accents",
     x: 175, y: 338, w: 513, h: 494,
   },
   {
-    src: `${BASE}/02-frames-right.png`,
+    src: `${BASE}/02-frames-right3.png`,
     alt: "A frame with red curtains and squiggle details beside its two side panels, and the same set in black outline below",
     x: 738, y: 411, w: 555, h: 352,
   },
