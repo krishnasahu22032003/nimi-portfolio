@@ -10,6 +10,7 @@
  *   bottom photo ..... x 771, y 484, 579 × 339
  *   (the "REFERENCE TEXT" labels and black arrows on Canva were notes only, so they are not on the site)
  *
+ * Both photo frames are STATIC (no wipe-up / zoom / fade-up on scroll): they are in place as soon as the page shows.
  * Both photo frames auto-change (crossfade every 5s, the second one starts 2.5s later so they never flip together).
  *   · clicking an arrow restarts that frame's timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
@@ -84,14 +85,12 @@ function Slideshow({
   interval,
   offset,
   y,
-  d,
 }: {
   slides: ResearchSlide[];
   label: string;
   interval: number;
   offset: number;
   y: number;
-  d: number;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const touchX = useRef<number | null>(null);
@@ -146,7 +145,7 @@ function Slideshow({
   }, [count]);
 
   return (
-    <div className="pr-abs pr-media pr-r" style={cssVars({ "--x": PHOTO_X, "--y": y, "--d": d })}>
+    <div className="pr-abs pr-media" style={cssVars({ "--x": PHOTO_X, "--y": y })}>
       <div
         ref={frameRef}
         className="pr-frame"
@@ -220,7 +219,7 @@ export default function ProjectResearch({ data }: { data: ResearchData }) {
   const sectionRef = useRef<HTMLElement>(null);
   const interval = data.intervalMs ?? SLIDE_INTERVAL;
 
-  /* reveal once when the page scrolls into view */
+  /* reveal once when the page scrolls into view (text and boxes only) */
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -284,18 +283,17 @@ export default function ProjectResearch({ data }: { data: ResearchData }) {
         </ul>
       </div>
 
-      <Slideshow slides={data.top} label="Classroom photos" interval={interval} offset={0} y={TOP_Y} d={3} />
+      <Slideshow slides={data.top} label="Classroom photos" interval={interval} offset={0} y={TOP_Y} />
       <Slideshow
         slides={data.bottom}
         label="Research visit photos"
         interval={interval}
         offset={SECOND_OFFSET}
         y={BOTTOM_Y}
-        d={4}
       />
 
       <noscript>
-        <style>{`.pr-r{opacity:1!important;transform:none!important}.pr-frame{clip-path:none!important}.pr-slides{transform:none!important}.pr-arrow{opacity:1!important}`}</style>
+        <style>{`.pr-r{opacity:1!important;transform:none!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -345,19 +343,14 @@ const CSS = `
 }
 .pr-line { display: inline; }
 
-/* photo frames */
+/* photo frames (static: no wipe-up, no zoom, no fade-up) */
 .pr-media { position: relative; width: 100%; max-width: 640px; }
 
 .pr-frame {
   position: relative; overflow: hidden; width: 100%;
   aspect-ratio: var(--pr-ratio); background: #efefef; border-radius: 4px;
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1) .3s;
 }
-.pr-slides {
-  position: absolute; inset: 0; transform: scale(1.08);
-  transition: transform 1.8s cubic-bezier(.22, 1, .36, 1) .5s;
-}
+.pr-slides { position: absolute; inset: 0; }
 .pr-slide {
   position: absolute; inset: 0; opacity: 0;
   transition: opacity var(--pr-fade) cubic-bezier(.4, 0, .2, 1);
@@ -374,8 +367,8 @@ const CSS = `
   background: var(--pr-arrow-bg); color: #fff;
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  opacity: 0;
-  transition: opacity .7s ease 1.6s, background-color .35s ease;
+  opacity: 1;
+  transition: background-color .35s ease;
 }
 .pr-arrow--prev { left: var(--pr-arrow-inset); }
 .pr-arrow--next { right: var(--pr-arrow-inset); }
@@ -389,16 +382,13 @@ const CSS = `
 }
 .pr-arrow:active svg { transform: scale(.92); }
 
-/* reveal */
+/* reveal (text and boxes only) */
 .pr-r {
   opacity: 0; transform: translate3d(0, 14px, 0);
   transition: opacity .9s var(--ease), transform 1.1s var(--ease);
   transition-delay: calc(var(--d, 0) * 110ms + 100ms);
 }
 .is-in .pr-r { opacity: 1; transform: none; }
-.is-in .pr-frame { clip-path: inset(0 0 0 0); }
-.is-in .pr-slides { transform: scale(1); }
-.is-in .pr-arrow { opacity: 1; }
 
 /* ---------- ≥1240px: DESIGN MODE, positioned from her Canva page ---------- */
 @media (min-width: 1240px) {
@@ -432,10 +422,7 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pr-r, .pr-frame, .pr-slides, .pr-slide, .pr-arrow, .pr-arrow svg { transition: none !important; }
+  .pr-r, .pr-slide, .pr-arrow, .pr-arrow svg { transition: none !important; }
   .pr-r { opacity: 1; transform: none; }
-  .pr-frame { clip-path: none; }
-  .pr-slides { transform: none; }
-  .pr-arrow { opacity: 1; }
 }
 `;

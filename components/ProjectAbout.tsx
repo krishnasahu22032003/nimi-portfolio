@@ -11,7 +11,7 @@
  *   heading ............. 16 Medium (accent orange), 29px line-height
  *   body ................ 14 Regular #000, 26px line-height, one blank line between paragraphs, bold = 600
  *
- * Image: same auto-changing slideshow as page 1 (crossfade every 5s, translucent grey arrows).
+ * Image: STATIC frame (no wipe-up / zoom on scroll), auto-changing slideshow (crossfade every 5s, translucent grey arrows).
  *   · arrows are the SAME size as the Research / Material pages: 32px circle, 16px chevron, 10px from the edge
  *   · clicking an arrow restarts the timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
@@ -116,7 +116,7 @@ export default function ProjectAbout({ data }: { data: AboutData }) {
     return () => window.clearTimeout(t);
   }, [slide, count, paused, inView, tabVisible, interval]);
 
-  /* reveal when the page scrolls into view */
+  /* reveal when the page scrolls into view (text only) */
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -266,7 +266,7 @@ export default function ProjectAbout({ data }: { data: AboutData }) {
       </div>
 
       <noscript>
-        <style>{`.pa-reveal{opacity:1!important;transform:none!important}.pa-frame{clip-path:none!important}.pa-slides{transform:none!important}.pa-arrow{opacity:1!important}`}</style>
+        <style>{`.pa-reveal{opacity:1!important;transform:none!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -309,18 +309,12 @@ const CSS = `
 }
 .pa-body strong { font-weight: 600; }
 
-/* ------------------------------ slideshow ------------------------------ */
+/* ------------------------------ slideshow (static frame: no wipe-up, no zoom) ------------------------------ */
 .pa-frame {
   position: relative; overflow: hidden; width: 100%;
   aspect-ratio: var(--pa-ratio); background: #efefef;
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1) .2s;
 }
-.pa-slides {
-  position: absolute; inset: 0;
-  transform: scale(1.08);
-  transition: transform 1.8s cubic-bezier(.22, 1, .36, 1) .4s;
-}
+.pa-slides { position: absolute; inset: 0; }
 .pa-slide {
   position: absolute; inset: 0; opacity: 0;
   transition: opacity var(--pa-fade) cubic-bezier(.4, 0, .2, 1);
@@ -338,8 +332,8 @@ const CSS = `
   background: var(--pa-arrow-bg); color: #fff;
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  opacity: 0;
-  transition: opacity .7s ease 1.5s, background-color .35s ease;
+  opacity: 1;
+  transition: background-color .35s ease;
 }
 .pa-arrow--prev { left: var(--pa-arrow-inset); }
 .pa-arrow--next { right: var(--pa-arrow-inset); }
@@ -353,16 +347,13 @@ const CSS = `
 }
 .pa-arrow:active svg { transform: scale(.92); }
 
-/* ------------------------------ reveal ------------------------------ */
+/* ------------------------------ reveal (text only) ------------------------------ */
 .pa-reveal {
   opacity: 0; transform: translate3d(0, 14px, 0);
   transition: opacity .9s cubic-bezier(.22, 1, .36, 1), transform 1.1s cubic-bezier(.22, 1, .36, 1);
   transition-delay: calc(var(--d, 0) * 110ms + 100ms);
 }
 .is-in .pa-reveal { opacity: 1; transform: none; }
-.is-in .pa-frame { clip-path: inset(0 0 0 0); }
-.is-in .pa-slides { transform: scale(1); }
-.is-in .pa-arrow { opacity: 1; }
 
 /* ---------- ≥1280px: DESIGN MODE — every string is exactly one line, as the client broke it ---------- */
 @media (min-width: 1280px) {
@@ -387,10 +378,7 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pa-reveal, .pa-frame, .pa-slides, .pa-slide, .pa-arrow, .pa-arrow svg { transition: none !important; }
+  .pa-reveal, .pa-slide, .pa-arrow, .pa-arrow svg { transition: none !important; }
   .pa-reveal { opacity: 1; transform: none; }
-  .pa-frame { clip-path: none; }
-  .pa-slides { transform: none; }
-  .pa-arrow { opacity: 1; }
 }
 `;

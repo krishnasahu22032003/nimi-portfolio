@@ -9,6 +9,7 @@
  *   photo frame ...... x 711, y 202, 551 × 565, square corners
  *   the bullets and the frame share the same vertical centre (y ≈ 485)
  *
+ * The photo frame is STATIC (no wipe-up / zoom / fade-up on scroll): in place as soon as the page shows.
  * Slideshow: crossfade every 3s (faster than the 5s pages before it), small translucent arrows.
  *   · clicking an arrow restarts the timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
@@ -98,7 +99,7 @@ export default function ProjectMaterial({ data }: { data: MaterialData }) {
     return () => window.clearTimeout(t);
   }, [slide, count, paused, inView, tabVisible, interval]);
 
-  /* reveal once when the page scrolls into view */
+  /* reveal once when the page scrolls into view (text only) */
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -169,7 +170,7 @@ export default function ProjectMaterial({ data }: { data: MaterialData }) {
         ))}
       </ul>
 
-      <div className="mt-abs mt-right mt-r" style={cssVars({ "--x": FRAME_X, "--y": FRAME_Y, "--d": 2 })}>
+      <div className="mt-abs mt-right" style={cssVars({ "--x": FRAME_X, "--y": FRAME_Y })}>
         <div
           ref={frameRef}
           className="mt-frame"
@@ -238,7 +239,7 @@ export default function ProjectMaterial({ data }: { data: MaterialData }) {
       </div>
 
       <noscript>
-        <style>{`.mt-r{opacity:1!important;transform:none!important}.mt-frame{clip-path:none!important}.mt-slides{transform:none!important}.mt-arrow{opacity:1!important}`}</style>
+        <style>{`.mt-r{opacity:1!important;transform:none!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -275,18 +276,13 @@ const CSS = `
 }
 .mt-line { display: inline; }
 
-/* photos */
+/* photos (static: no wipe-up, no zoom, no fade-up) */
 .mt-right { margin: 0; width: 100%; max-width: 560px; }
 .mt-frame {
   position: relative; overflow: hidden; width: 100%;
   aspect-ratio: var(--mt-ratio); background: #efefef;
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1) .3s;
 }
-.mt-slides {
-  position: absolute; inset: 0; transform: scale(1.08);
-  transition: transform 1.8s cubic-bezier(.22, 1, .36, 1) .5s;
-}
+.mt-slides { position: absolute; inset: 0; }
 .mt-slide {
   position: absolute; inset: 0; opacity: 0;
   transition: opacity var(--mt-fade) cubic-bezier(.4, 0, .2, 1);
@@ -303,8 +299,8 @@ const CSS = `
   background: var(--mt-arrow-bg); color: #fff;
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  opacity: 0;
-  transition: opacity .7s ease 1.6s, background-color .35s ease;
+  opacity: 1;
+  transition: background-color .35s ease;
 }
 .mt-arrow--prev { left: var(--mt-arrow-inset); }
 .mt-arrow--next { right: var(--mt-arrow-inset); }
@@ -318,16 +314,13 @@ const CSS = `
 }
 .mt-arrow:active svg { transform: scale(.92); }
 
-/* reveal */
+/* reveal (text only) */
 .mt-r {
   opacity: 0; transform: translate3d(0, 14px, 0);
   transition: opacity .9s var(--ease), transform 1.1s var(--ease);
   transition-delay: calc(var(--d, 0) * 110ms + 100ms);
 }
 .is-in .mt-r { opacity: 1; transform: none; }
-.is-in .mt-frame { clip-path: inset(0 0 0 0); }
-.is-in .mt-slides { transform: scale(1); }
-.is-in .mt-arrow { opacity: 1; }
 
 /* ---------- ≥1240px: DESIGN MODE, positioned from her Canva page ---------- */
 @media (min-width: 1240px) {
@@ -347,10 +340,7 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mt-r, .mt-frame, .mt-slides, .mt-slide, .mt-arrow, .mt-arrow svg { transition: none !important; }
+  .mt-r, .mt-slide, .mt-arrow, .mt-arrow svg { transition: none !important; }
   .mt-r { opacity: 1; transform: none; }
-  .mt-frame { clip-path: none; }
-  .mt-slides { transform: none; }
-  .mt-arrow { opacity: 1; }
 }
 `;

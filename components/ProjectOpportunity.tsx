@@ -13,6 +13,7 @@
  *   paragraph ........ x 90, 16 / 26, left aligned, her line breaks kept
  *   hint ............. x 90, centre y 800, with a hand-drawn RED underline (always visible)
  *
+ * Photo + caption are STATIC (no wipe-up / zoom / fade-up on scroll): in place as soon as the page shows.
  * Slideshow: crossfade every 5s, small translucent arrows, caption changes with the photo.
  *   · clicking an arrow restarts the timer, autoplay continues
  *   · pauses only for KEYBOARD focus, when off-screen, or when the browser tab is hidden
@@ -109,7 +110,7 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
     return () => window.clearTimeout(t);
   }, [slide, count, paused, inView, tabVisible, interval]);
 
-  /* reveal once when the page scrolls into view */
+  /* reveal once when the page scrolls into view (text and diagram only) */
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -226,8 +227,8 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
         </div>
       </div>
 
-      {/* right: auto-changing photos + caption */}
-      <div className="op-abs op-right op-r" style={cssVars({ "--x": MEDIA_X, "--y": MEDIA_Y, "--d": 3 })}>
+      {/* right: static photo frame (auto-changing photos) + caption */}
+      <div className="op-abs op-right" style={cssVars({ "--x": MEDIA_X, "--y": MEDIA_Y })}>
         <div
           ref={frameRef}
           className="op-frame"
@@ -321,7 +322,7 @@ export default function ProjectOpportunity({ data }: { data: OpportunityData }) 
       </p>
 
       <noscript>
-        <style>{`.op-r{opacity:1!important;transform:none!important}.op-frame{clip-path:none!important}.op-slides{transform:none!important}.op-arrow{opacity:1!important}`}</style>
+        <style>{`.op-r{opacity:1!important;transform:none!important}`}</style>
       </noscript>
       <style>{CSS}</style>
     </section>
@@ -395,18 +396,13 @@ const CSS = `
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
-/* photos */
+/* photos (static: no wipe-up, no zoom, no fade-up) */
 .op-right { margin: 0 0 56px; width: 100%; max-width: 560px; }
 .op-frame {
   position: relative; overflow: hidden; width: 100%;
   aspect-ratio: var(--op-ratio); background: #efefef; border-radius: var(--op-radius);
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 1.2s cubic-bezier(.77, 0, .18, 1) .3s;
 }
-.op-slides {
-  position: absolute; inset: 0; transform: scale(1.08);
-  transition: transform 1.8s cubic-bezier(.22, 1, .36, 1) .5s;
-}
+.op-slides { position: absolute; inset: 0; }
 .op-slide {
   position: absolute; inset: 0; opacity: 0;
   transition: opacity var(--op-fade) cubic-bezier(.4, 0, .2, 1);
@@ -423,8 +419,8 @@ const CSS = `
   background: var(--op-arrow-bg); color: #fff;
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  opacity: 0;
-  transition: opacity .7s ease 1.6s, background-color .35s ease;
+  opacity: 1;
+  transition: background-color .35s ease;
 }
 .op-arrow--prev { left: var(--op-arrow-inset); }
 .op-arrow--next { right: var(--op-arrow-inset); }
@@ -447,16 +443,13 @@ const CSS = `
 .op-cap.is-active { opacity: 1; }
 .op-line { display: inline; }
 
-/* reveal */
+/* reveal (text and diagram only) */
 .op-r {
   opacity: 0; transform: translate3d(0, 14px, 0);
   transition: opacity .9s var(--ease), transform 1.1s var(--ease);
   transition-delay: calc(var(--d, 0) * 110ms + 100ms);
 }
 .is-in .op-r { opacity: 1; transform: none; }
-.is-in .op-frame { clip-path: inset(0 0 0 0); }
-.is-in .op-slides { transform: scale(1); }
-.is-in .op-arrow { opacity: 1; }
 
 /* ---------- ≥1240px: DESIGN MODE, positioned from her Canva page ---------- */
 @media (min-width: 1240px) {
@@ -485,10 +478,7 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .op-r, .op-frame, .op-slides, .op-slide, .op-cap, .op-arrow, .op-arrow svg { transition: none !important; }
+  .op-r, .op-slide, .op-cap, .op-arrow, .op-arrow svg { transition: none !important; }
   .op-r { opacity: 1; transform: none; }
-  .op-frame { clip-path: none; }
-  .op-slides { transform: none; }
-  .op-arrow { opacity: 1; }
 }
 `;
