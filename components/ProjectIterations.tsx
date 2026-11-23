@@ -2,19 +2,18 @@
 /* components/ProjectIterations.tsx   (or src/components/ProjectIterations.tsx)
  *
  * Project eight — "ITERATIONS & PROTOTYPES": six colour cards that STICK and STACK.
- * Each card is `position: sticky; top: 0`, so the next one slides up over it
- * (sticky-stacking work section). While a card is being covered it scales down a little
- * and dims, which gives the stack its depth.
+ * Each card is `position: sticky; top: 0`, so the next one slides up over it.
+ * While a card is being covered it scales down a little and dims.
  *
- * Everything is placed in artboard px (1440 × 900) through the same --cu / --ax / --y0
- * scaling as the other pages, so it lines up with every other title and the header.
+ * `hold` = the End page follows: the last card stays pinned for a PAUSE (.ip-hold),
+ * then the End page slides up over it.
  *
  *   title   x 90 · 18 medium · uppercase (first slide only; stays pinned above the stack)
  *   card    x 90 · width 1260 · top y 138 · top radius 115 · runs off the bottom of the page
- *   caption x 165 · first line centred at y 213 · 14 medium #000 · line height 22
+ *   caption x 165 · first line centred at y 213 · 14px medium #000 · line height 22px
  *
  * Data:   data/puppetIterations.ts
- * Images: public/projects/puppet-theatre/iterations/*.png  (transparent PNG cut-outs)
+ * Images: public/projects/puppet-theatre/iterations/*.png
  * Phones (≤820px): no sticky; each slide is a normal card with caption, then its images.
  */
 import { useEffect, useRef } from "react";
@@ -32,12 +31,13 @@ const CAP_Y = 202; // caption top  (first line centred at 213 with a 22px line h
 const CAP_LH = 22;
 const STACK_SCALE = 0.05; // how much a covered card shrinks (0.05 = 5%)
 const STACK_SHADE = 0.1; // how dark a covered card gets (0.1 = 10% black)
+const PAUSE = 0.7; // the pause before the End page, in screen heights of scrolling (0.7 = 70% of a screen)
 
 const INK = "#000";
 
 const cssVars = (vars: Record<string, string | number>): CSSProperties => vars as unknown as CSSProperties;
 
-export default function ProjectIterations({ data }: { data: IterationsData }) {
+export default function ProjectIterations({ data, hold = false }: { data: IterationsData; hold?: boolean }) {
   const outerRef = useRef<HTMLElement>(null);
 
   /* reveal each slide once, when it first scrolls into view */
@@ -60,11 +60,14 @@ export default function ProjectIterations({ data }: { data: IterationsData }) {
     return () => io.disconnect();
   }, []);
 
-  /* stacking depth: --p (0 → 1) on a slide = how far the NEXT slide has covered it */
+  /* stacking depth: --p (0 → 1) on a slide = how far the NEXT slide (or the End page) has covered it */
   useEffect(() => {
     const root = outerRef.current;
     if (!root) return;
     const slides = Array.from(root.querySelectorAll<HTMLElement>(".ip-slide"));
+    const endPage = root.nextElementSibling?.classList.contains("pe")
+      ? (root.nextElementSibling as HTMLElement)
+      : null;
     const desk = window.matchMedia("(min-width: 821px)");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     let raf = 0;
@@ -73,7 +76,7 @@ export default function ProjectIterations({ data }: { data: IterationsData }) {
       raf = 0;
       const vh = window.innerHeight;
       slides.forEach((el: HTMLElement, i: number) => {
-        const next = slides[i + 1];
+        const next: HTMLElement | null | undefined = slides[i + 1] ?? endPage;
         let p = 0;
         if (next && desk.matches && !reduce.matches) {
           const top = next.getBoundingClientRect().top;
@@ -111,6 +114,7 @@ export default function ProjectIterations({ data }: { data: IterationsData }) {
         "--ip-caplh": CAP_LH,
         "--ip-scale": STACK_SCALE,
         "--ip-shade": STACK_SHADE,
+        "--ip-pause": PAUSE,
         "--ip-ink": INK,
       })}
     >
@@ -151,6 +155,9 @@ export default function ProjectIterations({ data }: { data: IterationsData }) {
         </div>
       ))}
 
+      {/* the PAUSE: empty scroll room while the last slide stays pinned, then the End page slides over it */}
+      {hold ? <div className="ip-hold" aria-hidden="true" /> : null}
+
       <noscript>
         <style>{`.ip-r{opacity:1!important;transform:none!important}`}</style>
       </noscript>
@@ -173,6 +180,9 @@ const CSS = `
 
 /* each slide is one full page tall and sticks to the top; the next one slides over it */
 .ip-slide { position: sticky; top: 0; height: var(--page-h); }
+
+/* pause (pause × one screen) + one screen that the End page overlaps while it slides up */
+.ip-hold { height: calc(var(--page-h) * (1 + var(--ip-pause))); }
 
 /* ---- title: same place as every other title, uppercase as she wrote it ---- */
 .ip-title {
@@ -203,12 +213,12 @@ const CSS = `
   opacity: calc(var(--p, 0) * var(--ip-shade));
 }
 
-/* ---- caption (positions are measured from the card's top-left) ---- */
+/* ---- caption (positions are measured from the card's top-left) — 14px literal, weight 500 ---- */
 .ip-cap {
   position: absolute; z-index: 2; margin: 0;
   left: calc((var(--ip-capx) - var(--ip-left)) * var(--cu));
   top: calc((var(--ip-capy) - var(--ip-cy)) * var(--cu));
-  font-size: 14px; line-height: 22px;   /* literal px, like the other pages' type spec */
+  font-size: 14px; line-height: 22px;
   font-weight: 500; letter-spacing: 0; color: var(--ip-ink);
 }
 
@@ -240,6 +250,7 @@ const CSS = `
   .ip { --cu: 1px; --y0: 0px; scroll-snap-align: none; padding: 0 0 48px; }
   .ip-slide { position: relative; height: auto; padding: 0 16px 16px; }
   .ip-slide:first-child { padding-top: calc(var(--header-h) + 8px); }
+  .ip-hold { display: none; }
   .ip-title { position: relative; left: auto; top: auto; margin: 0 0 18px; font-size: 18px; line-height: 30px; }
   .ip-card {
     position: relative; left: auto; top: auto; bottom: auto; width: auto;
