@@ -12,6 +12,8 @@
  *   stage 2  they spread into the fan from her Canva page
  *   stage 3  each card settles with a tiny natural movement, one after another (Ocean → Forest → Town → Space)
  *   stage 4  the Forest card lifts out in front of the others, then "FOREST / Now create the setting" fades in
+ *   stage 4 (live)  HOVER: the card under the cursor lifts up and comes on top of the others, then settles back when
+ *                   the cursor leaves. The cards never leave their places. Touch: tap a card to lift it. Keyboard: Tab.
  *   prefers-reduced-motion: no movement, the finished page is shown straight away.
  *
  * The timeline (BUILD · COMPOSE · INTERPRET · PERFORM) is the existing <HowItWorksTimeline />, with active="compose".
@@ -32,6 +34,12 @@ const CARD_H = 435;
 const T_SPREAD = 900; //  deck → fan
 const T_SETTLE = T_SPREAD + 1700; // the cards settle one after another (260ms apart, see CSS)
 const T_FORWARD = T_SETTLE + 3 * 260 + 1300; // Forest comes forward, then the caption
+const T_LIVE = T_FORWARD + 1500; //   hover switches on once everything has settled
+
+/* hover highlight */
+const HOVER_LIFT = 26; //   artboard px the card rises
+const HOVER_SCALE = 1.06; // how much it grows
+const HOVER_STRAIGHTEN = 0.35; // share of its tilt it keeps (0 = fully upright, 1 = keeps all of it)
 
 /* artboard coordinates of the text (top-left of each box, 1440 × 900) */
 const POS = {
@@ -48,6 +56,8 @@ const cssVars = (vars: Record<string, string | number>): CSSProperties => vars a
 export default function ProjectCompose({ data }: { data: ComposeData }) {
   const ref = useRef<HTMLElement>(null);
   const [stage, setStage] = useState(0);
+  const [live, setLive] = useState(false); // hover only works after the intro animation has finished
+  const [hot, setHot] = useState<number | null>(null); // index of the card under the cursor
 
   useEffect(() => {
     const el = ref.current;
@@ -55,6 +65,7 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStage(4);
+      setLive(true);
       return;
     }
 
@@ -67,6 +78,7 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
       timers.push(window.setTimeout(() => setStage(2), T_SPREAD));
       timers.push(window.setTimeout(() => setStage(3), T_SETTLE));
       timers.push(window.setTimeout(() => setStage(4), T_FORWARD));
+      timers.push(window.setTimeout(() => setLive(true), T_LIVE));
     };
 
     const io = new IntersectionObserver(
@@ -91,10 +103,10 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
   return (
     <section
       ref={ref}
-      className={`pd-page pc stage-${stage}`}
+      className={`pd-page pc stage-${stage}${live ? " is-live" : ""}`}
       data-hiw-step="compose"
       aria-label="How it works — Compose"
-      style={cssVars({ "--cw": CARD_W, "--ch": CARD_H, "--orange": COLOR_ORANGE })}
+      style={cssVars({ "--cw": CARD_W, "--ch": CARD_H, "--orange": COLOR_ORANGE, "--lift": HOVER_LIFT, "--hs": HOVER_SCALE })}
     >
       <HowItWorksTimeline active="compose" />
 
@@ -132,7 +144,7 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
             return (
               <div
                 key={c.key}
-                className={`pc-card${i === featured ? " is-feat" : ""}`}
+                className={`pc-card${i === featured ? " is-feat" : ""}${hot === i ? " is-hot" : ""}`}
                 style={cssVars({
                   "--i": i,
                   "--fx": c.x,
@@ -142,6 +154,7 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
                   "--sx": c.from.x,
                   "--sy": c.from.y,
                   "--sr": `${c.from.r}deg`,
+                  "--hr": `${c.r * HOVER_STRAIGHTEN}deg`,
                   /* the tiny movement of the settle step: alternate direction card by card */
                   "--wx": odd ? -5 : 5,
                   "--wy": odd ? 4 : -4,
@@ -177,6 +190,32 @@ export default function ProjectCompose({ data }: { data: ComposeData }) {
               </span>
             ))}
           </p>
+
+          {/* invisible hover zones: they stay at each card's RESTING place, so the card that lifts never
+              moves out from under the cursor (no flicker). Stacking order = the fan's stacking order. */}
+          {cards.map((c, i: number) => (
+            <button
+              key={`hit-${c.key}`}
+              type="button"
+              className={`pc-hit${i === featured ? " is-feat" : ""}`}
+              aria-label={c.world}
+              tabIndex={live ? 0 : -1}
+              onPointerEnter={(e) => { if (e.pointerType !== "touch") setHot(i); }}
+              onPointerLeave={(e) => { if (e.pointerType !== "touch") setHot((h: number | null) => (h === i ? null : h)); }}
+              onPointerDown={(e) => { if (e.pointerType === "touch") setHot((h: number | null) => (h === i ? null : i)); }}
+              onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) setHot(i); }}
+              onBlur={() => setHot((h: number | null) => (h === i ? null : h))}
+              style={cssVars({
+                "--fx": c.x,
+                "--fy": c.y,
+                "--r": `${c.r}deg`,
+                "--z": c.z,
+                "--ex": fp.x - c.x,
+                "--ey": fp.y - c.y,
+                "--es": fp.scale,
+              })}
+            />
+          ))}
         </div>
       </div>
 
@@ -240,6 +279,7 @@ const CSS = `
   display: block; width: 100%; height: 100%;
   object-fit: contain; user-select: none; -webkit-user-drag: none;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .12));
+  transition: filter .4s ease;
 }
 
 .stage-1 .pc-card { opacity: 1; }
@@ -271,6 +311,34 @@ const CSS = `
   transition-duration: 1.2s, .6s;
 }
 .stage-4 .pc-card.is-feat img { filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .2)); }
+
+/* ---------------- HOVER: the card under the cursor lifts and comes on top ---------------- */
+/* once the intro is over, moves are quick and soft */
+.pc.stage-4.is-live .pc-card { transition-duration: .45s, .4s; transition-delay: 0s; }
+
+.pc.stage-4 .pc-card.is-hot {
+  z-index: 25;
+  transform: translate(0px, calc(var(--lift) * -1 * var(--cu))) rotate(var(--hr)) scale(var(--hs));
+}
+.pc.stage-4 .pc-card.is-feat.is-hot {
+  transform: translate(calc(var(--ex) * var(--cu)), calc((var(--ey) - var(--lift)) * var(--cu))) rotate(0deg) scale(calc(var(--es) * var(--hs) / 1.04));
+}
+.pc.stage-4 .pc-card.is-hot img { filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .24)); }
+
+/* the hover zones: same box and resting pose as the cards, clipped to the painted card (not the transparent margin) */
+.pc-hit {
+  position: absolute; z-index: calc(40 + var(--z));
+  left: calc(var(--fx) * var(--cu)); top: calc(var(--fy) * var(--cu));
+  width: calc(var(--cw) * var(--cu)); height: calc(var(--ch) * var(--cu));
+  margin: calc(var(--ch) * var(--cu) / -2) 0 0 calc(var(--cw) * var(--cu) / -2);
+  padding: 0; border: 0; background: transparent; appearance: none;
+  transform: rotate(var(--r));
+  clip-path: inset(5% 2% 5% 2% round 7%);
+  pointer-events: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.pc.is-live .pc-hit { pointer-events: auto; }
+.pc-hit.is-feat { z-index: 60; transform: translate(calc(var(--ex) * var(--cu)), calc(var(--ey) * var(--cu))) scale(var(--es)); }
+.pc-hit:focus { outline: none; }
 
 /* caption: comes in after the card has moved forward */
 .pc-caption {
