@@ -83,6 +83,7 @@ import ProjectWhy from "./ProjectWhy";
 import ProjectIterations from "./ProjectIterations";
 import ProjectEnd from "./ProjectEnd";
 import ProjectCompose from "./ProjectCompose";
+import ProjectEnvironment from "./ProjectEnvironment ";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -332,6 +333,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     research,
     howItWorks,
     compose,
+    environment,
     userTesting,
     targetUser,
     whyPuppet,
@@ -548,6 +550,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
           The timeline (BUILD · COMPOSE · INTERPRET · PERFORM) is fixed at the top centre while pages 102–108 are on screen. ============================ */}
 {howItWorks ? <ProjectBuild /> : null}
 {compose ? <ProjectCompose data={compose} /> : null}
+{environment ? <ProjectEnvironment /> : null}
       {/* ============================ (project eight) PAGE 109 — USER TESTING: hover a number, the video + texts change ============================ */}
       {userTesting ? <ProjectUserTesting data={userTesting} /> : null}
             {/* ============================ (project eight) TARGET USER: age bar + three age-group cards ============================ */}

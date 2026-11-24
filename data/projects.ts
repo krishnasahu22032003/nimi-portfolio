@@ -139,6 +139,8 @@ export type ProjectDetailData = {
       The content lives in data/puppetBuild.ts; this is only an on / off switch. */
   howItWorks?: boolean;
     compose?: ComposeData;
+      /** "Build the environment" page: stationary 3D theatre + tap-to-place characters (project eight) */
+  environment?: boolean;
     /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
   userTesting?: UserTestingData;
   targetUser?: TargetUserData;
@@ -346,6 +348,8 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     /* page 102 — HOW IT WORKS · BUILD + the timeline (components/ProjectBuild.tsx + data/puppetBuild.ts) */
     howItWorks: true,
      compose: PUPPET_COMPOSE,
+         environment: true,
+     
         /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
     userTesting: PUPPET_USER_TESTING,
         /* page — TARGET USER (components/ProjectTargetUser.tsx + data/puppetTargetUser.ts) */
