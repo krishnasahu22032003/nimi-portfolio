@@ -86,6 +86,8 @@ import type { IterationsData } from "./puppetIterations";
 import { PUPPET_ITERATIONS } from "./puppetIterations";
 import type { EndData } from "./puppetEnd";
 import { PUPPET_END } from "./puppetEnd";
+import type { ComposeData } from "./puppetCompose";
+import { PUPPET_COMPOSE } from "./puppetCompose";
 
 export type ProjectDetailData = {
   slug: string;
@@ -136,6 +138,7 @@ export type ProjectDetailData = {
       BUILD / COMPOSE / INTERPRET / PERFORM timeline that stays on pages 102–108 (project eight).
       The content lives in data/puppetBuild.ts; this is only an on / off switch. */
   howItWorks?: boolean;
+    compose?: ComposeData;
     /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
   userTesting?: UserTestingData;
   targetUser?: TargetUserData;
@@ -342,6 +345,7 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     research: PUPPET_RESEARCH,
     /* page 102 — HOW IT WORKS · BUILD + the timeline (components/ProjectBuild.tsx + data/puppetBuild.ts) */
     howItWorks: true,
+     compose: PUPPET_COMPOSE,
         /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
     userTesting: PUPPET_USER_TESTING,
         /* page — TARGET USER (components/ProjectTargetUser.tsx + data/puppetTargetUser.ts) */
