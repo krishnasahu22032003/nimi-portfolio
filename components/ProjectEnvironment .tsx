@@ -7,10 +7,14 @@
  * RIGHT  the finished puppet theatre (3D, stationary, fixed camera angle — AZ_VIEW / EL_VIEW / FOV below).
  * LEFT   the character pieces, laid flat and facing the visitor, in rows (animals, plants, trees).
  * TAP a piece → it flies to the theatre and slides down into its GROOVE (the red lines on the foot pads and the
- *   shelf). The designer's nine pieces go exactly where she put them in Fusion; every other piece takes the first
+ *   shelf); the two monkeys hang on the side panels. The designer's pieces (and the client's ant and monkeys) go exactly where she put them; every other piece takes the first
  *   free spot in a shelf groove (if the shelf is full, the piece that has been there longest goes back).
  * TAP a placed piece, or "Reset" → pieces fly back to the left.
  * Keyboard / screen reader: a hidden list of buttons does the same (Tab, Enter).
+ *
+ * PERFORMANCE (this version): nothing 3D starts until the section is within ~800px of the screen, and the pieces are
+ * built one per tick (yieldToMain) so the page never freezes. That way this section cannot delay the reveal of the
+ * other sections while the page is loading.
  *
  * Same system as ProjectBuild: a 1440 × 900 artboard scaled by --cu, one WebGL canvas, three.js loaded on demand.
  * The page carries no data-hiw-step on purpose: the COMPOSE dot of the timeline still jumps to the first COMPOSE page.
@@ -28,7 +32,6 @@ import {
   ENV_SHELF,
   ENV_TEXT,
   ENV_TEXTURE_MAP,
-  ENV_TEXTURE_URL,
   ENV_THEATRE_URL,
 } from "../data/puppetEnvironment";
 import type { EnvPiece } from "../data/puppetEnvironment";
@@ -39,12 +42,16 @@ const TITLE_X = 126; // "Build the environment"
 const HEAD_Y = 90; //   top of the heading line (its centre is y = 104, as on Canva)
 const PARA_X = 91;
 const PARA_Y = 145; //  top of the first paragraph line (line centres 158 / 184)
+const HINT_Y = 223; //  top of the red-underlined line "Click on the characters…" (line centre 236, one blank line below the paragraph)
+/* hand-drawn underline (same recipe as the Build page / FABRICATION): distance from the bottom of the text line to the
+   bottom of the underline strip. Bigger negative number = the line sits lower. */
+const UL_OFFSET = -10;
 const CANVAS_TOP = 190; // the 3D canvas covers the page from here to the bottom edge
 const CANVAS_BOTTOM = 900;
 
 /* the two boxes, in artboard px. SHEET = where the pieces lie · THEATRE = where the finished theatre is fitted */
-const BOX_SHEET = { x0: 90, y0: 208, x1: 575, y1: 850 };
-const BOX_THEATRE = { x0: 575, y0: 232, x1: 1375, y1: 748 };
+const BOX_SHEET = { x0: 90, y0: 290, x1: 575, y1: 850 }; //   starts below the red-underlined line
+const BOX_THEATRE = { x0: 590, y0: 215, x1: 1372, y1: 715 };
 /* phones: the same two boxes, stacked (fractions of the canvas) */
 const BOX_SHEET_NARROW = { x0: 0.03, y0: 0.5, x1: 0.97, y1: 0.99 };
 const BOX_THEATRE_NARROW = { x0: 0.02, y0: 0.01, x1: 0.98, y1: 0.46 };
@@ -62,6 +69,17 @@ const PIECE_GAP_MAX = 0.06;
 const SHEET_FILL = 0.98;
 const HOVER_LIFT = 0.06; // a piece on the left grows 6% under the cursor
 
+/* start building the 3D scene when the section is this close to the screen (px) — far enough that it is ready on arrival */
+const START_MARGIN = "2500px";
+
+/* soft shadow under every piece lying on the left (the reference render has one under each piece) */
+const SHADOW_RES = 400; //       px per metre of the shadow picture
+const SHADOW_MARGIN = 0.04; //   metres of room around a piece for the blur
+const SHADOW_BLUR_M = 0.0075; // blur radius, metres (≈ 5 px on screen)
+const SHADOW_DX = 0.01; //       shadow offset: to the right…
+const SHADOW_DY = -0.012; //     …and down (metres, in the piece's own plane)
+const SHADOW_OPACITY = 0.3;
+
 /* motion */
 const FLY_MIN = 1.3; // seconds
 const FLY_MAX = 2.0;
@@ -73,6 +91,26 @@ const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 
 const smooth = (x: number) => x * x * (3 - 2 * x);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const rad = (d: number) => (d * Math.PI) / 180;
+
+/** Give the browser a chance to paint / run other animations before the next heavy step. */
+const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** Download the two model files in the background (network only, no main-thread work), shared by prefetch and boot. */
+let bufferJob: Promise<[ArrayBuffer, ArrayBuffer]> | null = null;
+const getBuffers = (): Promise<[ArrayBuffer, ArrayBuffer]> => {
+  if (!bufferJob) {
+    const get = (url: string) =>
+      fetch(url).then((r) => {
+        if (!r.ok) throw new Error(`could not load ${url} (${r.status}) — is the file in public/projects/puppet-theatre/model/ with exactly this name?`);
+        return r.arrayBuffer();
+      });
+    bufferJob = Promise.all([get(ENV_THEATRE_URL), get(ENV_CHARACTERS_URL)]);
+    bufferJob.catch(() => {
+      bufferJob = null;
+    });
+  }
+  return bufferJob;
+};
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
 type Api = { toggle: (id: string) => void; reset: () => void };
@@ -231,6 +269,94 @@ export function roundedPath(THREE: typeof ThreeNS, P: ThreeNS.Vector3[], R: numb
   return out;
 }
 
+/** Blur the alpha channel of RGBA pixels in place (three box passes ≈ a Gaussian). */
+export function blurAlpha(px: Uint8ClampedArray, w: number, h: number, radius: number): void {
+  const n = w * h;
+  let a = new Float32Array(n);
+  let b = new Float32Array(n);
+  for (let i = 0; i < n; i++) a[i] = px[i * 4 + 3];
+  const r = Math.max(1, Math.round(radius * 0.58));
+  const win = 2 * r + 1;
+  const pass = (src: Float32Array, dst: Float32Array, horizontal: boolean) => {
+    const len = horizontal ? w : h;
+    const lines = horizontal ? h : w;
+    const step = horizontal ? 1 : w;
+    const lineStep = horizontal ? w : 1;
+    for (let l = 0; l < lines; l++) {
+      const base = l * lineStep;
+      let sum = 0;
+      for (let i = 0; i <= r && i < len; i++) sum += src[base + i * step];
+      for (let i = 0; i < len; i++) {
+        dst[base + i * step] = sum / win;
+        const add = i + r + 1;
+        const rem = i - r;
+        if (add < len) sum += src[base + add * step];
+        if (rem >= 0) sum -= src[base + rem * step];
+      }
+    }
+  };
+  for (let k = 0; k < 3; k++) {
+    pass(a, b, true);
+    pass(b, a, false);
+  }
+  for (let i = 0; i < n; i++) px[i * 4 + 3] = a[i];
+}
+
+/** A soft, blurred silhouette of a piece as a flat plane to hang behind it (offset right and down). */
+export function makeShadow(THREE: typeof ThreeNS, geoms: ThreeNS.BufferGeometry[], w: number, h: number) {
+  const pw = Math.ceil((w + 2 * SHADOW_MARGIN) * SHADOW_RES);
+  const ph = Math.ceil((h + 2 * SHADOW_MARGIN) * SHADOW_RES);
+  const canvas = document.createElement("canvas");
+  canvas.width = pw;
+  canvas.height = ph;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D;
+  ctx.fillStyle = "#000";
+  const X = (x: number) => (x + w / 2 + SHADOW_MARGIN) * SHADOW_RES;
+  const Y = (y: number) => (h / 2 - y + SHADOW_MARGIN) * SHADOW_RES;
+  for (const g of geoms) {
+    const pos = g.getAttribute("position");
+    const ix = g.getIndex();
+    const count = ix ? ix.count : pos.count;
+    let inPath = 0;
+    ctx.beginPath();
+    for (let i = 0; i < count; i += 3) {
+      const ia = ix ? ix.getX(i) : i;
+      const ib = ix ? ix.getX(i + 1) : i + 1;
+      const ic = ix ? ix.getX(i + 2) : i + 2;
+      const ax = X(pos.getX(ia)), ay = Y(pos.getY(ia));
+      let bx = X(pos.getX(ib)), by = Y(pos.getY(ib));
+      let cx = X(pos.getX(ic)), cy = Y(pos.getY(ic));
+      const area = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      if (Math.abs(area) < 1e-4) continue;
+      if (area < 0) {
+        /* every triangle the same way round, so front and back faces add up instead of cancelling */
+        [bx, cx] = [cx, bx];
+        [by, cy] = [cy, by];
+      }
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(cx, cy);
+      ctx.closePath();
+      if (++inPath >= 20000) {
+        ctx.fill();
+        ctx.beginPath();
+        inPath = 0;
+      }
+    }
+    ctx.fill();
+  }
+  const img = ctx.getImageData(0, 0, pw, ph);
+  blurAlpha(img.data, pw, ph, SHADOW_BLUR_M * SHADOW_RES);
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x000000, map: tex, transparent: true, opacity: SHADOW_OPACITY, depthWrite: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw / SHADOW_RES, ph / SHADOW_RES), mat);
+  mesh.renderOrder = -1;
+  mesh.position.set(SHADOW_DX, SHADOW_DY, -0.006); // a hair behind the piece
+  mesh.raycast = () => {}; // never a tap target
+  return { mesh, mat, tex };
+}
+
 /* ===================================================================================================
    COMPONENT
    =================================================================================================== */
@@ -260,19 +386,22 @@ export default function ProjectEnvironment() {
     return () => io.disconnect();
   }, []);
 
-  /* the 3D scene */
+  /* the 3D scene — starts ONLY when the section is near the screen */
   useEffect(() => {
     const host = hostRef.current;
     const outer = outerRef.current;
     if (!host || !outer) return;
 
     let disposed = false;
+    let started = false;
     let raf = 0;
     let teardown: (() => void) | null = null;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    (async () => {
+    const boot = async () => {
       try {
+        await yieldToMain(); // let the current frame (and the other sections' reveals) finish first
+        if (disposed) return;
         const [THREE, { GLTFLoader }] = await Promise.all([
           import("three"),
           import("three/examples/jsm/loaders/GLTFLoader.js"),
@@ -285,7 +414,7 @@ export default function ProjectEnvironment() {
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFShadowMap; // (PCFSoftShadowMap was removed in recent three.js; PCFShadowMap is soft there)
         const dom = renderer.domElement;
         dom.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;";
         host.appendChild(dom);
@@ -315,18 +444,36 @@ export default function ProjectEnvironment() {
 
         /* ---------- load everything ---------- */
         const loader = new GLTFLoader();
-        const [theatre, chars, tex] = await Promise.all([
-          loader.loadAsync(ENV_THEATRE_URL),
-          loader.loadAsync(ENV_CHARACTERS_URL),
-          new THREE.TextureLoader().loadAsync(ENV_TEXTURE_URL),
-        ]);
+        const [bufs, texUrl] = await Promise.all([getBuffers(), import("../data/puppetEnvironmentTexture").then((m) => m.default)]);
         if (disposed) {
           renderer.dispose();
           dom.remove();
           return;
         }
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        /* the colours: embedded in the code, so they cannot be missing */
+        const tex: ThreeNS.Texture | null = await new THREE.TextureLoader().loadAsync(texUrl).catch((err: unknown): ThreeNS.Texture | null => {
+          console.error("[ProjectEnvironment] the embedded texture could not be decoded:", err);
+          return null;
+        });
+        await yieldToMain();
+        const theatre = await loader.parseAsync(bufs[0].slice(0), "");
+        await yieldToMain();
+        const chars = await loader.parseAsync(bufs[1].slice(0), "");
+        if (disposed) {
+          renderer.dispose();
+          dom.remove();
+          return;
+        }
+        if (tex) {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        }
+        await yieldToMain();
+        if (disposed) {
+          renderer.dispose();
+          dom.remove();
+          return;
+        }
 
         /* the theatre: static; green parts and grey parts as in the designer's render */
         const partMat = new Map<string, ThreeNS.MeshStandardMaterial>();
@@ -381,6 +528,7 @@ export default function ProjectEnvironment() {
           s1: number;
           toStage: boolean;
         };
+        type ShelfItemX = { groove: number; x0: number; x1: number; x: number };
         type Piece = {
           def: EnvPiece;
           pivot: ThreeNS.Group;
@@ -397,20 +545,29 @@ export default function ProjectEnvironment() {
           rad: number[];
           hover: number; // 0..1 smoothed
           wantHover: boolean;
+          shadow: ThreeNS.Mesh; // soft shadow behind the piece while it lies on the left
+          shadowMat: ThreeNS.MeshBasicMaterial;
           shelf: ShelfItemX | null; // place taken on the shelf (extras only)
         };
-        type ShelfItemX = { groove: number; x0: number; x1: number; x: number };
 
         const pieces: Piece[] = [];
         const rows: Piece[][] = [];
         const toDispose: ThreeNS.BufferGeometry[] = [];
-        ENV_PIECES.forEach((row) => {
+
+        /* one piece per tick, so building the 22 pieces (and their soft shadows) never freezes the page */
+        for (const row of ENV_PIECES) {
           const r: Piece[] = [];
-          row.forEach((def) => {
+          for (const def of row) {
+            await yieldToMain();
+            if (disposed) {
+              renderer.dispose();
+              dom.remove();
+              return;
+            }
             const ms = def.keys.map((k) => byKey.get(k)).filter((m): m is ThreeNS.Mesh => !!m);
             if (!ms.length) {
               console.warn(`[ProjectEnvironment] "${def.keys.join(", ")}" not found in ${ENV_CHARACTERS_URL}`);
-              return;
+              continue;
             }
             const box = new THREE.Box3();
             ms.forEach((m) => box.union(new THREE.Box3().setFromObject(m)));
@@ -419,6 +576,7 @@ export default function ProjectEnvironment() {
 
             const mat = new THREE.MeshStandardMaterial({
               map: tex,
+              color: tex ? 0xffffff : 0x5a9a6a,
               emissive: new THREE.Color(0xffffff),
               emissiveMap: tex,
               emissiveIntensity: 0,
@@ -428,6 +586,7 @@ export default function ProjectEnvironment() {
             });
             const pivot = new THREE.Group();
             const meshes: ThreeNS.Mesh[] = [];
+            const finalGeoms: ThreeNS.BufferGeometry[] = [];
             ms.forEach((m) => {
               const g = m.geometry.clone();
               g.applyMatrix4(m.matrixWorld); // → model space
@@ -439,13 +598,30 @@ export default function ProjectEnvironment() {
               }
               g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
               g.translate(-c.x, -c.y, -c.z); // the pivot is the piece's centre
+              if (def.mirror) {
+                /* the second monkey is the mirror image: flip x, then turn every triangle round so the front face stays the front */
+                g.scale(-1, 1, 1);
+                const ix = g.getIndex();
+                if (ix) {
+                  for (let i = 0; i < ix.count; i += 3) {
+                    const t = ix.getX(i + 1);
+                    ix.setX(i + 1, ix.getX(i + 2));
+                    ix.setX(i + 2, t);
+                  }
+                  ix.needsUpdate = true;
+                }
+              }
               toDispose.push(g);
+              finalGeoms.push(g);
               const mesh = new THREE.Mesh(g, mat);
               mesh.castShadow = false; // casts a shadow only once it stands in the theatre
               mesh.receiveShadow = false;
               pivot.add(mesh);
               meshes.push(mesh);
             });
+            const sh = makeShadow(THREE, finalGeoms, size.x, size.y);
+            toDispose.push(sh.mesh.geometry);
+            pivot.add(sh.mesh);
             /* invisible, simple tap target (the real meshes have tens of thousands of triangles) */
             const hit = new THREE.Mesh(new THREE.PlaneGeometry(size.x * 1.08, size.y * 1.08), hitMat);
             hit.userData.isHit = true;
@@ -470,13 +646,15 @@ export default function ProjectEnvironment() {
               rad: [],
               hover: 0,
               wantHover: false,
+              shadow: sh.mesh,
+              shadowMat: sh.mat,
               shelf: null,
             };
             pieces.push(p);
             r.push(p);
-          });
+          }
           if (r.length) rows.push(r);
-        });
+        }
         const hitToPiece = new Map<ThreeNS.Object3D, Piece>();
         pieces.forEach((p: Piece) => p.pivot.traverse((o: ThreeNS.Object3D) => o.userData.isHit && hitToPiece.set(o, p)));
 
@@ -600,6 +778,12 @@ export default function ProjectEnvironment() {
             /* foot pads are in the open: fly over, then lower the piece straight down into its groove */
             const to = new THREE.Vector3(...pl.to);
             wp = [S, new THREE.Vector3(to.x, to.y, to.z + 0.34), to];
+            radii = [0, 0.14, 0];
+            q1 = (p.qSeat as Q).clone();
+          } else if (pl && pl.where === "side") {
+            /* hung on the outside of a side panel: come in from the front, then slide back onto the hook */
+            const to = new THREE.Vector3(...pl.to);
+            wp = [S, new THREE.Vector3(to.x, to.y - 0.24, to.z + 0.06), to];
             radii = [0, 0.14, 0];
             q1 = (p.qSeat as Q).clone();
           } else {
@@ -726,11 +910,12 @@ export default function ProjectEnvironment() {
 
         /* ---------- frame loop ---------- */
         const tmp = new THREE.Vector3();
-        let onScreen = true;
+        let onScreen = false; // becomes true only when the section is actually visible (see the observer below)
         const tick = (now: number) => {
           raf = requestAnimationFrame(tick);
           if (!onScreen) return;
           for (const p of pieces) {
+            let shK = p.state === "sheet" ? 1 : 0; // how much of its soft shadow shows
             if (p.state === "moving" && p.anim) {
               const a = p.anim;
               const k = clamp((now - a.t0) / (a.dur * 1000), 0, 1);
@@ -738,6 +923,7 @@ export default function ProjectEnvironment() {
               p.pivot.position.copy(pathAt(a, e * a.len, tmp));
               p.pivot.quaternion.slerpQuaternions(a.q0, a.q1, smooth(clamp(e / 0.6, 0, 1)));
               p.pivot.scale.setScalar(lerp(a.s0, a.s1, smooth(clamp(e / 0.7, 0, 1))));
+              shK = a.toStage ? 1 - smooth(clamp(e / 0.25, 0, 1)) : smooth(clamp((e - 0.7) / 0.3, 0, 1));
               if (k >= 1) {
                 p.state = a.toStage ? "stage" : "sheet";
                 p.anim = null;
@@ -751,6 +937,10 @@ export default function ProjectEnvironment() {
               if (p.state === "sheet") p.pivot.scale.setScalar(p.kHome * (1 + HOVER_LIFT * p.hover));
             }
             p.mat.emissiveIntensity = 0.22 * p.hover;
+            p.shadowMat.opacity = SHADOW_OPACITY * shK * (1 + 0.35 * p.hover);
+            p.shadow.visible = shK > 0.003;
+            /* a piece that is lifted by the cursor casts its shadow a little further away */
+            p.shadow.position.set(SHADOW_DX * (1 + 0.8 * p.hover), SHADOW_DY * (1 + 0.8 * p.hover), -0.006);
           }
           renderer.render(scene, camera);
         };
@@ -783,23 +973,55 @@ export default function ProjectEnvironment() {
           dom.removeEventListener("pointerleave", onLeave);
           dom.removeEventListener("click", onClick);
           toDispose.forEach((g: ThreeNS.BufferGeometry) => g.dispose());
-          pieces.forEach((p: Piece) => p.mat.dispose());
+          pieces.forEach((p: Piece) => {
+            p.mat.dispose();
+            p.shadowMat.map?.dispose();
+            p.shadowMat.dispose();
+          });
           partMat.forEach((m: ThreeNS.MeshStandardMaterial) => m.dispose());
           theatre.scene.traverse((o: ThreeNS.Object3D) => (o as ThreeNS.Mesh).geometry?.dispose());
           chars.scene.traverse((o: ThreeNS.Object3D) => (o as ThreeNS.Mesh).geometry?.dispose());
           hitMat.dispose();
-          tex.dispose();
+          tex?.dispose();
           renderer.dispose();
           dom.remove();
           api.current = null;
         };
+        /* the component was unmounted while the scene was still being built */
+        if (disposed) teardown();
       } catch (err) {
-        console.error("[ProjectEnvironment] could not start the 3D scene", err);
+        console.error("[ProjectEnvironment] could not start the 3D scene:", err instanceof Error ? err.message : err);
       }
-    })();
+    };
+
+    /* download the models quietly once the page has finished loading (no main-thread cost), so they are ready on arrival */
+    const startFetch = () => {
+      getBuffers().catch((err: unknown) => console.error("[ProjectEnvironment]", err instanceof Error ? err.message : err));
+    };
+    const idle = (cb: () => void) => {
+      const w = window as unknown as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) w.requestIdleCallback(cb, { timeout: 4000 });
+      else setTimeout(cb, 1500);
+    };
+    if (document.readyState === "complete") idle(startFetch);
+    else window.addEventListener("load", () => idle(startFetch), { once: true });
+
+    /* do nothing 3D until the section is close to the screen */
+    const gate = new IntersectionObserver(
+      (entries: IntersectionObserverEntry[]) => {
+        if (entries[0]?.isIntersecting && !started) {
+          started = true;
+          gate.disconnect();
+          boot();
+        }
+      },
+      { rootMargin: `${START_MARGIN} 0px ${START_MARGIN} 0px` }
+    );
+    gate.observe(outer);
 
     return () => {
       disposed = true;
+      gate.disconnect();
       cancelAnimationFrame(raf);
       teardown?.();
     };
@@ -816,6 +1038,8 @@ export default function ProjectEnvironment() {
         "--pe-head-y": HEAD_Y,
         "--pe-para-x": PARA_X,
         "--pe-para-y": PARA_Y,
+        "--pe-hint-y": HINT_Y,
+        "--pe-ul": UL_OFFSET,
         "--pe-cv-top": CANVAS_TOP,
         "--pe-cv-h": CANVAS_BOTTOM - CANVAS_TOP,
       })}
@@ -833,6 +1057,14 @@ export default function ProjectEnvironment() {
               {i < ENV_TEXT.paragraph.length - 1 ? " " : null}
             </span>
           ))}
+        </p>
+
+        {/* second paragraph: the text hugs its own box, so the hand-drawn underline is exactly as wide as the text */}
+        <p className="pe-hint pe-r">
+          <span className="pe-ul-text">
+            {ENV_TEXT.hint}
+            <span className="pe-ul" aria-hidden="true" />
+          </span>
         </p>
 
         <div className="pe-canvas pe-r" role="img" aria-label={ENV_TEXT.alt}>
@@ -900,6 +1132,28 @@ const CSS = `
 }
 .pe-line { display: block; white-space: nowrap; }
 
+/* the red-underlined line: same type as the paragraph, one blank line below it */
+.pe-hint {
+  position: absolute; z-index: 2; margin: 0; pointer-events: none; white-space: nowrap;
+  left: calc(var(--ax) + var(--pe-para-x) * var(--cu));
+  top: calc(var(--y0) + var(--pe-hint-y) * var(--cu));
+  font-size: max(12px, calc(16 * var(--cu))); line-height: calc(26 * var(--cu)); font-weight: 500; color: var(--ink);
+}
+.pe-ul-text { display: inline-block; position: relative; white-space: nowrap; }
+/* hand-drawn underline (client artwork, /public/nav-underline.png) — the same recipe as the Build page and FABRICATION.
+   The PNG is a SQUARE canvas with the stroke at ~62.4% of its height, so it is scaled to the text's width (100% auto)
+   and shifted so the stroke lands in the middle of a 12-artboard-px strip. Always visible. */
+.pe-ul {
+  position: absolute; left: 0; right: 0;
+  bottom: calc(var(--pe-ul) * var(--cu));
+  height: calc(12 * var(--cu));
+  background-image: url('/nav-underline.png');
+  background-size: 100% auto;
+  background-position: center 62.4%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
 /* ---- 3D canvas: full artboard width, behind the text ---- */
 .pe-canvas {
   position: absolute; z-index: 1; left: var(--ax); width: calc(1440 * var(--cu));
@@ -933,15 +1187,19 @@ const CSS = `
   transition: opacity .9s var(--ease), transform 1.1s var(--ease);
 }
 .is-in .pe-para { transition-delay: 110ms; }
+.is-in .pe-hint { transition-delay: 200ms; }
 .is-in .pe-canvas { transition-delay: 300ms; }
 
 /* ---- phones: text on top, the theatre, then the pieces (all in one tall canvas) ---- */
 @media (max-width: 820px) {
   .pe { --cu: 1px; --y0: 0px; }
   .pe-stage { height: auto; overflow: visible; padding: calc(var(--header-h) + 8px) 0 56px; }
-  .pe-head, .pe-para, .pe-canvas, .pe-reset { position: static; transform: none; }
+  .pe-head, .pe-para, .pe-hint, .pe-canvas, .pe-reset { position: static; transform: none; }
   .pe-head { margin: 0 16px 16px; font-size: 18px; line-height: 28px; gap: 6px; }
-  .pe-para { margin: 0 16px 20px; font-size: 14px; line-height: 22px; }
+  .pe-para { margin: 0 16px 14px; font-size: 14px; line-height: 22px; }
+  .pe-hint { margin: 0 16px 24px; font-size: 14px; line-height: 22px; white-space: normal; }
+  .pe-ul-text { white-space: normal; }
+  .pe-ul { bottom: -9px; height: 12px; }
   .pe-line { display: inline; white-space: normal; }
   .pe-canvas { position: relative; left: 0; width: 100%; height: 150vw; min-height: 560px; }
   .pe-reset { display: block; margin: 14px 16px 0; font-size: 14px; line-height: 22px; }

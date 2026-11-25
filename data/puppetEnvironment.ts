@@ -16,16 +16,19 @@
 
 export const ENV_THEATRE_URL = "/projects/puppet-theatre/model/theatre-built.glb";
 export const ENV_CHARACTERS_URL = "/projects/puppet-theatre/model/characters-sheet.glb";
+/* FIXED: the file name must match the file in public/projects/puppet-theatre/model/ exactly */
 export const ENV_TEXTURE_URL = "/projects/puppet-theatre/model/characters-texture.jpg";
 
-/* The characters GLB has no colours (Fusion decals were not exported), so the artwork is projected from the
-   designer's top-view screenshot of the sheet: pixel = metre × s + (ox, oy)  (y is flipped). Measured by fitting
-   the 3D outlines onto the screenshot. If you ever re-export a sharper top view, change the file and these 5 numbers. */
-export const ENV_TEXTURE_MAP = { s: 1157, ox: -720, oy: 826, w: 1440, h: 900 };
+/* The characters GLB has no colours (all its materials are black), so the artwork is projected from a top-view image
+   of the sheet: pixel = metre × s + (ox, oy)  (y is flipped).
+   FIXED: these 5 numbers now describe the 1440 × 900 characters-texture.jpg
+   (measured by overlaying the model's silhouettes on the designer's reference page: ~92 % match).
+   If you ever replace the image, the 5 numbers must be measured again for the new image. */
+export const ENV_TEXTURE_MAP = { s: 1160, ox: -724, oy: 827, w: 1440, h: 900 };
 
 /* colours of the theatre parts (names = mesh names inside theatre-built.glb) */
 export const ENV_GREEN = "#3C6952"; // same green as the Build page
-export const ENV_TAUPE = "#8A8478"; // the side panels and foot pads are grey in the designer's render
+export const ENV_TAUPE = ENV_GREEN; // side panels and foot pads: the SAME green as every other panel (client request)
 export const ENV_PART_COLOUR: Record<string, string> = {
   "Body1": ENV_GREEN, //     front panel
   "Body1.001": ENV_GREEN, // top panel
@@ -42,9 +45,11 @@ export type EnvPiece = {
   /** mesh name(s) inside characters-sheet.glb (the original names, with their spaces and brackets) */
   keys: string[];
   label: string; // read out to screen-reader users
+  /** draw the piece as its mirror image (the second monkey) */
+  mirror?: boolean;
   /** the spot the DESIGNER chose (from the Fusion file). Pieces without one take the first free spot on the shelf. */
   placed?: {
-    where: "pad" | "shelf";
+    where: "pad" | "shelf" | "side"; // "side" = hangs on the outside of a side panel
     to: [number, number, number]; // centre of the piece when it stands in its groove
     q: [number, number, number, number]; // rotation as a quaternion [x, y, z, w]
   };
@@ -55,8 +60,9 @@ export const ENV_PIECES: EnvPiece[][] = [
   [
     { id: "house", keys: ["Body260"], label: "House", placed: { where: "pad", to: [1.51194, 1.73235, 0.0819], q: [0.69035, -0.15305, -0.15305, 0.69035] } },
     { id: "frog", keys: ["Body212", "Body213"], label: "Frog" },
-    { id: "ant", keys: ["Body253"], label: "Ant" },
-    { id: "monkey", keys: ["Body261"], label: "Monkey" },
+    { id: "ant", keys: ["Body253"], label: "Ant", placed: { where: "pad", to: [1.167, 1.70697, 0.0751], q: [0.70711, 0, 0, 0.70711] } },
+    { id: "monkey", keys: ["Body261"], label: "Monkey (right side of the stage)", placed: { where: "side", to: [1.742, 1.784, 0.335], q: [0.70711, 0, 0, 0.70711] } },
+    { id: "monkey2", keys: ["Body261"], label: "Monkey (left side of the stage)", mirror: true, placed: { where: "side", to: [0.932, 1.784, 0.335], q: [0.70711, 0, 0, 0.70711] } },
     { id: "lion", keys: ["lion"], label: "Lion", placed: { where: "shelf", to: [1.34392, 1.94508, 0.16422], q: [0.70711, 0, 0, 0.70711] } },
   ],
   [
@@ -112,6 +118,7 @@ export const ENV_TEXT = {
     "The environment is made to be rearranged, so the same",
     "elements can create different settings and stories.",
   ],
+  hint: "Click on the characters to place it on the puppet theatre.", // second paragraph, with the hand-drawn underline
   reset: "Reset",
   alt: "The finished puppet theatre on the right and the character pieces on the left. Tap a piece and it flies into a groove on the stage; tap it again to take it back.",
 };
