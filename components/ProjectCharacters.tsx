@@ -3,7 +3,7 @@
 /* components/ProjectCharacters.tsx   (or src/components/ProjectCharacters.tsx)
 
  *
-A
+
  * Project eight — COMPOSE · "3. Pick your characters"  (Canva page 107)
 
  *
@@ -80,13 +80,31 @@ const CANVAS_BOTTOM = 900; // …to the bottom edge (the rooster starts above th
 
 const DESIGN_W = 1440;
 
+/* Dragon models: both instances use the same GLB; only their paper materials differ. */
+const DRAGON_GLB_URL = "/projects/puppet-theatre/characters/dragon.glb";
+const DRAGON1_BOX: Box = { x0: 540, y0: 228, x1: 1047, y1: 460 };
+const DRAGON2_BOX: Box = { x0: 585, y0: 508, x1: 945, y1: 668 };
+const DRAGON_ARRIVAL_MS = 2000;
+const DRAGON_MESH_NAMES = ["Body1", "Body1.001", "Body1.002", "Body1.003", "Body1.004", "Body1.005"];
+const DRAGON1_TEXTURES = [
+  "/projects/puppet-theatre/characters/dragon-materials/dragon1-blue.jpg",
+  "/projects/puppet-theatre/characters/dragon-materials/dragon1-red.jpg",
+  "/projects/puppet-theatre/characters/dragon-materials/dragon1-yellow.jpg",
+  "/projects/puppet-theatre/characters/dragon-materials/dragon1-green.jpg",
+];
+const DRAGON2_TEXTURES = [
+  "/projects/puppet-theatre/characters/dragon-materials/dragon2-pink.jpg",
+  "/projects/puppet-theatre/characters/dragon-materials/dragon2-orange.jpg",
+  "/projects/puppet-theatre/characters/dragon-materials/dragon2-light.jpg",
+];
+
 /* phones: the canvas turns into one tall column (design width 720) */
 
 const NARROW_BELOW = 700; // canvas width (px) under which the stacked layout is used
 
 const NARROW_W = 720;
 
-const NARROW_ROW_H = 560;
+const NARROW_ROW_H = 1040;
 
 const NARROW_PAD = 24;
 
@@ -309,9 +327,17 @@ export default function ProjectCharacters() {
 
         };
 
-        const urls = Array.from(new Set(CHAR_PARTS.map((p) => p.tex).filter((u): u is string => !!u)));
+        const urls = Array.from(new Set([
+          ...CHAR_PARTS.map((p) => p.tex).filter((u): u is string => !!u),
+          ...DRAGON1_TEXTURES,
+          ...DRAGON2_TEXTURES,
+        ]));
 
-        const [gltf] = await Promise.all([loader.loadAsync(CHAR_BUNCH_URL), ...urls.map(getTex)]);
+        const [gltf, dragonGltf] = await Promise.all([
+          loader.loadAsync(CHAR_BUNCH_URL),
+          loader.loadAsync(DRAGON_GLB_URL),
+          ...urls.map(getTex),
+        ]);
 
         if (disposed) {
 
@@ -471,6 +497,148 @@ export default function ProjectCharacters() {
 
         scene.add(holder);
 
+        /* ---------- two dragon instances (same GLB, different materials) ---------- */
+        type DragonRig = {
+          root: ThreeNS.Group;
+          model: ThreeNS.Group;
+          pivots: { pivot: ThreeNS.Group; phase: number; direction: number }[];
+          finalX: number;
+          finalY: number;
+          fitScale: number;
+          baseWidth: number;
+          baseHeight: number;
+          box: Box;
+        };
+
+        const ensurePlanarUv = (geometry: ThreeNS.BufferGeometry) => {
+          if (geometry.getAttribute("uv")) return;
+          const position = geometry.getAttribute("position");
+          if (!position) return;
+          geometry.computeBoundingBox();
+          const bounds = geometry.boundingBox;
+          if (!bounds) return;
+          const width = Math.max(bounds.max.x - bounds.min.x, 0.0001);
+          const height = Math.max(bounds.max.y - bounds.min.y, 0.0001);
+          const uv = new Float32Array(position.count * 2);
+          for (let i = 0; i < position.count; i++) {
+            uv[i * 2] = (position.getX(i) - bounds.min.x) / width;
+            uv[i * 2 + 1] = (position.getY(i) - bounds.min.y) / height;
+          }
+          geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+        };
+
+        const makeDragon = (textures: string[], animate: boolean): DragonRig => {
+          const model = dragonGltf.scene.clone(true) as ThreeNS.Group;
+          const meshByName = new Map<string, ThreeNS.Mesh>();
+          const pivots: DragonRig["pivots"] = [];
+
+          model.traverse((object: ThreeNS.Object3D) => {
+            const mesh = object as ThreeNS.Mesh;
+            if (!mesh.isMesh) return;
+            meshByName.set(mesh.name, mesh);
+            mesh.castShadow = true;
+            mesh.receiveShadow = false;
+            mesh.geometry = mesh.geometry.clone();
+          });
+
+          /* Apply the photographed paper textures to the six coloured scissor pieces. */
+          DRAGON_MESH_NAMES.forEach((name, index) => {
+            const mesh = meshByName.get(name);
+            if (!mesh) {
+              console.warn(`[ProjectCharacters] Dragon mesh "${name}" was not found.`);
+              return;
+            }
+            const textureUrl = textures[index % textures.length];
+            const texture = texCache.get(textureUrl) ?? null;
+            ensurePlanarUv(mesh.geometry);
+            if (texture) {
+              texture.wrapS = THREE.RepeatWrapping;
+              texture.wrapT = THREE.RepeatWrapping;
+              texture.colorSpace = THREE.SRGBColorSpace;
+            }
+            mesh.material = new THREE.MeshStandardMaterial({
+              map: texture,
+              color: texture ? 0xffffff : (animate ? ["#243d78", "#c94f3c", "#e3c75c", "#176c5c"][index % 4] : ["#e7a9bd", "#c96e59", "#d9d7d0"][index % 3]),
+              roughness: 0.88,
+              metalness: 0,
+              side: THREE.DoubleSide,
+            });
+            ownMats.push(mesh.material as ThreeNS.Material);
+          });
+
+          model.updateMatrixWorld(true);
+
+          /*
+           * The supplied GLB has six independently modelled scissor bars and eight
+           * separate rivets, but no rig or animation clips. For Dragon 1, create
+           * calculated centre pivots for the six bars. Alternating bars rotate in
+           * opposite directions, creating the opening/closing scissor action.
+           * Dragon 2 is deliberately left completely static.
+           */
+          if (animate) {
+            DRAGON_MESH_NAMES.forEach((name, index) => {
+              const mesh = meshByName.get(name);
+              if (!mesh) return;
+              mesh.geometry.computeBoundingBox();
+              const localCenter = new THREE.Vector3();
+              mesh.geometry.boundingBox?.getCenter(localCenter);
+              const worldCenter = mesh.localToWorld(localCenter.clone());
+              const modelCenter = model.worldToLocal(worldCenter.clone());
+              const pivot = new THREE.Group();
+              pivot.position.copy(modelCenter);
+              model.add(pivot);
+              pivot.attach(mesh);
+              pivots.push({
+                pivot,
+                phase: index % 2 === 0 ? 0 : Math.PI,
+                direction: index % 2 === 0 ? 1 : -1,
+              });
+            });
+          }
+
+          model.updateMatrixWorld(true);
+          const bounds = new THREE.Box3().setFromObject(model);
+          const size = new THREE.Vector3();
+          const center = new THREE.Vector3();
+          bounds.getSize(size);
+          bounds.getCenter(center);
+
+          const box = animate ? DRAGON1_BOX : DRAGON2_BOX;
+          const fitScale = Math.min(
+            (box.x1 - box.x0) / Math.max(size.x, 0.0001),
+            (box.y1 - box.y0) / Math.max(size.y, 0.0001)
+          );
+
+          const root = new THREE.Group();
+          model.position.sub(center);
+          root.add(model);
+          root.scale.setScalar(fitScale);
+          const finalX = (box.x0 + box.x1) / 2;
+          const finalY = -(box.y0 + box.y1) / 2;
+          root.position.set(finalX, finalY, animate ? 4 : 3);
+          root.visible = !animate;
+          scene.add(root);
+
+          return { root, model, pivots, finalX, finalY, fitScale, baseWidth: size.x, baseHeight: size.y, box };
+        };
+
+        const dragon1 = makeDragon(DRAGON1_TEXTURES, true);
+        const dragon2 = makeDragon(DRAGON2_TEXTURES, false);
+
+        const setDragonPose = (progress: number) => {
+          const p = ease(clamp(progress, 0, 1));
+          /* Dragon enters from just right of its Canva position while the scissor bars move. */
+          dragon1.root.position.x = lerp(dragon1.finalX + 82, dragon1.finalX, p);
+          dragon1.root.position.y = dragon1.finalY + Math.sin(p * Math.PI) * 8;
+          dragon1.root.visible = progress > 0;
+
+          /* Two deliberate open/close beats, settling into the original extended pose. */
+          dragon1.pivots.forEach(({ pivot, phase, direction }, index) => {
+            const amplitude = index === 0 ? 0.16 : 0.22;
+            pivot.rotation.z = Math.sin(p * Math.PI * 2 + phase) * amplitude * direction;
+          });
+        };
+
         /* ---------- layout ---------- */
 
         let boxB: Box = CHAR_STICKS_BOX.bunch;
@@ -577,6 +745,29 @@ export default function ProjectCharacters() {
 
           setPose(poseG, poseK);
 
+          const placeDragon = (dragon: DragonRig, box: Box) => {
+            let target = box;
+            if (narrow) {
+              /* Mobile: keep the existing stick-puppet row first, then stack both dragons below it. */
+              const top = NARROW_PAD + NARROW_ROW_H * 0.58;
+              const rowH = 190;
+              target = dragon === dragon1
+                ? { x0: 28, y0: top, x1: NARROW_W - 28, y1: top + rowH }
+                : { x0: 100, y0: top + rowH + 28, x1: NARROW_W - 100, y1: top + rowH + 28 + rowH * 0.72 };
+            }
+            const scale = Math.min(
+              (target.x1 - target.x0) / Math.max(dragon.baseWidth, 0.0001),
+              (target.y1 - target.y0) / Math.max(dragon.baseHeight, 0.0001)
+            );
+            dragon.root.scale.setScalar(scale);
+            dragon.finalX = (target.x0 + target.x1) / 2;
+            dragon.finalY = -(target.y0 + target.y1) / 2;
+            if (dragon === dragon2) dragon.root.position.set(dragon.finalX, dragon.finalY, 3);
+          };
+          placeDragon(dragon1, DRAGON1_BOX);
+          placeDragon(dragon2, DRAGON2_BOX);
+          if (phase === "done" || reduce) setDragonPose(1);
+
         };
 
         /* ---------- the pose: g = whole-group progress (0 bunch … 1 open), per-part progress via poseK ---------- */
@@ -614,8 +805,10 @@ export default function ProjectCharacters() {
         /* ---------- sequence: arrive → hold the bunch → open ---------- */
 
         let phase: "idle" | "hold" | "move" | "done" = reduce ? "done" : "idle";
+        if (reduce) setDragonPose(1);
 
         let t0 = 0;
+        let sequenceStart = 0;
 
         const total = CHAR_MOVE_MS + CHAR_STAGGER_MS * Math.max(PUPPET_ORDER.length - 1, 0);
 
@@ -658,6 +851,12 @@ export default function ProjectCharacters() {
 
           }
 
+          if (!reduce && phase !== "idle") {
+            const dragonStartDelay = CHAR_HOLD_MS + Math.max(total - DRAGON_ARRIVAL_MS, 0);
+            const dragonElapsed = now - (sequenceStart + dragonStartDelay);
+            setDragonPose(clamp(dragonElapsed / DRAGON_ARRIVAL_MS, 0, 1));
+          }
+
           renderer.render(scene, camera);
 
         };
@@ -688,6 +887,9 @@ export default function ProjectCharacters() {
 
               phase = "idle";
 
+              sequenceStart = 0;
+              setDragonPose(0);
+              dragon2.root.visible = true;
               setPose(0, parts.map(() => 0));
 
             } else if (e.intersectionRatio >= 0.55 && phase === "idle") {
@@ -695,6 +897,8 @@ export default function ProjectCharacters() {
               phase = "hold";
 
               t0 = performance.now();
+              sequenceStart = t0;
+              setDragonPose(0);
 
             }
 
@@ -717,6 +921,14 @@ export default function ProjectCharacters() {
           ro.disconnect();
 
           parts.forEach((p: Part) => p.mesh.geometry.dispose());
+          dragon1.model.traverse((o: ThreeNS.Object3D) => {
+            const mesh = o as ThreeNS.Mesh;
+            if (mesh.isMesh) mesh.geometry.dispose();
+          });
+          dragon2.model.traverse((o: ThreeNS.Object3D) => {
+            const mesh = o as ThreeNS.Mesh;
+            if (mesh.isMesh) mesh.geometry.dispose();
+          });
 
           ownMats.forEach((m: ThreeNS.Material) => m.dispose());
 
