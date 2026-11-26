@@ -84,6 +84,7 @@ import ProjectIterations from "./ProjectIterations";
 import ProjectEnd from "./ProjectEnd";
 import ProjectCompose from "./ProjectCompose";
 import ProjectEnvironment from "./ProjectEnvironment ";
+import ProjectCharacters from "./ProjectCharacters";
 /* "600" is loaded because the knot page's first paragraph is semibold (and the Echo Pan concept
    page's bold phrase). Without it the browser falls back to 500 (font-synthesis is off below),
    and the text would not match her reference. */
@@ -334,6 +335,7 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
     howItWorks,
     compose,
     environment,
+      characters,
     userTesting,
     targetUser,
     whyPuppet,
@@ -551,6 +553,9 @@ export default function ProjectDetail({ project }: { project: ProjectDetailData 
 {howItWorks ? <ProjectBuild /> : null}
 {compose ? <ProjectCompose data={compose} /> : null}
 {environment ? <ProjectEnvironment /> : null}
+
+{/* PAGE 107 — PICK YOUR CHARACTERS */}
+{characters ? <ProjectCharacters /> : null}
       {/* ============================ (project eight) PAGE 109 — USER TESTING: hover a number, the video + texts change ============================ */}
       {userTesting ? <ProjectUserTesting data={userTesting} /> : null}
             {/* ============================ (project eight) TARGET USER: age bar + three age-group cards ============================ */}
