@@ -49,9 +49,10 @@ const NARROW_ROW_H = 560;
 const NARROW_PAD = 24;
 
 /* light (total ≈ 1, so the pictures keep their true colours) */
-const LIGHT_HEMI = 0.55;
-const LIGHT_FRONT = 0.25;
-const LIGHT_SHADOW = 0.3;
+/* brighter lighting to match the client's reference image */
+const LIGHT_HEMI = 2.2;
+const LIGHT_FRONT = 1.5;
+const LIGHT_SHADOW = 0.35;
 
 const START_MARGIN = "1500px"; // start building when the section is this close to the screen
 
