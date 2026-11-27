@@ -88,6 +88,8 @@ import type { EndData } from "./puppetEnd";
 import { PUPPET_END } from "./puppetEnd";
 import type { ComposeData } from "./puppetCompose";
 import { PUPPET_COMPOSE } from "./puppetCompose";
+import type { PerformData } from "./puppetPerform";
+import { PUPPET_PERFORM } from "./puppetPerform";
 
 export type ProjectDetailData = {
   slug: string;
@@ -138,19 +140,21 @@ export type ProjectDetailData = {
       BUILD / COMPOSE / INTERPRET / PERFORM timeline that stays on pages 102–108 (project eight).
       The content lives in data/puppetBuild.ts; this is only an on / off switch. */
   howItWorks?: boolean;
-    compose?: ComposeData;
-      /** "Build the environment" page: stationary 3D theatre + tap-to-place characters (project eight) */
+  compose?: ComposeData;
+  /** "Build the environment" page: stationary 3D theatre + tap-to-place characters (project eight) */
   environment?: boolean;
-    /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
-    /** Pick your characters page — 3D stick puppets */
-characters?: boolean;
+  /** "USER TESTING" page: hover a number 01–13 → the video and the observation / insight / design direction change (project eight, page 109) */
+  /** Pick your characters page — 3D stick puppets */
+  characters?: boolean;
+    /** "PERFORM" page: two clips with play / pause / mute (project eight, after Pick your characters) */
+  perform?: PerformData;
   userTesting?: UserTestingData;
   targetUser?: TargetUserData;
-    /** "WHY PUPPET THEATRE ?" page: kicker + headline + four learning cards (project eight, page 115) */
+  /** "WHY PUPPET THEATRE ?" page: kicker + headline + four learning cards (project eight, page 115) */
   whyPuppet?: WhyData;
-    /** "ITERATIONS & PROTOTYPES": six sticky-stacking colour cards (project eight) */
+  /** "ITERATIONS & PROTOTYPES": six sticky-stacking colour cards (project eight) */
   iterations?: IterationsData;
-   endPage?: EndData;
+  endPage?: EndData;
   story?: {
     heading: string[]; // 16 · Medium · #000 — one string per line
     paragraphs: string[][]; // 14 · Regular · #000 — one string per line
@@ -349,18 +353,19 @@ export const PROJECT_DETAILS: Record<string, ProjectDetailData> = {
     research: PUPPET_RESEARCH,
     /* page 102 — HOW IT WORKS · BUILD + the timeline (components/ProjectBuild.tsx + data/puppetBuild.ts) */
     howItWorks: true,
-     compose: PUPPET_COMPOSE,
-         environment: true,
-     /* Page 107 — PICK YOUR CHARACTERS */
-characters: true,
-        /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
+    compose: PUPPET_COMPOSE,
+    environment: true,
+    /* Page 107 — PICK YOUR CHARACTERS */
+    characters: true,
+    perform: PUPPET_PERFORM,
+    /* page 109 — USER TESTING (components/ProjectUserTesting.tsx + data/puppetUserTesting.ts) */
     userTesting: PUPPET_USER_TESTING,
-        /* page — TARGET USER (components/ProjectTargetUser.tsx + data/puppetTargetUser.ts) */
+    /* page — TARGET USER (components/ProjectTargetUser.tsx + data/puppetTargetUser.ts) */
     targetUser: PUPPET_TARGET_USER,
-        /* page 115 — WHY PUPPET THEATRE ? (components/ProjectWhy.tsx + data/puppetWhy.ts) */
+    /* page 115 — WHY PUPPET THEATRE ? (components/ProjectWhy.tsx + data/puppetWhy.ts) */
     whyPuppet: PUPPET_WHY,
-        iterations: PUPPET_ITERATIONS,
-        endPage: PUPPET_END,
+    iterations: PUPPET_ITERATIONS,
+    endPage: PUPPET_END,
   },
 };
 
